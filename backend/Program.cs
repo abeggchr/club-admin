@@ -171,7 +171,7 @@ api.MapPut(
 
 api.MapGet(
     "/entries",
-    async (AppDbContext db) =>
+    async (DateOnly? from, DateOnly? to, int? account, string? q, AppDbContext db) =>
     {
         var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
         if (opening is null)
@@ -180,8 +180,9 @@ api.MapGet(
         }
 
         var entries = await db.Entries.ToListAsync();
-        return AccountingCalculator
-            .RunningBalances(opening, entries)
+        // Balances are computed over the whole journal; filters only hide rows.
+        return JournalFilter
+            .Apply(AccountingCalculator.RunningBalances(opening, entries), from, to, account, q)
             .Select(r => new JournalEntryDto(r.Entry.Id, r.Entry.Date, r.Entry.Text, r.Entry.AccountNumber, r.Entry.Amount, r.Balance))
             .ToList();
     }

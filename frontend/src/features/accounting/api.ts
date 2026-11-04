@@ -43,6 +43,32 @@ export async function saveOpeningBalance(balance: OpeningBalance): Promise<Openi
   return res.json()
 }
 
+export type JournalFilters = {
+  from: string
+  to: string
+  account: string
+  q: string
+}
+
+export const noFilters: JournalFilters = { from: '', to: '', account: '', q: '' }
+
+/** Filters only hide rows; the backend keeps the running balance of the whole journal. */
+export function filteredEntriesQueryOptions(filters: JournalFilters) {
+  const params = new URLSearchParams()
+  if (filters.from) params.set('from', filters.from)
+  if (filters.to) params.set('to', filters.to)
+  if (filters.account) params.set('account', filters.account)
+  if (filters.q.trim()) params.set('q', filters.q.trim())
+  return queryOptions({
+    queryKey: [...entriesQueryOptions.queryKey, filters],
+    queryFn: async (): Promise<JournalEntry[]> => {
+      const res = await fetch(`/api/entries?${params}`)
+      if (!res.ok) throw new Error(`Backend returned ${res.status}`)
+      return res.json()
+    },
+  })
+}
+
 export const entriesQueryOptions = queryOptions({
   queryKey: ['entries'],
   queryFn: async (): Promise<JournalEntry[]> => {
