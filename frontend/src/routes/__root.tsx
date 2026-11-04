@@ -1,4 +1,4 @@
-import { MdPeople } from 'react-icons/md'
+import { MdAccountBalance, MdPeople } from 'react-icons/md'
 import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools'
@@ -14,6 +14,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 const navItems = [
   { to: '/persons', label: 'Persons', Icon: MdPeople },
+  { to: '/accounting', label: 'Buchhaltung', Icon: MdAccountBalance },
 ] as const
 
 function RootComponent() {
