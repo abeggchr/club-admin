@@ -21,7 +21,30 @@ var app = builder.Build();
 // Apply pending EF migrations on startup.
 using (var scope = app.Services.CreateScope())
 {
-    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+
+    // Refuse to start when the Kontoplan file disagrees with the stored Buchungen (ADR 0001, ADR 0002).
+    var chart = scope.ServiceProvider.GetRequiredService<ChartOfAccounts>();
+    var recorded = db.AccountUsages.ToDictionary(u => u.AccountNumber, u => u.Category);
+    // Konten used before their Kategorie was recorded adopt the file's current Kategorie.
+    foreach (var number in db.Entries.Select(e => e.AccountNumber).Distinct().ToList())
+    {
+        if (!recorded.ContainsKey(number) && chart.Find(number) is { } account)
+        {
+            recorded[number] = account.Category;
+            db.AccountUsages.Add(new AccountUsage { AccountNumber = number, Category = account.Category });
+        }
+        else if (!recorded.ContainsKey(number))
+        {
+            recorded[number] = Category.Income; // not in the file: reported as missing below
+        }
+    }
+    if (ChartConsistency.Check(chart, recorded) is { } inconsistency)
+    {
+        throw new ChartOfAccountsException($"Kontoplan passt nicht zu den Buchungen. {inconsistency}");
+    }
+    db.SaveChanges();
 }
 
 // Configure the HTTP request pipeline.
@@ -173,6 +196,17 @@ api.MapPost(
             Amount = input.Amount,
         };
         db.Entries.Add(entry);
+        // Remember the Konto's Kategorie at first use (ADR 0002).
+        if (!await db.AccountUsages.AnyAsync(u => u.AccountNumber == input.AccountNumber))
+        {
+            db.AccountUsages.Add(
+                new AccountUsage
+                {
+                    AccountNumber = input.AccountNumber,
+                    Category = chart.Find(input.AccountNumber)!.Category,
+                }
+            );
+        }
         await db.SaveChangesAsync();
         return Results.Created($"/api/entries/{entry.Id}", entry);
     }

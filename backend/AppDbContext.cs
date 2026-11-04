@@ -7,6 +7,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Person> Persons => Set<Person>();
     public DbSet<OpeningBalance> OpeningBalances => Set<OpeningBalance>();
     public DbSet<Entry> Entries => Set<Entry>();
+    public DbSet<AccountUsage> AccountUsages => Set<AccountUsage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -14,6 +15,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(o => o.Id).ValueGeneratedNever();
             e.Property(o => o.Amount).HasPrecision(18, 2);
+        });
+        modelBuilder.Entity<AccountUsage>(e =>
+        {
+            e.HasKey(u => u.AccountNumber);
+            e.Property(u => u.AccountNumber).ValueGeneratedNever();
+            e.Property(u => u.Category).HasConversion<string>();
         });
         modelBuilder.Entity<Entry>(e =>
         {
