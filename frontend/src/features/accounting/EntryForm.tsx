@@ -1,6 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { accountsQueryOptions, createEntry, entriesQueryOptions, updateEntry } from './api'
+import {
+  accountsQueryOptions,
+  createEntry,
+  invalidateJournalQueries,
+  openingBalanceQueryOptions,
+  updateEntry,
+} from './api'
+import { entryDateError } from './date'
 import { formatChf, parseAmount, toSignedAmount, toTypedAmount } from './amount'
 import { KontoPicker } from './KontoPicker'
 import type { Entry } from './types'
@@ -13,6 +20,7 @@ function today(): string {
 const input = 'rounded border border-slate-300 p-2'
 
 type Errors = {
+  date?: string
   text?: string
   account?: string
   amount?: string
@@ -28,6 +36,7 @@ type Props = {
 export function EntryForm({ entry, onDone }: Props = {}) {
   const queryClient = useQueryClient()
   const { data: accounts } = useSuspenseQuery(accountsQueryOptions)
+  const { data: openingBalance } = useSuspenseQuery(openingBalanceQueryOptions)
   const existing = entry ? accounts.find((a) => a.number === entry.accountNumber) : undefined
   const [date, setDate] = useState(entry?.date ?? today())
   const [text, setText] = useState(entry?.text ?? '')
@@ -42,11 +51,13 @@ export function EntryForm({ entry, onDone }: Props = {}) {
     const next: Errors = {}
     const account = accounts.find((a) => a.number === accountNumber)
     const parsed = parseAmount(amount)
+    const dateError = entryDateError(date, openingBalance?.startDate)
+    if (dateError) next.date = dateError
     if (text.trim() === '') next.text = 'Text ist erforderlich.'
     if (!account) next.account = 'Konto ist erforderlich.'
     if (!parsed.ok) next.amount = parsed.error
     setErrors(next)
-    if (next.text || next.account || next.amount || !account || !parsed.ok) return
+    if (next.date || next.text || next.account || next.amount || !account || !parsed.ok) return
 
     try {
       const body = {
@@ -57,10 +68,7 @@ export function EntryForm({ entry, onDone }: Props = {}) {
       }
       if (entry) await updateEntry(entry.id, body)
       else await createEntry(body)
-      await queryClient.invalidateQueries({
-        queryKey: entriesQueryOptions.queryKey,
-      })
-      await queryClient.invalidateQueries({ queryKey: ['expected-balance'] })
+      await invalidateJournalQueries(queryClient)
       if (entry) {
         onDone?.()
       } else {
@@ -80,11 +88,11 @@ export function EntryForm({ entry, onDone }: Props = {}) {
         Datum
         <input
           type="date"
-          required
           value={date}
           onChange={(e) => setDate(e.target.value)}
           className={input}
         />
+        {errors.date && <span className="text-red-600">{errors.date}</span>}
       </label>
       <label className="flex flex-col text-sm">
         Text

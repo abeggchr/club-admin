@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery, useQueryClient, useSuspenseQuery } from '@t
 import {
   accountsQueryOptions,
   deleteEntry,
-  entriesQueryOptions,
+  invalidateJournalQueries,
   filteredEntriesQueryOptions,
   noFilters,
   type JournalFilters,
@@ -24,8 +24,8 @@ export function JournalList() {
   const { data: accounts } = useSuspenseQuery(accountsQueryOptions)
   const byNumber = new Map(accounts.map((a) => [a.number, a]))
 
-  const filtered = Object.values(filters).some((v) => v.trim() !== '')
-  const set = (patch: Partial<JournalFilters>) => setFilters({ ...filters, ...patch })
+  const hasActiveFilters = Object.values(filters).some((v) => v.trim() !== '')
+  const updateFilters = (patch: Partial<JournalFilters>) => setFilters({ ...filters, ...patch })
   const input = 'rounded border border-slate-300 p-1'
 
   async function onDelete(id: number) {
@@ -33,10 +33,7 @@ export function JournalList() {
     try {
       await deleteEntry(id)
       setError(null)
-      await queryClient.invalidateQueries({
-        queryKey: entriesQueryOptions.queryKey,
-      })
-      await queryClient.invalidateQueries({ queryKey: ['expected-balance'] })
+      await invalidateJournalQueries(queryClient)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen.')
     }
@@ -47,15 +44,15 @@ export function JournalList() {
       <div className="mt-6 flex flex-wrap items-end gap-3 text-sm">
         <label className="flex flex-col">
           Von
-          <input type="date" value={filters.from} onChange={(e) => set({ from: e.target.value })} className={input} />
+          <input type="date" value={filters.from} onChange={(e) => updateFilters({ from: e.target.value })} className={input} />
         </label>
         <label className="flex flex-col">
           Bis
-          <input type="date" value={filters.to} onChange={(e) => set({ to: e.target.value })} className={input} />
+          <input type="date" value={filters.to} onChange={(e) => updateFilters({ to: e.target.value })} className={input} />
         </label>
         <label className="flex flex-col">
           Konto
-          <select value={filters.account} onChange={(e) => set({ account: e.target.value })} className={input}>
+          <select value={filters.accountNumber} onChange={(e) => updateFilters({ accountNumber: e.target.value })} className={input}>
             <option value="">Alle Konten</option>
             {[
               { label: 'Einnahmen', category: 'Income' },
@@ -76,11 +73,11 @@ export function JournalList() {
         </label>
         <label className="flex flex-col">
           Suche im Text
-          <input type="search" value={filters.q} onChange={(e) => set({ q: e.target.value })} className={input} />
+          <input type="search" value={filters.search} onChange={(e) => updateFilters({ search: e.target.value })} className={input} />
         </label>
         <button
           type="button"
-          disabled={!filtered}
+          disabled={!hasActiveFilters}
           onClick={() => setFilters(noFilters)}
           className="rounded border border-slate-300 px-3 py-1 enabled:hover:bg-slate-100 disabled:opacity-50"
         >
@@ -89,7 +86,7 @@ export function JournalList() {
       </div>
       {isError && <p className="mt-4 text-red-600">Buchungen konnten nicht geladen werden.</p>}
       {entries.length === 0 && (
-        <p className="mt-6 text-slate-500">{filtered ? 'Keine Buchungen gefunden.' : 'Noch keine Buchungen.'}</p>
+        <p className="mt-6 text-slate-500">{hasActiveFilters ? 'Keine Buchungen gefunden.' : 'Noch keine Buchungen.'}</p>
       )}
       {error && <p className="mt-4 text-red-600">{error}</p>}
       {entries.length > 0 && (
@@ -100,7 +97,7 @@ export function JournalList() {
             <th>Text</th>
             <th>Konto</th>
             <th className="text-right">Betrag</th>
-            <th className="text-right">Kontostand</th>
+            <th className="text-right">Erwarteter Kontostand</th>
             <th></th>
           </tr>
         </thead>

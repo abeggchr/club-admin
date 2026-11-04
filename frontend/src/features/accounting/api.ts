@@ -1,4 +1,4 @@
-import { queryOptions } from '@tanstack/react-query'
+import { queryOptions, type QueryClient } from '@tanstack/react-query'
 import type { Account, Entry, EntryInput, JournalEntry } from './types'
 
 export type OpeningBalance = {
@@ -6,22 +6,39 @@ export type OpeningBalance = {
   startDate: string
 }
 
-async function fetchAccounts(): Promise<Account[]> {
-  const res = await fetch('/api/accounts')
-  if (!res.ok) throw new Error(`Backend returned ${res.status}`)
+/** Throws the backend's German error message, or a generic one, for a non-OK response. */
+async function ensureOk(res: Response): Promise<void> {
+  if (res.ok) return
+  const data = await res.json().catch(() => null)
+  throw new Error(data?.error ?? `Backend returned ${res.status}`)
+}
+
+async function requestJson<T>(url: string, method: 'POST' | 'PUT', body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  await ensureOk(res)
+  return res.json()
+}
+
+async function getJson<T>(url: string): Promise<T> {
+  const res = await fetch(url)
+  await ensureOk(res)
   return res.json()
 }
 
 export const accountsQueryOptions = queryOptions({
   queryKey: ['accounts'],
-  queryFn: fetchAccounts,
+  queryFn: () => getJson<Account[]>('/api/accounts'),
   staleTime: Infinity, // the Kontoplan only changes with a deploy
 })
 
 async function fetchOpeningBalance(): Promise<OpeningBalance | null> {
   const res = await fetch('/api/opening-balance')
   if (res.status === 404) return null
-  if (!res.ok) throw new Error(`Backend returned ${res.status}`)
+  await ensureOk(res)
   return res.json()
 }
 
@@ -30,83 +47,57 @@ export const openingBalanceQueryOptions = queryOptions({
   queryFn: fetchOpeningBalance,
 })
 
-export async function saveOpeningBalance(balance: OpeningBalance): Promise<OpeningBalance> {
-  const res = await fetch('/api/opening-balance', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(balance),
-  })
-  if (!res.ok) {
-    const data = await res.json().catch(() => null)
-    throw new Error(data?.error ?? `Backend returned ${res.status}`)
-  }
-  return res.json()
+export function saveOpeningBalance(balance: OpeningBalance): Promise<OpeningBalance> {
+  return requestJson('/api/opening-balance', 'PUT', balance)
 }
 
 export type JournalFilters = {
   from: string
   to: string
-  account: string
-  q: string
+  accountNumber: string
+  search: string
 }
 
-export const noFilters: JournalFilters = { from: '', to: '', account: '', q: '' }
+export const noFilters: JournalFilters = { from: '', to: '', accountNumber: '', search: '' }
 
 /** Filters only hide rows; the backend keeps the running balance of the whole journal. */
-export function filteredEntriesQueryOptions(filters: JournalFilters) {
+function fetchEntries(filters: JournalFilters): Promise<JournalEntry[]> {
   const params = new URLSearchParams()
   if (filters.from) params.set('from', filters.from)
   if (filters.to) params.set('to', filters.to)
-  if (filters.account) params.set('account', filters.account)
-  if (filters.q.trim()) params.set('q', filters.q.trim())
-  return queryOptions({
-    queryKey: [...entriesQueryOptions.queryKey, filters],
-    queryFn: async (): Promise<JournalEntry[]> => {
-      const res = await fetch(`/api/entries?${params}`)
-      if (!res.ok) throw new Error(`Backend returned ${res.status}`)
-      return res.json()
-    },
-  })
+  if (filters.accountNumber) params.set('account', filters.accountNumber)
+  if (filters.search.trim()) params.set('q', filters.search.trim())
+  return getJson(`/api/entries?${params}`)
 }
 
 export const entriesQueryOptions = queryOptions({
   queryKey: ['entries'],
-  queryFn: async (): Promise<JournalEntry[]> => {
-    const res = await fetch('/api/entries')
-    if (!res.ok) throw new Error(`Backend returned ${res.status}`)
-    return res.json()
-  },
+  queryFn: () => fetchEntries(noFilters),
 })
 
-export async function createEntry(input: EntryInput): Promise<Entry> {
-  const res = await fetch('/api/entries', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
+export function filteredEntriesQueryOptions(filters: JournalFilters) {
+  return queryOptions({
+    queryKey: [...entriesQueryOptions.queryKey, filters],
+    queryFn: () => fetchEntries(filters),
   })
-  if (!res.ok) {
-    const data = await res.json().catch(() => null)
-    throw new Error(data?.error ?? `Backend returned ${res.status}`)
-  }
-  return res.json()
 }
 
-export async function updateEntry(id: number, input: EntryInput): Promise<Entry> {
-  const res = await fetch(`/api/entries/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  })
-  if (!res.ok) {
-    const data = await res.json().catch(() => null)
-    throw new Error(data?.error ?? `Backend returned ${res.status}`)
-  }
-  return res.json()
+export function createEntry(input: EntryInput): Promise<Entry> {
+  return requestJson('/api/entries', 'POST', input)
+}
+
+export function updateEntry(id: number, input: EntryInput): Promise<Entry> {
+  return requestJson(`/api/entries/${id}`, 'PUT', input)
 }
 
 export async function deleteEntry(id: number): Promise<void> {
-  const res = await fetch(`/api/entries/${id}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error(`Backend returned ${res.status}`)
+  await ensureOk(await fetch(`/api/entries/${id}`, { method: 'DELETE' }))
+}
+
+/** Refreshes everything derived from the journal after a Buchung or the Anfangssaldo changed. */
+export async function invalidateJournalQueries(queryClient: QueryClient): Promise<void> {
+  await queryClient.invalidateQueries({ queryKey: entriesQueryOptions.queryKey })
+  await queryClient.invalidateQueries({ queryKey: ['expected-balance'] })
 }
 
 export type ExpectedBalance = { date: string; balance: number | null }
@@ -114,9 +105,5 @@ export type ExpectedBalance = { date: string; balance: number | null }
 export const expectedBalanceQueryOptions = (date: string) =>
   queryOptions({
     queryKey: ['expected-balance', date],
-    queryFn: async (): Promise<ExpectedBalance> => {
-      const res = await fetch(`/api/expected-balance?date=${encodeURIComponent(date)}`)
-      if (!res.ok) throw new Error(`Backend returned ${res.status}`)
-      return res.json()
-    },
+    queryFn: () => getJson<ExpectedBalance>(`/api/expected-balance?date=${encodeURIComponent(date)}`),
   })

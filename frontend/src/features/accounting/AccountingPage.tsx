@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { openingBalanceQueryOptions, saveOpeningBalance } from './api'
+import { invalidateJournalQueries, openingBalanceQueryOptions, saveOpeningBalance } from './api'
+import { formatChf, parseAmount } from './amount'
 import { EntryForm } from './EntryForm'
 import { BalanceAtDate } from './BalanceAtDate'
 import { JournalList } from './JournalList'
@@ -8,7 +9,7 @@ import { JournalList } from './JournalList'
 export function AccountingPage() {
   const queryClient = useQueryClient()
   const { data: openingBalance } = useSuspenseQuery(openingBalanceQueryOptions)
-  const [amount, setAmount] = useState(openingBalance ? openingBalance.amount.toFixed(2) : '')
+  const [amount, setAmount] = useState(openingBalance ? formatChf(openingBalance.amount) : '')
   const [startDate, setStartDate] = useState(openingBalance?.startDate ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -17,12 +18,16 @@ export function AccountingPage() {
     e.preventDefault()
     setError(null)
     setSaved(false)
+    const parsed = parseAmount(amount, { allowZero: true })
+    if (!parsed.ok) {
+      setError(parsed.error)
+      return
+    }
     try {
-      const result = await saveOpeningBalance({ amount: Number(amount), startDate })
+      const result = await saveOpeningBalance({ amount: parsed.value, startDate })
       queryClient.setQueryData(openingBalanceQueryOptions.queryKey, result)
-      await queryClient.invalidateQueries({ queryKey: ['entries'] })
-      await queryClient.invalidateQueries({ queryKey: ['expected-balance'] })
-      setAmount(result.amount.toFixed(2))
+      await invalidateJournalQueries(queryClient)
+      setAmount(formatChf(result.amount))
       setSaved(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')
@@ -43,14 +48,12 @@ export function AccountingPage() {
           Bitte zuerst den Anfangssaldo erfassen, bevor Buchungen erfasst werden können.
         </p>
       )}
-      <form onSubmit={onSubmit} className="mt-8 flex max-w-sm flex-col gap-3">
+      <form onSubmit={onSubmit} noValidate className="mt-8 flex max-w-sm flex-col gap-3">
         <h3 className="font-medium">Anfangssaldo</h3>
         <label className="flex flex-col text-sm">
           Betrag (CHF)
           <input
-            type="number"
-            step="0.01"
-            required
+            inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="rounded border border-slate-300 p-2"

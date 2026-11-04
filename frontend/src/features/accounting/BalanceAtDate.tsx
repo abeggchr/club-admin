@@ -11,7 +11,7 @@ function today(): string {
 
 export function BalanceAtDate() {
   const [date, setDate] = useState(today)
-  const { data } = useQuery({ ...expectedBalanceQueryOptions(date), enabled: date !== '' })
+  const { data, isError } = useQuery({ ...expectedBalanceQueryOptions(date), enabled: date !== '' })
 
   return (
     <div className="mt-6 flex items-end gap-4">
@@ -25,7 +25,9 @@ export function BalanceAtDate() {
         />
       </label>
       <p className="pb-2 text-lg tabular-nums">
-        {data ? (data.balance === null ? 'vor dem Anfangssaldo' : `CHF ${formatChf(data.balance)}`) : ''}
+        {isError ? (
+          <span className="text-red-600">Kontostand konnte nicht geladen werden.</span>
+        ) : data ? (data.balance === null ? 'vor dem Anfangssaldo' : `CHF ${formatChf(data.balance)}`) : ''}
       </p>
     </div>
   )

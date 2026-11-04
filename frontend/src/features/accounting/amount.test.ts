@@ -43,6 +43,11 @@ describe('parseAmount', () => {
   it('rejects zero', () => {
     expect(parseAmount('0.00').ok).toBe(false)
   })
+
+  it('accepts zero when allowed (Anfangssaldo)', () => {
+    expect(parseAmount('0', { allowZero: true })).toEqual({ ok: true, value: 0 })
+    expect(parseAmount('1.234', { allowZero: true }).ok).toBe(false)
+  })
 })
 
 describe('toSignedAmount', () => {
