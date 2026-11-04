@@ -106,10 +106,44 @@ api.MapPost(
     )
     .DisableAntiforgery();
 
+api.MapGet(
+    "/opening-balance",
+    async (AppDbContext db) =>
+        await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId) is { } ob
+            ? Results.Ok(ob)
+            : Results.NotFound()
+);
+
+api.MapPut(
+    "/opening-balance",
+    async (OpeningBalanceUpdate update, AppDbContext db) =>
+    {
+        if (update.Amount != decimal.Round(update.Amount, 2))
+        {
+            return Results.BadRequest(new { error = "Der Betrag darf höchstens zwei Dezimalstellen haben." });
+        }
+
+        var ob = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        if (ob is null)
+        {
+            ob = new OpeningBalance();
+            db.OpeningBalances.Add(ob);
+        }
+
+        ob.Amount = update.Amount;
+        ob.StartDate = update.StartDate;
+
+        await db.SaveChangesAsync();
+        return Results.Ok(ob);
+    }
+);
+
 // SPA fallback for client-side routes (not for unknown /api paths or files).
 app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
 app.Run();
+
+record OpeningBalanceUpdate(decimal Amount, DateOnly StartDate);
 
 record PersonUpdate(
     string FirstName,
