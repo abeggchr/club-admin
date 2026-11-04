@@ -1,7 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="312d2b61-4311-4e95-8eef-5b86ef0bb80b" name="Changes" comment="" />
+    <list default="true" id="d71cbcd7-c648-46bc-8def-ca14556437ba" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/.idea/.idea.SCW.Backoffice/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/.idea/.idea.SCW.Backoffice/.idea/encodings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/.idea/.idea.SCW.Backoffice/.idea/indexLayout.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/.idea/.idea.SCW.Backoffice/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/SCW.Backoffice.sln" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/AppDbContext.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/Migrations/20261104144651_InitialCreate.Designer.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/Migrations/20261104144651_InitialCreate.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/Migrations/AppDbContextModelSnapshot.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/Person/Person.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/Person/PersonCsvImporter.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/Program.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/Properties/launchSettings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/appsettings.Development.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/appsettings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/backend.csproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/obj/Debug/net10.0/backend.GeneratedMSBuildEditorConfig.editorconfig" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/obj/Debug/net10.0/backend.GlobalUsings.g.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/obj/Debug/net10.0/backend.assets.cache" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/obj/Debug/net10.0/backend.csproj.AssemblyReference.cache" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/obj/backend.csproj.nuget.g.props" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/obj/backend.csproj.nuget.g.targets" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/backend/obj/project.packagespec.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/dotnet-tools.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/.cta.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/.vscode/settings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/biome.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/index.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/package.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/EditPanel.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/ImportDialog.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/PersonsPage.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/PersonsTable.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/PersonsToolbar.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/api.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/columns.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/csv.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/format.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/search.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/types.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/features/persons/views.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/main.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/routeTree.gen.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/router.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/routes/__root.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/routes/index.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/routes/persons.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/src/styles.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/tsconfig.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/tsr.config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCW.Backoffice/frontend/vite.config.ts" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -26,12 +84,11 @@
     <commands />
     <urls />
   </component>
-  <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="true" />
   <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 8,
-  "fromUser": false
+  "customColor": "",
+  "associatedIndex": 1
 }]]></component>
-  <component name="ProjectId" id="3Le2C77SDLnJmR6Yknzm5XzyyAO" />
+  <component name="ProjectId" id="3LeWtivComd9XtM4tJ2GXTJ8jeh" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -50,24 +107,24 @@
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
     "git-widget-placeholder": "main",
     "junie.onboarding.icon.badge.shown": "true",
+    "nodejs_package_manager_path": "npm",
     "settings.editor.selected.configurable": "configurable.group.editor",
     "to.speed.mode.migration.done": "true"
   }
 }]]></component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="312d2b61-4311-4e95-8eef-5b86ef0bb80b" name="Changes" comment="" />
-      <created>1793800084378</created>
+      <changelist id="d71cbcd7-c648-46bc-8def-ca14556437ba" name="Changes" comment="" />
+      <created>1793815232303</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1793800084378</updated>
+      <updated>1793815232303</updated>
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
-  <component name="UnityCheckinConfiguration" checkUnsavedScenes="true" />
   <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
   <component name="VcsManagerConfiguration">
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />

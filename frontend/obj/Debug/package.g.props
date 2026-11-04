@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <PackageJsonName Condition="$(PackageJsonName) == ''">frontend</PackageJsonName>
+    <PackageJsonPrivate Condition="$(PackageJsonPrivate) == ''">true</PackageJsonPrivate>
+    <PackageJsonType Condition="$(PackageJsonType) == ''">module</PackageJsonType>
+    <PackageJsonImports Condition="$(PackageJsonImports) == ''">./src/*</PackageJsonImports>
+    <PackageJsonScriptsDev Condition="$(PackageJsonScriptsDev) == ''">vite dev --port 3000</PackageJsonScriptsDev>
+    <PackageJsonScriptsGenerateRoutes Condition="$(PackageJsonScriptsGenerateRoutes) == ''">tsr generate</PackageJsonScriptsGenerateRoutes>
+    <PackageJsonScriptsBuild Condition="$(PackageJsonScriptsBuild) == ''">vite build</PackageJsonScriptsBuild>
+    <PackageJsonScriptsPreview Condition="$(PackageJsonScriptsPreview) == ''">vite preview</PackageJsonScriptsPreview>
+    <PackageJsonScriptsFormat Condition="$(PackageJsonScriptsFormat) == ''">biome format</PackageJsonScriptsFormat>
+    <PackageJsonScriptsLint Condition="$(PackageJsonScriptsLint) == ''">biome lint</PackageJsonScriptsLint>
+    <PackageJsonScriptsCheck Condition="$(PackageJsonScriptsCheck) == ''">biome check</PackageJsonScriptsCheck>
+    <PackageJsonDependenciesFakerJsFaker Condition="$(PackageJsonDependenciesFakerJsFaker) == ''">^10.3.0</PackageJsonDependenciesFakerJsFaker>
+    <PackageJsonDependenciesTailwindcssVite Condition="$(PackageJsonDependenciesTailwindcssVite) == ''">^4.1.18</PackageJsonDependenciesTailwindcssVite>
+    <PackageJsonDependenciesTanstackMatchSorterUtils Condition="$(PackageJsonDependenciesTanstackMatchSorterUtils) == ''">9.2.6</PackageJsonDependenciesTanstackMatchSorterUtils>
+    <PackageJsonDependenciesTanstackReactDevtools Condition="$(PackageJsonDependenciesTanstackReactDevtools) == ''">0.10.14</PackageJsonDependenciesTanstackReactDevtools>
+    <PackageJsonDependenciesTanstackReactQuery Condition="$(PackageJsonDependenciesTanstackReactQuery) == ''">^5.105.3</PackageJsonDependenciesTanstackReactQuery>
+    <PackageJsonDependenciesTanstackReactRouter Condition="$(PackageJsonDependenciesTanstackReactRouter) == ''">1.170.46</PackageJsonDependenciesTanstackReactRouter>
+    <PackageJsonDependenciesTanstackReactRouterDevtools Condition="$(PackageJsonDependenciesTanstackReactRouterDevtools) == ''">1.167.2</PackageJsonDependenciesTanstackReactRouterDevtools>
+    <PackageJsonDependenciesTanstackReactTable Condition="$(PackageJsonDependenciesTanstackReactTable) == ''">9.3.1</PackageJsonDependenciesTanstackReactTable>
+    <PackageJsonDependenciesReact Condition="$(PackageJsonDependenciesReact) == ''">^19.2.0</PackageJsonDependenciesReact>
+    <PackageJsonDependenciesReactDom Condition="$(PackageJsonDependenciesReactDom) == ''">^19.2.0</PackageJsonDependenciesReactDom>
+    <PackageJsonDependenciesReactIcons Condition="$(PackageJsonDependenciesReactIcons) == ''">^5.7.0</PackageJsonDependenciesReactIcons>
+    <PackageJsonDependenciesTailwindcss Condition="$(PackageJsonDependenciesTailwindcss) == ''">^4.1.18</PackageJsonDependenciesTailwindcss>
+    <PackageJsonDevdependenciesBiomejsBiome Condition="$(PackageJsonDevdependenciesBiomejsBiome) == ''">2.4.5</PackageJsonDevdependenciesBiomejsBiome>
+    <PackageJsonDevdependenciesTanstackDevtoolsVite Condition="$(PackageJsonDevdependenciesTanstackDevtoolsVite) == ''">0.8.6</PackageJsonDevdependenciesTanstackDevtoolsVite>
+    <PackageJsonDevdependenciesTanstackReactQueryDevtools Condition="$(PackageJsonDevdependenciesTanstackReactQueryDevtools) == ''">^5.105.3</PackageJsonDevdependenciesTanstackReactQueryDevtools>
+    <PackageJsonDevdependenciesTanstackRouterCli Condition="$(PackageJsonDevdependenciesTanstackRouterCli) == ''">^1.132.0</PackageJsonDevdependenciesTanstackRouterCli>
+    <PackageJsonDevdependenciesTanstackRouterPlugin Condition="$(PackageJsonDevdependenciesTanstackRouterPlugin) == ''">1.168.48</PackageJsonDevdependenciesTanstackRouterPlugin>
+    <PackageJsonDevdependenciesTypesNode Condition="$(PackageJsonDevdependenciesTypesNode) == ''">^22.10.2</PackageJsonDevdependenciesTypesNode>
+    <PackageJsonDevdependenciesTypesReact Condition="$(PackageJsonDevdependenciesTypesReact) == ''">^19.2.0</PackageJsonDevdependenciesTypesReact>
+    <PackageJsonDevdependenciesTypesReactDom Condition="$(PackageJsonDevdependenciesTypesReactDom) == ''">^19.2.0</PackageJsonDevdependenciesTypesReactDom>
+    <PackageJsonDevdependenciesVitejsPluginReact Condition="$(PackageJsonDevdependenciesVitejsPluginReact) == ''">^6.0.1</PackageJsonDevdependenciesVitejsPluginReact>
+    <PackageJsonDevdependenciesTypescript Condition="$(PackageJsonDevdependenciesTypescript) == ''">^6.0.2</PackageJsonDevdependenciesTypescript>
+    <PackageJsonDevdependenciesVite Condition="$(PackageJsonDevdependenciesVite) == ''">^8.0.0</PackageJsonDevdependenciesVite>
+    <PackageJsonPnpmOnlybuiltdependencies Condition="$(PackageJsonPnpmOnlybuiltdependencies) == ''">[
+  "esbuild",
+  "lightningcss"
+]</PackageJsonPnpmOnlybuiltdependencies>
+  </PropertyGroup>
+</Project>
