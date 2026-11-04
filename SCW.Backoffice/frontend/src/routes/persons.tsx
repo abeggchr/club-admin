@@ -7,7 +7,7 @@ type Person = {
   email: string
 }
 
-async function fetchPersons(): Promise<Forecast[]> {
+async function fetchPersons(): Promise<Person[]> {
   const res = await fetch('/api/persons')
   if (!res.ok) throw new Error(`Backend returned ${res.status}`)
   return res.json()
