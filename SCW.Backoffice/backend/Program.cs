@@ -56,8 +56,8 @@ api.MapGet("/weatherforecast", () =>
 
 api.MapGet("/persons", async (AppDbContext db) => await db.Persons.OrderBy(p => p.Id).ToListAsync());
 
-// SPA fallback for client-side routes (not for unknown /api paths).
-app.MapFallbackToFile("{*path:regex(^(?!api/).*$)}", "index.html");
+// SPA fallback for client-side routes (not for unknown /api paths or files).
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
 app.Run();
 
