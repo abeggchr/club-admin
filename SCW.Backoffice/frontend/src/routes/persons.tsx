@@ -359,17 +359,17 @@ const views = {
   active: {
     label: 'Aktive',
     filter: (p: Person) => !p.leftOn,
-    columns: hideColumns('leftOn', 'landlinePhone', 'country', 'notes'),
+    columns: hideColumns('leftOn', 'dateOfBirth', 'joinedOn', 'landlinePhone', 'country', 'notes'),
   },
   contacts: {
     label: 'Kontakte',
     filter: (p: Person) => !p.joinedOn,
-    columns: hideColumns('landlinePhone', 'country', 'notes'),
+    columns: hideColumns('dateOfBirth', 'joinedOn', 'leftOn', 'country', 'notes'),
   },
   former: {
     label: 'Ehemalige',
     filter: (p: Person) => !!p.leftOn,
-    columns: hideColumns('landlinePhone', 'country', 'notes'),
+    columns: hideColumns('dateOfBirth', 'country', 'notes'),
   },
   all: {
     label: 'Alle',
@@ -453,9 +453,7 @@ function Persons() {
   }
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold">Personen</h1>
-
+    <div className="px-8">
       <div className="mt-4 flex items-center gap-4">
         <input
           type="search"
