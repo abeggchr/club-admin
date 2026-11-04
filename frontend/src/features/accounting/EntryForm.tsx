@@ -60,6 +60,7 @@ export function EntryForm({ entry, onDone }: Props = {}) {
       await queryClient.invalidateQueries({
         queryKey: entriesQueryOptions.queryKey,
       })
+      await queryClient.invalidateQueries({ queryKey: ['expected-balance'] })
       if (entry) {
         onDone?.()
       } else {

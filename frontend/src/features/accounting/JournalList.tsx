@@ -23,6 +23,7 @@ export function JournalList() {
       await queryClient.invalidateQueries({
         queryKey: entriesQueryOptions.queryKey,
       })
+      await queryClient.invalidateQueries({ queryKey: ['expected-balance'] })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen.')
     }
@@ -38,6 +39,7 @@ export function JournalList() {
             <th>Text</th>
             <th>Konto</th>
             <th className="text-right">Betrag</th>
+            <th className="text-right">Kontostand</th>
             <th></th>
           </tr>
         </thead>
@@ -47,7 +49,7 @@ export function JournalList() {
             if (e.id === editingId) {
               return (
                 <tr key={e.id} className="border-b border-slate-100">
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <EntryForm entry={e} onDone={() => setEditingId(null)} />
                   </td>
                 </tr>
@@ -61,6 +63,7 @@ export function JournalList() {
                 <td className={`text-right tabular-nums ${e.amount < 0 ? 'text-red-700' : ''}`}>
                   {formatChf(e.amount)}
                 </td>
+                <td className="text-right tabular-nums">{formatChf(e.balance)}</td>
                 <td className="space-x-2 pl-2 text-right">
                   <button
                     type="button"

@@ -21,7 +21,30 @@ var app = builder.Build();
 // Apply pending EF migrations on startup.
 using (var scope = app.Services.CreateScope())
 {
-    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+
+    // Refuse to start when the Kontoplan file disagrees with the stored Buchungen (ADR 0001, ADR 0002).
+    var chart = scope.ServiceProvider.GetRequiredService<ChartOfAccounts>();
+    var recorded = db.AccountUsages.ToDictionary(u => u.AccountNumber, u => u.Category);
+    // Konten used before their Kategorie was recorded adopt the file's current Kategorie.
+    foreach (var number in db.Entries.Select(e => e.AccountNumber).Distinct().ToList())
+    {
+        if (!recorded.ContainsKey(number) && chart.Find(number) is { } account)
+        {
+            recorded[number] = account.Category;
+            db.AccountUsages.Add(new AccountUsage { AccountNumber = number, Category = account.Category });
+        }
+        else if (!recorded.ContainsKey(number))
+        {
+            recorded[number] = Category.Income; // not in the file: reported as missing below
+        }
+    }
+    if (ChartConsistency.Check(chart, recorded) is { } inconsistency)
+    {
+        throw new ChartOfAccountsException($"Kontoplan passt nicht zu den Buchungen. {inconsistency}");
+    }
+    db.SaveChanges();
 }
 
 // Configure the HTTP request pipeline.
@@ -149,10 +172,34 @@ api.MapPut(
 api.MapGet(
     "/entries",
     async (AppDbContext db) =>
-        await db
-            .Entries.OrderByDescending(e => e.Date)
-            .ThenByDescending(e => e.Id)
-            .ToListAsync()
+    {
+        var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        if (opening is null)
+        {
+            return [];
+        }
+
+        var entries = await db.Entries.ToListAsync();
+        return AccountingCalculator
+            .RunningBalances(opening, entries)
+            .Select(r => new JournalEntryDto(r.Entry.Id, r.Entry.Date, r.Entry.Text, r.Entry.AccountNumber, r.Entry.Amount, r.Balance))
+            .ToList();
+    }
+);
+
+api.MapGet(
+    "/expected-balance",
+    async (DateOnly date, AppDbContext db) =>
+    {
+        var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        if (opening is null)
+        {
+            return Results.NotFound();
+        }
+
+        var entries = await db.Entries.Where(e => e.Date <= date).ToListAsync();
+        return Results.Ok(new { date, balance = AccountingCalculator.ExpectedBalance(opening, entries, date) });
+    }
 );
 
 api.MapPost(
@@ -173,6 +220,17 @@ api.MapPost(
             Amount = input.Amount,
         };
         db.Entries.Add(entry);
+        // Remember the Konto's Kategorie at first use (ADR 0002).
+        if (!await db.AccountUsages.AnyAsync(u => u.AccountNumber == input.AccountNumber))
+        {
+            db.AccountUsages.Add(
+                new AccountUsage
+                {
+                    AccountNumber = input.AccountNumber,
+                    Category = chart.Find(input.AccountNumber)!.Category,
+                }
+            );
+        }
         await db.SaveChangesAsync();
         return Results.Created($"/api/entries/{entry.Id}", entry);
     }
@@ -207,6 +265,17 @@ api.MapPut(
         entry.Text = input.Text.Trim();
         entry.AccountNumber = input.AccountNumber;
         entry.Amount = input.Amount;
+        // Remember the Konto's Kategorie at first use (ADR 0002).
+        if (!await db.AccountUsages.AnyAsync(u => u.AccountNumber == input.AccountNumber))
+        {
+            db.AccountUsages.Add(
+                new AccountUsage
+                {
+                    AccountNumber = input.AccountNumber,
+                    Category = chart.Find(input.AccountNumber)!.Category,
+                }
+            );
+        }
         await db.SaveChangesAsync();
         return Results.Ok(entry);
     }
@@ -233,6 +302,8 @@ app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 app.Run();
 
 record EntryInput(DateOnly Date, string Text, int AccountNumber, decimal Amount);
+
+record JournalEntryDto(int Id, DateOnly Date, string Text, int AccountNumber, decimal Amount, decimal Balance);
 
 record OpeningBalanceUpdate(decimal Amount, DateOnly StartDate);
 
