@@ -12,7 +12,6 @@ const config = defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:5210',
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },

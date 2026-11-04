@@ -12,14 +12,25 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Railway terminates TLS in front of the container, so only redirect locally.
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+// Serve the built frontend (copied to wwwroot in the Docker image).
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+var api = app.MapGroup("/api");
+api.MapGet("/health", () => Results.Ok());
 
 var summaries = new[]
 {
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
 };
 
-app.MapGet("/weatherforecast", () =>
+api.MapGet("/weatherforecast", () =>
     {
         var forecast = Enumerable.Range(1, 5).Select(index =>
                 new WeatherForecast
@@ -32,6 +43,9 @@ app.MapGet("/weatherforecast", () =>
         return forecast;
     })
     .WithName("GetWeatherForecast");
+
+// SPA fallback for client-side routes (not for unknown /api paths).
+app.MapFallbackToFile("{*path:regex(^(?!api/).*$)}", "index.html");
 
 app.Run();
 
