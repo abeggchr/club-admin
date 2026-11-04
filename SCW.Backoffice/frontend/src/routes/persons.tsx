@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, useRouter, type ErrorComponentProps } from "@tanstack/react-router";
-import { FiDownload, FiUpload } from 'react-icons/fi'
+import { FiDownload, FiUpload, FiX } from 'react-icons/fi'
 import {
   columnFilteringFeature,
   createColumnHelper,
@@ -50,6 +50,118 @@ async function importPersons(file: File): Promise<number> {
     throw new Error(data?.error ?? `Backend returned ${res.status}`)
   }
   return (await res.json()).imported
+}
+
+async function updatePerson(person: Person): Promise<Person> {
+  const res = await fetch(`/api/persons/${person.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(person),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.error ?? `Backend returned ${res.status}`)
+  }
+  return res.json()
+}
+
+const textFields: { key: keyof Person; label: string; type?: string; multiline?: boolean }[] = [
+  { key: 'firstName', label: 'Vorname' },
+  { key: 'lastName', label: 'Nachname' },
+  { key: 'dateOfBirth', label: 'Geburtstag', type: 'date' },
+  { key: 'joinedOn', label: 'Eintritt', type: 'date' },
+  { key: 'leftOn', label: 'Austritt', type: 'date' },
+  { key: 'email', label: 'E-Mail', type: 'email' },
+  { key: 'mobilePhone', label: 'Mobilfunknummer', type: 'tel' },
+  { key: 'landlinePhone', label: 'Festnetznummer', type: 'tel' },
+  { key: 'address', label: 'Adresse' },
+  { key: 'postalCode', label: 'PLZ' },
+  { key: 'city', label: 'Ort' },
+  { key: 'country', label: 'Land' },
+  { key: 'notes', label: 'Notizen', multiline: true },
+]
+
+function EditPanel({ person, onClose }: { person: Person; onClose: () => void }) {
+  const router = useRouter()
+  const [draft, setDraft] = useState(person)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    setSaved(false)
+    try {
+      // Empty inputs are stored as null, matching the importer.
+      const payload = Object.fromEntries(
+        Object.entries(draft).map(([k, v]) => [k, v === '' ? null : v]),
+      ) as Person
+      setDraft(await updatePerson(payload))
+      setSaved(true)
+      await router.invalidate()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <aside className="w-96 shrink-0 rounded border border-neutral-200 p-4">
+      <form onSubmit={submit}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">Person bearbeiten</h2>
+          <button type="button" onClick={onClose} aria-label="Schliessen" className="p-1">
+            <FiX />
+          </button>
+        </div>
+        {textFields.map((f) => {
+          const common = {
+            id: `person-${f.key}`,
+            value: (draft[f.key] as string | null) ?? '',
+            required: f.key === 'firstName' || f.key === 'lastName',
+            onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+              setDraft({ ...draft, [f.key]: e.target.value })
+              setSaved(false)
+            },
+            className: 'mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm',
+          }
+          return (
+            <div key={f.key} className="mt-3">
+              <label htmlFor={common.id} className="text-sm font-medium">
+                {f.label}
+              </label>
+              {f.multiline ? (
+                <textarea rows={4} {...common} />
+              ) : (
+                <input type={f.type ?? 'text'} {...common} />
+              )}
+            </div>
+          )
+        })}
+        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {saved && <p className="mt-3 text-sm text-green-700">Gespeichert.</p>}
+        <div className="mt-4 flex justify-end gap-2 text-sm">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded border border-neutral-300 px-3 py-1"
+          >
+            Schliessen
+          </button>
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-40"
+          >
+            {busy ? 'Speichere…' : 'Speichern'}
+          </button>
+        </div>
+      </form>
+    </aside>
+  )
 }
 
 function ImportDialog({ dialogRef }: { dialogRef: React.RefObject<HTMLDialogElement | null> }) {
@@ -303,6 +415,8 @@ function Persons() {
   const [filter, setFilter] = useState('')
   const [debouncedFilter, setDebouncedFilter] = useState('')
   const [viewKey, setViewKey] = useState<ViewKey>('active')
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const selected = persons.find((p) => p.id === selectedId) ?? null
   const importDialog = useRef<HTMLDialogElement>(null)
   const view = views[viewKey]
   const viewPersons = useMemo(() => persons.filter(view.filter), [persons, view])
@@ -386,7 +500,9 @@ function Persons() {
       </div>
       <ImportDialog dialogRef={importDialog} />
 
-      <div className="mt-4 overflow-x-auto rounded border border-neutral-200">
+      <div className="mt-4 flex items-start gap-4">
+      <div className="min-w-0 flex-1">
+      <div className="overflow-x-auto rounded border border-neutral-200">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -424,7 +540,13 @@ function Persons() {
               rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50"
+                  onClick={() => setSelectedId(row.original.id)}
+                  aria-selected={row.original.id === selectedId}
+                  className={`cursor-pointer border-b border-neutral-100 last:border-0 ${
+                    row.original.id === selectedId
+                      ? 'bg-blue-50 hover:bg-blue-100'
+                      : 'hover:bg-neutral-50'
+                  }`}
                 >
                   {row.getAllCells().map((cell) => (
                     <td key={cell.id} className="whitespace-nowrap px-3 py-2">
@@ -461,6 +583,11 @@ function Persons() {
         >
           Weiter
         </button>
+      </div>
+      </div>
+      {selected && (
+        <EditPanel key={selected.id} person={selected} onClose={() => setSelectedId(null)} />
+      )}
       </div>
     </div>
   )

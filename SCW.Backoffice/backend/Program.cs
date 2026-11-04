@@ -73,6 +73,40 @@ api.MapGet(
     async (AppDbContext db) => await db.Persons.OrderBy(p => p.Id).ToListAsync()
 );
 
+api.MapPut(
+    "/persons/{id:int}",
+    async (int id, PersonUpdate update, AppDbContext db) =>
+    {
+        if (string.IsNullOrWhiteSpace(update.FirstName) || string.IsNullOrWhiteSpace(update.LastName))
+        {
+            return Results.BadRequest(new { error = "Vorname und Nachname sind erforderlich." });
+        }
+
+        var person = await db.Persons.FindAsync(id);
+        if (person is null)
+        {
+            return Results.NotFound();
+        }
+
+        person.FirstName = update.FirstName.Trim();
+        person.LastName = update.LastName.Trim();
+        person.DateOfBirth = update.DateOfBirth;
+        person.JoinedOn = update.JoinedOn;
+        person.LeftOn = update.LeftOn;
+        person.Email = update.Email;
+        person.MobilePhone = update.MobilePhone;
+        person.LandlinePhone = update.LandlinePhone;
+        person.Address = update.Address;
+        person.PostalCode = update.PostalCode;
+        person.City = update.City;
+        person.Country = update.Country;
+        person.Notes = update.Notes;
+
+        await db.SaveChangesAsync();
+        return Results.Ok(person);
+    }
+);
+
 api.MapPost(
         "/persons/import",
         async (IFormFile file, AppDbContext db) =>
@@ -99,6 +133,22 @@ api.MapPost(
 app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
 app.Run();
+
+record PersonUpdate(
+    string FirstName,
+    string LastName,
+    DateOnly? DateOfBirth,
+    DateOnly? JoinedOn,
+    DateOnly? LeftOn,
+    string? Email,
+    string? MobilePhone,
+    string? LandlinePhone,
+    string? Address,
+    string? PostalCode,
+    string? City,
+    string? Country,
+    string? Notes
+);
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
