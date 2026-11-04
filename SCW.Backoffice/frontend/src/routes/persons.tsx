@@ -150,6 +150,10 @@ function formatDe(value: string | null): string {
   return `${day}.${month}.${year}`
 }
 
+function formatDateDe(value: string | null): string {
+  return value ? formatDe(value) : '—'
+}
+
 // Same headers and date format as the backend's PersonCsvImporter, so an
 // exported file can be re-imported unchanged.
 const exportColumns: { header: string; value: (p: Person) => string | null }[] = [
@@ -184,15 +188,15 @@ const columns = helper.columns([
   helper.accessor('lastName', { header: 'Nachname' }),
   helper.accessor('dateOfBirth', {
     header: 'Geburtstag',
-    cell: (info) => orDash(info.getValue()),
+    cell: (info) => formatDateDe(info.getValue()),
   }),
   helper.accessor('joinedOn', {
     header: 'Eintritt',
-    cell: (info) => orDash(info.getValue()),
+    cell: (info) => formatDateDe(info.getValue()),
   }),
   helper.accessor('leftOn', {
     header: 'Austritt',
-    cell: (info) => orDash(info.getValue()),
+    cell: (info) => formatDateDe(info.getValue()),
   }),
   helper.accessor('email', {
     header: 'E-Mail',
@@ -235,14 +239,28 @@ const columns = helper.columns([
   }),
 ])
 
+function hideColumns(...keys: string[]) {
+  return columns.filter((c) => !('accessorKey' in c && keys.includes(c.accessorKey)));
+}
+
 const views = {
   active: {
     label: 'Aktive',
     filter: (p: Person) => !p.leftOn,
-    columns: columns.filter((c) => !('accessorKey' in c && c.accessorKey === 'leftOn')),
+    columns: hideColumns('leftOn', 'landlinePhone', 'country', 'notes'),
+  },
+  contacts: {
+    label: 'Kontakte',
+    filter: (p: Person) => !p.joinedOn,
+    columns: hideColumns('landlinePhone', 'country', 'notes'),
   },
   former: {
     label: 'Ehemalige',
+    filter: (p: Person) => !!p.leftOn,
+    columns: hideColumns('landlinePhone', 'country', 'notes'),
+  },
+  all: {
+    label: 'Alle',
     filter: (p: Person) => !!p.leftOn,
     columns,
   },
@@ -332,17 +350,21 @@ function Persons() {
           onChange={(e) => setFilter(e.target.value)}
           className="w-96 rounded border border-neutral-300 px-3 py-2 text-sm"
         />
-        <select
-          value={viewKey}
-          onChange={(e) => setViewKey(e.target.value as ViewKey)}
-          className="rounded border border-neutral-300 px-3 py-2 text-sm"
-        >
+        <div role="group" aria-label="Ansicht" className="inline-flex">
           {Object.entries(views).map(([key, v]) => (
-            <option key={key} value={key}>
+            <button
+              key={key}
+              type="button"
+              aria-pressed={key === viewKey}
+              onClick={() => setViewKey(key as ViewKey)}
+              className={`-ml-px border border-neutral-300 px-3 py-2 text-sm first:ml-0 first:rounded-l last:rounded-r ${
+                key === viewKey ? 'bg-neutral-800 text-white' : 'hover:bg-neutral-50'
+              }`}
+            >
               {v.label}
-            </option>
+            </button>
           ))}
-        </select>
+        </div>
         <div className="ml-auto flex gap-2">
           <button
             type="button"
