@@ -21,6 +21,20 @@ namespace backend.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("backend.Accounting.AccountUsage", b =>
+                {
+                    b.Property<int>("AccountNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("AccountNumber");
+
+                    b.ToTable("AccountUsages");
+                });
+
             modelBuilder.Entity("backend.Accounting.Entry", b =>
                 {
                     b.Property<int>("Id")
