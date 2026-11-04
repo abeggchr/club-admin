@@ -6,6 +6,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<Person> Persons => Set<Person>();
     public DbSet<OpeningBalance> OpeningBalances => Set<OpeningBalance>();
+    public DbSet<Entry> Entries => Set<Entry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -13,6 +14,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(o => o.Id).ValueGeneratedNever();
             e.Property(o => o.Amount).HasPrecision(18, 2);
+        });
+        modelBuilder.Entity<Entry>(e =>
+        {
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.Text).HasMaxLength(500);
+            e.HasIndex(x => x.Date);
         });
     }
 }

@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { openingBalanceQueryOptions, saveOpeningBalance } from './api'
+import { EntryForm } from './EntryForm'
+import { JournalList } from './JournalList'
 
 export function AccountingPage() {
   const queryClient = useQueryClient()
@@ -27,7 +29,17 @@ export function AccountingPage() {
   return (
     <div className="px-8">
       <h2 className="mt-4 text-xl font-semibold text-sky-900">Buchhaltung</h2>
-      <form onSubmit={onSubmit} className="mt-4 flex max-w-sm flex-col gap-3">
+      {openingBalance ? (
+        <>
+          <EntryForm />
+          <JournalList />
+        </>
+      ) : (
+        <p className="mt-4 rounded bg-amber-50 p-3 text-amber-900">
+          Bitte zuerst den Anfangssaldo erfassen, bevor Buchungen erfasst werden können.
+        </p>
+      )}
+      <form onSubmit={onSubmit} className="mt-8 flex max-w-sm flex-col gap-3">
         <h3 className="font-medium">Anfangssaldo</h3>
         <label className="flex flex-col text-sm">
           Betrag (CHF)

@@ -123,6 +123,14 @@ api.MapPut(
             return Results.BadRequest(new { error = "Der Betrag darf höchstens zwei Dezimalstellen haben." });
         }
 
+        var earliest = await db.Entries.AnyAsync()
+            ? await db.Entries.MinAsync(e => e.Date)
+            : (DateOnly?)null;
+        if (EntryRules.ValidateOpeningStartDate(update.StartDate, earliest) is { } dateError)
+        {
+            return Results.BadRequest(new { error = dateError });
+        }
+
         var ob = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
         if (ob is null)
         {
@@ -138,10 +146,44 @@ api.MapPut(
     }
 );
 
+api.MapGet(
+    "/entries",
+    async (AppDbContext db) =>
+        await db
+            .Entries.OrderByDescending(e => e.Date)
+            .ThenByDescending(e => e.Id)
+            .ToListAsync()
+);
+
+api.MapPost(
+    "/entries",
+    async (EntryInput input, AppDbContext db, ChartOfAccounts chart) =>
+    {
+        var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        if (EntryRules.Validate(opening, chart, input.Date, input.Text, input.AccountNumber, input.Amount) is { } error)
+        {
+            return Results.BadRequest(new { error });
+        }
+
+        var entry = new Entry
+        {
+            Date = input.Date,
+            Text = input.Text.Trim(),
+            AccountNumber = input.AccountNumber,
+            Amount = input.Amount,
+        };
+        db.Entries.Add(entry);
+        await db.SaveChangesAsync();
+        return Results.Created($"/api/entries/{entry.Id}", entry);
+    }
+);
+
 // SPA fallback for client-side routes (not for unknown /api paths or files).
 app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
 app.Run();
+
+record EntryInput(DateOnly Date, string Text, int AccountNumber, decimal Amount);
 
 record OpeningBalanceUpdate(decimal Amount, DateOnly StartDate);
 
