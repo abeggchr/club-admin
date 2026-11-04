@@ -1,3 +1,4 @@
+using backend.Accounting;
 using backend.Person;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
+);
+
+// A malformed Kontoplan file fails startup (see ADR 0001).
+builder.Services.AddSingleton(
+    ChartOfAccounts.Load(Path.Combine(AppContext.BaseDirectory, "Accounting", "chart-of-accounts.json"))
 );
 
 var app = builder.Build();
@@ -36,6 +42,8 @@ app.UseStaticFiles();
 
 var api = app.MapGroup("/api");
 api.MapGet("/health", () => Results.Ok());
+
+api.MapGet("/accounts", (ChartOfAccounts chart) => chart.Accounts);
 
 api.MapGet(
     "/persons",

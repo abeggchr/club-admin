@@ -1,0 +1,25 @@
+{
+  "income": [
+    { "number": 3400, "name": "Jahresbeiträge" },
+    { "number": 3500, "name": "Übernachtungen" },
+    { "number": 3510, "name": "Getränkeeinnahmen" },
+    { "number": 3600, "name": "Spenden" },
+    { "number": 3610, "name": "Diverse Einnahmen" },
+    { "number": 3620, "name": "Vorschüsse" },
+    { "number": 6950, "name": "Zinsertrag" }
+  ],
+  "expense": [
+    { "number": 4000, "name": "Anlässe" },
+    { "number": 4010, "name": "Clubnews" },
+    { "number": 4020, "name": "Geschenke" },
+    { "number": 4099, "name": "Diverses Clubbetrieb" },
+    { "number": 6000, "name": "Getränke" },
+    { "number": 6010, "name": "Miete" },
+    { "number": 6020, "name": "Nebenkosten" },
+    { "number": 6030, "name": "Kurtaxen" },
+    { "number": 6040, "name": "Gebrauchsmaterial" },
+    { "number": 6050, "name": "Versicherung" },
+    { "number": 6099, "name": "Diverses Skihaus" },
+    { "number": 6940, "name": "Bankgebühren" }
+  ]
+}
