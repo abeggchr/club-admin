@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.Build.NoTargets/3.7.134">
+  <!-- Placeholder so the React/Vite app shows up as a project in the solution. Build with npm, not MSBuild. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDefaultItems>false</EnableDefaultItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="**/*" Exclude="node_modules/**;dist/**;bin/**;obj/**;.output/**;*.csproj" />
+  </ItemGroup>
+</Project>
