@@ -18,6 +18,7 @@ export function JournalList() {
           <th>Text</th>
           <th>Konto</th>
           <th className="text-right">Betrag</th>
+          <th className="text-right">Kontostand</th>
         </tr>
       </thead>
       <tbody>
@@ -31,6 +32,7 @@ export function JournalList() {
               <td className={`text-right tabular-nums ${e.amount < 0 ? 'text-red-700' : ''}`}>
                 {formatChf(e.amount)}
               </td>
+              <td className="text-right tabular-nums">{formatChf(e.balance)}</td>
             </tr>
           )
         })}

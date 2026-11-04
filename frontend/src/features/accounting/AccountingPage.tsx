@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { openingBalanceQueryOptions, saveOpeningBalance } from './api'
 import { EntryForm } from './EntryForm'
+import { BalanceAtDate } from './BalanceAtDate'
 import { JournalList } from './JournalList'
 
 export function AccountingPage() {
@@ -19,6 +20,8 @@ export function AccountingPage() {
     try {
       const result = await saveOpeningBalance({ amount: Number(amount), startDate })
       queryClient.setQueryData(openingBalanceQueryOptions.queryKey, result)
+      await queryClient.invalidateQueries({ queryKey: ['entries'] })
+      await queryClient.invalidateQueries({ queryKey: ['expected-balance'] })
       setAmount(result.amount.toFixed(2))
       setSaved(true)
     } catch (err) {
@@ -32,6 +35,7 @@ export function AccountingPage() {
       {openingBalance ? (
         <>
           <EntryForm />
+          <BalanceAtDate />
           <JournalList />
         </>
       ) : (

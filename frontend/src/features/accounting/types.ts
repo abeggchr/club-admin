@@ -16,4 +16,7 @@ export type Entry = {
   amount: number
 }
 
+/** A journal row: the Buchung plus the running Erwarteter Kontostand up to and including it. */
+export type JournalEntry = Entry & { balance: number }
+
 export type EntryInput = Omit<Entry, 'id'>

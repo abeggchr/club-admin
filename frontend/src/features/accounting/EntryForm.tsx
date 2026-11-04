@@ -41,6 +41,7 @@ export function EntryForm() {
         amount: toSignedAmount(parsed.value, account.category),
       })
       await queryClient.invalidateQueries({ queryKey: entriesQueryOptions.queryKey })
+      await queryClient.invalidateQueries({ queryKey: ['expected-balance'] })
       setText('')
       setAmount('')
     } catch (err) {

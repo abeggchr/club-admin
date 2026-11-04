@@ -149,10 +149,34 @@ api.MapPut(
 api.MapGet(
     "/entries",
     async (AppDbContext db) =>
-        await db
-            .Entries.OrderByDescending(e => e.Date)
-            .ThenByDescending(e => e.Id)
-            .ToListAsync()
+    {
+        var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        if (opening is null)
+        {
+            return [];
+        }
+
+        var entries = await db.Entries.ToListAsync();
+        return AccountingCalculator
+            .RunningBalances(opening, entries)
+            .Select(r => new JournalEntryDto(r.Entry.Id, r.Entry.Date, r.Entry.Text, r.Entry.AccountNumber, r.Entry.Amount, r.Balance))
+            .ToList();
+    }
+);
+
+api.MapGet(
+    "/expected-balance",
+    async (DateOnly date, AppDbContext db) =>
+    {
+        var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        if (opening is null)
+        {
+            return Results.NotFound();
+        }
+
+        var entries = await db.Entries.Where(e => e.Date <= date).ToListAsync();
+        return Results.Ok(new { date, balance = AccountingCalculator.ExpectedBalance(opening, entries, date) });
+    }
 );
 
 api.MapPost(
@@ -184,6 +208,8 @@ app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 app.Run();
 
 record EntryInput(DateOnly Date, string Text, int AccountNumber, decimal Amount);
+
+record JournalEntryDto(int Id, DateOnly Date, string Text, int AccountNumber, decimal Amount, decimal Balance);
 
 record OpeningBalanceUpdate(decimal Amount, DateOnly StartDate);
 

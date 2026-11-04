@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query'
-import type { Account, Entry, EntryInput } from './types'
+import type { Account, Entry, EntryInput, JournalEntry } from './types'
 
 export type OpeningBalance = {
   amount: number
@@ -45,7 +45,7 @@ export async function saveOpeningBalance(balance: OpeningBalance): Promise<Openi
 
 export const entriesQueryOptions = queryOptions({
   queryKey: ['entries'],
-  queryFn: async (): Promise<Entry[]> => {
+  queryFn: async (): Promise<JournalEntry[]> => {
     const res = await fetch('/api/entries')
     if (!res.ok) throw new Error(`Backend returned ${res.status}`)
     return res.json()
@@ -64,3 +64,15 @@ export async function createEntry(input: EntryInput): Promise<Entry> {
   }
   return res.json()
 }
+
+export type ExpectedBalance = { date: string; balance: number | null }
+
+export const expectedBalanceQueryOptions = (date: string) =>
+  queryOptions({
+    queryKey: ['expected-balance', date],
+    queryFn: async (): Promise<ExpectedBalance> => {
+      const res = await fetch(`/api/expected-balance?date=${encodeURIComponent(date)}`)
+      if (!res.ok) throw new Error(`Backend returned ${res.status}`)
+      return res.json()
+    },
+  })
