@@ -1,18 +1,19 @@
-import { MdPeople, MdWbSunny } from 'react-icons/md'
-import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
+import { MdPeople } from 'react-icons/md'
+import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router'
+import type { QueryClient } from '@tanstack/react-query'
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools'
 
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import '../styles.css'
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootComponent,
 })
 
 const navItems = [
   { to: '/persons', label: 'Persons', Icon: MdPeople },
-  { to: '/weather', label: 'Weather', Icon: MdWbSunny },
 ] as const
 
 function RootComponent() {
@@ -44,6 +45,10 @@ function RootComponent() {
           {
             name: 'TanStack Router',
             render: <TanStackRouterDevtoolsPanel />,
+          },
+          {
+            name: 'TanStack Query',
+            render: <ReactQueryDevtoolsPanel />,
           },
         ]}
       />

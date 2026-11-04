@@ -37,37 +37,6 @@ app.UseStaticFiles();
 var api = app.MapGroup("/api");
 api.MapGet("/health", () => Results.Ok());
 
-var summaries = new[]
-{
-    "Freezing",
-    "Bracing",
-    "Chilly",
-    "Cool",
-    "Mild",
-    "Warm",
-    "Balmy",
-    "Hot",
-    "Sweltering",
-    "Scorching",
-};
-
-api.MapGet(
-        "/weatherforecast",
-        () =>
-        {
-            var forecast = Enumerable
-                .Range(1, 5)
-                .Select(index => new WeatherForecast(
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-                .ToArray();
-            return forecast;
-        }
-    )
-    .WithName("GetWeatherForecast");
-
 api.MapGet(
     "/persons",
     async (AppDbContext db) => await db.Persons.OrderBy(p => p.Id).ToListAsync()
@@ -149,8 +118,3 @@ record PersonUpdate(
     string? Country,
     string? Notes
 );
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

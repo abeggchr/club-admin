@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { createFileRoute, useRouter, type ErrorComponentProps } from "@tanstack/react-router";
+import { createFileRoute, type ErrorComponentProps } from "@tanstack/react-router";
+import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { FiDownload, FiUpload, FiX } from 'react-icons/fi'
 import {
   columnFilteringFeature,
@@ -40,6 +41,11 @@ async function fetchPersons(): Promise<Person[]> {
   if (!res.ok) throw new Error(`Backend returned ${res.status}`)
   return res.json()
 }
+
+const personsQueryOptions = queryOptions({
+  queryKey: ['persons'],
+  queryFn: fetchPersons,
+})
 
 async function importPersons(file: File): Promise<number> {
   const body = new FormData()
@@ -82,30 +88,30 @@ const textFields: { key: keyof Person; label: string; type?: string; multiline?:
 ]
 
 function EditPanel({ person, onClose }: { person: Person; onClose: () => void }) {
-  const router = useRouter()
+  const queryClient = useQueryClient()
   const [draft, setDraft] = useState(person)
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const update = useMutation({
+    mutationFn: updatePerson,
+    onSuccess: (updated) => {
+      setDraft(updated)
+      setSaved(true)
+      return queryClient.invalidateQueries({ queryKey: personsQueryOptions.queryKey })
+    },
+    onError: (err) => setError(err.message),
+  })
+  const busy = update.isPending
 
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault()
-    setBusy(true)
     setError(null)
     setSaved(false)
-    try {
-      // Empty inputs are stored as null, matching the importer.
-      const payload = Object.fromEntries(
-        Object.entries(draft).map(([k, v]) => [k, v === '' ? null : v]),
-      ) as Person
-      setDraft(await updatePerson(payload))
-      setSaved(true)
-      await router.invalidate()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setBusy(false)
-    }
+    // Empty inputs are stored as null, matching the importer.
+    const payload = Object.fromEntries(
+      Object.entries(draft).map(([k, v]) => [k, v === '' ? null : v]),
+    ) as Person
+    update.mutate(payload)
   }
 
   return (
@@ -165,11 +171,19 @@ function EditPanel({ person, onClose }: { person: Person; onClose: () => void })
 }
 
 function ImportDialog({ dialogRef }: { dialogRef: React.RefObject<HTMLDialogElement | null> }) {
-  const router = useRouter()
+  const queryClient = useQueryClient()
   const [file, setFile] = useState<File | null>(null)
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [imported, setImported] = useState<number | null>(null)
+  const upload = useMutation({
+    mutationFn: importPersons,
+    onSuccess: (count) => {
+      setImported(count)
+      return queryClient.invalidateQueries({ queryKey: personsQueryOptions.queryKey })
+    },
+    onError: (err) => setError(err.message),
+  })
+  const busy = upload.isPending
 
   function reset() {
     setFile(null)
@@ -177,19 +191,11 @@ function ImportDialog({ dialogRef }: { dialogRef: React.RefObject<HTMLDialogElem
     setImported(null)
   }
 
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!file) return
-    setBusy(true)
     setError(null)
-    try {
-      setImported(await importPersons(file))
-      await router.invalidate()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setBusy(false)
-    }
+    upload.mutate(file)
   }
 
   return (
@@ -398,7 +404,7 @@ function globalSearchFilter(row: Row<Features, Person>, _columnId: string, filte
 }
 
 export const Route = createFileRoute('/persons')({
-  loader: fetchPersons,
+  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(personsQueryOptions),
   component: Persons,
   pendingComponent: () => <p className="p-8">Loading…</p>,
   errorComponent: (error: ErrorComponentProps) => (
@@ -407,7 +413,7 @@ export const Route = createFileRoute('/persons')({
 })
 
 function Persons() {
-  const persons = Route.useLoaderData()
+  const { data: persons } = useSuspenseQuery(personsQueryOptions)
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'lastName', desc: false },
     { id: 'firstName', desc: false },
