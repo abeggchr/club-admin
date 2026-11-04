@@ -1,15 +1,6 @@
 namespace backend.Accounting;
 
 /// <summary>
-/// The Kategorie a Konto had when a Buchung first used it. Basis for the Kategorie rule (ADR 0002).
-/// </summary>
-public class AccountUsage
-{
-    public int AccountNumber { get; set; }
-    public Category Category { get; set; }
-}
-
-/// <summary>
 /// Startup consistency check between the Kontoplan file and the Konten used by Buchungen (ADR 0001, ADR 0002).
 /// Pure: the caller supplies each used Konto number with the Kategorie recorded when it was first used.
 /// </summary>

@@ -1,5 +1,6 @@
 using backend.Accounting;
 using backend.Person;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,20 +27,7 @@ using (var scope = app.Services.CreateScope())
 
     // Refuse to start when the Kontoplan file disagrees with the stored Buchungen (ADR 0001, ADR 0002).
     var chart = scope.ServiceProvider.GetRequiredService<ChartOfAccounts>();
-    var recorded = db.AccountUsages.ToDictionary(u => u.AccountNumber, u => u.Category);
-    // Konten used before their Kategorie was recorded adopt the file's current Kategorie.
-    foreach (var number in db.Entries.Select(e => e.AccountNumber).Distinct().ToList())
-    {
-        if (!recorded.ContainsKey(number) && chart.Find(number) is { } account)
-        {
-            recorded[number] = account.Category;
-            db.AccountUsages.Add(new AccountUsage { AccountNumber = number, Category = account.Category });
-        }
-        else if (!recorded.ContainsKey(number))
-        {
-            recorded[number] = Category.Income; // not in the file: reported as missing below
-        }
-    }
+    var recorded = SyncAccountUsages(db, chart);
     if (ChartConsistency.Check(chart, recorded) is { } inconsistency)
     {
         throw new ChartOfAccountsException($"Kontoplan passt nicht zu den Buchungen. {inconsistency}");
@@ -171,7 +159,13 @@ api.MapPut(
 
 api.MapGet(
     "/entries",
-    async (DateOnly? from, DateOnly? to, int? account, string? q, AppDbContext db) =>
+    async (
+        DateOnly? from,
+        DateOnly? to,
+        [FromQuery(Name = "account")] int? accountNumber,
+        [FromQuery(Name = "q")] string? search,
+        AppDbContext db
+    ) =>
     {
         var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
         if (opening is null)
@@ -182,7 +176,7 @@ api.MapGet(
         var entries = await db.Entries.ToListAsync();
         // Balances are computed over the whole journal; filters only hide rows.
         return JournalFilter
-            .Apply(AccountingCalculator.RunningBalances(opening, entries), from, to, account, q)
+            .Apply(AccountingCalculator.RunningBalances(opening, entries), from, to, accountNumber, search)
             .Select(r => new JournalEntryDto(r.Entry.Id, r.Entry.Date, r.Entry.Text, r.Entry.AccountNumber, r.Entry.Amount, r.Balance))
             .ToList();
     }
@@ -221,18 +215,7 @@ api.MapPost(
             Amount = input.Amount,
         };
         db.Entries.Add(entry);
-        // Remember the Konto's Kategorie at first use (ADR 0002).
-        if (!await db.AccountUsages.AnyAsync(u => u.AccountNumber == input.AccountNumber))
-        {
-            db.AccountUsages.Add(
-                new AccountUsage
-                {
-                    AccountNumber = input.AccountNumber,
-                    Category = chart.Find(input.AccountNumber)!.Category,
-                }
-            );
-        }
-        await db.SaveChangesAsync();
+        await SaveEntryChangeAsync(db, chart);
         return Results.Created($"/api/entries/{entry.Id}", entry);
     }
 );
@@ -266,25 +249,14 @@ api.MapPut(
         entry.Text = input.Text.Trim();
         entry.AccountNumber = input.AccountNumber;
         entry.Amount = input.Amount;
-        // Remember the Konto's Kategorie at first use (ADR 0002).
-        if (!await db.AccountUsages.AnyAsync(u => u.AccountNumber == input.AccountNumber))
-        {
-            db.AccountUsages.Add(
-                new AccountUsage
-                {
-                    AccountNumber = input.AccountNumber,
-                    Category = chart.Find(input.AccountNumber)!.Category,
-                }
-            );
-        }
-        await db.SaveChangesAsync();
+        await SaveEntryChangeAsync(db, chart);
         return Results.Ok(entry);
     }
 );
 
 api.MapDelete(
     "/entries/{id:int}",
-    async (int id, AppDbContext db) =>
+    async (int id, AppDbContext db, ChartOfAccounts chart) =>
     {
         var entry = await db.Entries.FindAsync(id);
         if (entry is null)
@@ -292,7 +264,7 @@ api.MapDelete(
             return Results.NotFound();
         }
         db.Entries.Remove(entry);
-        await db.SaveChangesAsync();
+        await SaveEntryChangeAsync(db, chart);
         return Results.NoContent();
     }
 );
@@ -301,6 +273,47 @@ api.MapDelete(
 app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
 app.Run();
+
+// Keeps the AccountUsage records in step with the Buchungen (ADR 0002): a Konto's Kategorie is recorded
+// when a Buchung first uses it and the record is dropped once no Buchung uses the Konto any more.
+// Returns the recorded Kategorie per used Konto; a used Konto missing from the Kontoplan gets a
+// placeholder (not persisted) so the consistency check reports it.
+static Dictionary<int, Category> SyncAccountUsages(AppDbContext db, ChartOfAccounts chart)
+{
+    var usages = db.AccountUsages.ToList();
+    var used = db.Entries.Select(e => e.AccountNumber).Distinct().ToList();
+    var recordedNumbers = usages.Select(u => u.AccountNumber).ToList();
+
+    var unused = AccountUsageRules.Unused(recordedNumbers, used);
+    db.AccountUsages.RemoveRange(usages.Where(u => unused.Contains(u.AccountNumber)));
+    usages.RemoveAll(u => unused.Contains(u.AccountNumber));
+
+    var result = usages.ToDictionary(u => u.AccountNumber, u => u.Category);
+    // Konten used before their Kategorie was recorded adopt the file's current Kategorie.
+    foreach (var number in AccountUsageRules.Unrecorded(recordedNumbers, used))
+    {
+        if (chart.Find(number) is { } account)
+        {
+            db.AccountUsages.Add(new AccountUsage { AccountNumber = number, Category = account.Category });
+            result[number] = account.Category;
+        }
+        else
+        {
+            result[number] = Category.Income;
+        }
+    }
+    return result;
+}
+
+// Saves a pending Buchung change and the matching AccountUsage changes atomically.
+static async Task SaveEntryChangeAsync(AppDbContext db, ChartOfAccounts chart)
+{
+    await using var tx = await db.Database.BeginTransactionAsync();
+    await db.SaveChangesAsync();
+    SyncAccountUsages(db, chart);
+    await db.SaveChangesAsync();
+    await tx.CommitAsync();
+}
 
 record EntryInput(DateOnly Date, string Text, int AccountNumber, decimal Amount);
 
