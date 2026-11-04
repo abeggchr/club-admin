@@ -35,6 +35,12 @@ export function toSignedAmount(typed: number, category: Category): number {
   return (category === 'Expense' ? -cents : cents) / 100 || 0
 }
 
+/** Inverse of toSignedAmount: the amount as the user types it in the Konto's natural direction. */
+export function toTypedAmount(stored: number, category: Category): number {
+  const cents = Math.round(stored * 100)
+  return (category === 'Expense' ? -cents : cents) / 100 || 0
+}
+
 /** Formats an amount with Swiss thousand separators and exactly two decimals, e.g. 1'250.50. */
 export function formatChf(amount: number): string {
   const cents = Math.round(Math.abs(amount) * 100)

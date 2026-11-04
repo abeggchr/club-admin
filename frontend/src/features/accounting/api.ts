@@ -64,3 +64,21 @@ export async function createEntry(input: EntryInput): Promise<Entry> {
   }
   return res.json()
 }
+
+export async function updateEntry(id: number, input: EntryInput): Promise<Entry> {
+  const res = await fetch(`/api/entries/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.error ?? `Backend returned ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function deleteEntry(id: number): Promise<void> {
+  const res = await fetch(`/api/entries/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`Backend returned ${res.status}`)
+}

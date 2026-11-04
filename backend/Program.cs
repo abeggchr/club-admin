@@ -178,6 +178,55 @@ api.MapPost(
     }
 );
 
+api.MapPut(
+    "/entries/{id:int}",
+    async (int id, EntryInput input, AppDbContext db, ChartOfAccounts chart) =>
+    {
+        var entry = await db.Entries.FindAsync(id);
+        if (entry is null)
+        {
+            return Results.NotFound();
+        }
+        var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        if (
+            EntryRules.Validate(
+                opening,
+                chart,
+                input.Date,
+                input.Text,
+                input.AccountNumber,
+                input.Amount,
+                entry.AccountNumber
+            ) is { } error
+        )
+        {
+            return Results.BadRequest(new { error });
+        }
+
+        entry.Date = input.Date;
+        entry.Text = input.Text.Trim();
+        entry.AccountNumber = input.AccountNumber;
+        entry.Amount = input.Amount;
+        await db.SaveChangesAsync();
+        return Results.Ok(entry);
+    }
+);
+
+api.MapDelete(
+    "/entries/{id:int}",
+    async (int id, AppDbContext db) =>
+    {
+        var entry = await db.Entries.FindAsync(id);
+        if (entry is null)
+        {
+            return Results.NotFound();
+        }
+        db.Entries.Remove(entry);
+        await db.SaveChangesAsync();
+        return Results.NoContent();
+    }
+);
+
 // SPA fallback for client-side routes (not for unknown /api paths or files).
 app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 

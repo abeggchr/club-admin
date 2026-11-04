@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { accountsQueryOptions, createEntry, entriesQueryOptions } from './api'
-import { parseAmount, toSignedAmount } from './amount'
+import { accountsQueryOptions, createEntry, entriesQueryOptions, updateEntry } from './api'
+import { formatChf, parseAmount, toSignedAmount, toTypedAmount } from './amount'
 import { KontoPicker } from './KontoPicker'
+import type { Entry } from './types'
 
 function today(): string {
   const d = new Date()
@@ -11,15 +12,29 @@ function today(): string {
 
 const input = 'rounded border border-slate-300 p-2'
 
-type Errors = { text?: string; account?: string; amount?: string; server?: string }
+type Errors = {
+  text?: string
+  account?: string
+  amount?: string
+  server?: string
+}
 
-export function EntryForm() {
+type Props = {
+  /** When set, the form edits this Buchung instead of creating a new one. */
+  entry?: Entry
+  onDone?: () => void
+}
+
+export function EntryForm({ entry, onDone }: Props = {}) {
   const queryClient = useQueryClient()
   const { data: accounts } = useSuspenseQuery(accountsQueryOptions)
-  const [date, setDate] = useState(today())
-  const [text, setText] = useState('')
-  const [accountNumber, setAccountNumber] = useState<number | null>(null)
-  const [amount, setAmount] = useState('')
+  const existing = entry ? accounts.find((a) => a.number === entry.accountNumber) : undefined
+  const [date, setDate] = useState(entry?.date ?? today())
+  const [text, setText] = useState(entry?.text ?? '')
+  const [accountNumber, setAccountNumber] = useState<number | null>(entry?.accountNumber ?? null)
+  const [amount, setAmount] = useState(
+    entry && existing ? formatChf(toTypedAmount(entry.amount, existing.category)) : '',
+  )
   const [errors, setErrors] = useState<Errors>({})
 
   async function onSubmit(e: FormEvent) {
@@ -34,17 +49,27 @@ export function EntryForm() {
     if (next.text || next.account || next.amount || !account || !parsed.ok) return
 
     try {
-      await createEntry({
+      const body = {
         date,
         text: text.trim(),
         accountNumber: account.number,
         amount: toSignedAmount(parsed.value, account.category),
+      }
+      if (entry) await updateEntry(entry.id, body)
+      else await createEntry(body)
+      await queryClient.invalidateQueries({
+        queryKey: entriesQueryOptions.queryKey,
       })
-      await queryClient.invalidateQueries({ queryKey: entriesQueryOptions.queryKey })
-      setText('')
-      setAmount('')
+      if (entry) {
+        onDone?.()
+      } else {
+        setText('')
+        setAmount('')
+      }
     } catch (err) {
-      setErrors({ server: err instanceof Error ? err.message : 'Speichern fehlgeschlagen.' })
+      setErrors({
+        server: err instanceof Error ? err.message : 'Speichern fehlgeschlagen.',
+      })
     }
   }
 
@@ -52,7 +77,13 @@ export function EntryForm() {
     <form onSubmit={onSubmit} noValidate className="mt-4 flex flex-wrap items-start gap-3">
       <label className="flex flex-col text-sm">
         Datum
-        <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className={input} />
+        <input
+          type="date"
+          required
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className={input}
+        />
       </label>
       <label className="flex flex-col text-sm">
         Text
@@ -75,8 +106,13 @@ export function EntryForm() {
         {errors.amount && <span className="text-red-600">{errors.amount}</span>}
       </label>
       <button type="submit" className="mt-5 rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700">
-        Buchen
+        {entry ? 'Speichern' : 'Buchen'}
       </button>
+      {entry && (
+        <button type="button" onClick={onDone} className="mt-5 rounded border border-slate-300 px-4 py-2">
+          Abbrechen
+        </button>
+      )}
       {errors.server && <p className="w-full text-red-600">{errors.server}</p>}
     </form>
   )

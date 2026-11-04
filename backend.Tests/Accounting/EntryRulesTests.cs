@@ -18,8 +18,30 @@ public class EntryRulesTests
         string text = "Miete März",
         int account = 6010,
         decimal amount = -120m,
-        bool withOpening = true
-    ) => EntryRules.Validate(withOpening ? Opening : null, Chart, DateOnly.Parse(date), text, account, amount);
+        bool withOpening = true,
+        int? existingAccount = null
+    ) =>
+        EntryRules.Validate(
+            withOpening ? Opening : null,
+            Chart,
+            DateOnly.Parse(date),
+            text,
+            account,
+            amount,
+            existingAccount
+        );
+
+    [Fact]
+    public void An_edited_entry_may_keep_its_now_inactive_account() =>
+        Assert.Null(Validate(account: 3999, amount: 50m, existingAccount: 3999));
+
+    [Fact]
+    public void An_edited_entry_may_not_switch_to_a_different_inactive_account() =>
+        Assert.Contains("inaktiv", Validate(account: 3999, amount: 50m, existingAccount: 6010));
+
+    [Fact]
+    public void An_edited_entry_cannot_move_before_the_opening_date() =>
+        Assert.Contains("vor dem Anfangssaldo", Validate(date: "2025-12-31", existingAccount: 6010));
 
     [Fact]
     public void A_valid_entry_has_no_error() => Assert.Null(Validate());

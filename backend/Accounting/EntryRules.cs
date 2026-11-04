@@ -1,6 +1,6 @@
 namespace backend.Accounting;
 
-/// <summary>Pure validation rules for Buchungen. Return a German error message, or null when valid.</summary>
+/// <summary>Pure validation rules for Buchungen (creating and editing). Return a German error message, or null when valid.</summary>
 public static class EntryRules
 {
     public static string? Validate(
@@ -9,7 +9,8 @@ public static class EntryRules
         DateOnly date,
         string? text,
         int accountNumber,
-        decimal amount
+        decimal amount,
+        int? existingAccountNumber = null
     )
     {
         if (opening is null)
@@ -29,7 +30,8 @@ public static class EntryRules
         {
             return $"Das Konto {accountNumber} existiert nicht.";
         }
-        if (!account.Active)
+        // An edited Buchung keeps resolving its Konto even if that Konto was deactivated since.
+        if (!account.Active && accountNumber != existingAccountNumber)
         {
             return $"Das Konto {account.Number} {account.Name} ist inaktiv.";
         }

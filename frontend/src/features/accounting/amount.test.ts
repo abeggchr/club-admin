@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatChf, parseAmount, toSignedAmount } from './amount'
+import { formatChf, parseAmount, toSignedAmount, toTypedAmount } from './amount'
 
 describe('parseAmount', () => {
   it.each([
@@ -17,15 +17,27 @@ describe('parseAmount', () => {
     expect(parseAmount(input)).toEqual({ ok: true, value: expected })
   })
 
-  it.each([[''], ['   '], ['abc'], ['12a'], ['1.234'], ['12.345.6'], ["12'34"], ['1,5'], ['--5'], ['-'], ['.']])(
-    'rejects %j',
-    (input) => {
-      expect(parseAmount(input).ok).toBe(false)
-    },
-  )
+  it.each([
+    [''],
+    ['   '],
+    ['abc'],
+    ['12a'],
+    ['1.234'],
+    ['12.345.6'],
+    ["12'34"],
+    ['1,5'],
+    ['--5'],
+    ['-'],
+    ['.'],
+  ])('rejects %j', (input) => {
+    expect(parseAmount(input).ok).toBe(false)
+  })
 
   it('explains the two-decimal rule', () => {
-    expect(parseAmount('1.234')).toEqual({ ok: false, error: 'Höchstens zwei Dezimalstellen erlaubt.' })
+    expect(parseAmount('1.234')).toEqual({
+      ok: false,
+      error: 'Höchstens zwei Dezimalstellen erlaubt.',
+    })
   })
 
   it('rejects zero', () => {
@@ -64,5 +76,20 @@ describe('formatChf', () => {
 
   it('prefixes negative amounts with a minus', () => {
     expect(formatChf(-1250.5)).toBe("-1'250.50")
+  })
+})
+
+describe('toTypedAmount', () => {
+  it.each([
+    [-120, 'Expense', 120],
+    [50, 'Income', 50],
+    [30, 'Expense', -30],
+    [-30, 'Income', -30],
+  ] as const)('shows stored %s of an %s Konto as %s', (stored, category, typed) => {
+    expect(toTypedAmount(stored, category)).toBe(typed)
+  })
+
+  it('round-trips with toSignedAmount', () => {
+    expect(toSignedAmount(toTypedAmount(-120.5, 'Expense'), 'Expense')).toBe(-120.5)
   })
 })
