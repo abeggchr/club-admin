@@ -1,3 +1,4 @@
+using backend.Person;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,14 +7,15 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
+);
 
 var app = builder.Build();
 
-// Create the schema (and seed data) if it doesn't exist yet.
+// Apply pending EF migrations on startup.
 using (var scope = app.Services.CreateScope())
 {
-    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
+    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
 }
 
 // Configure the HTTP request pipeline.
@@ -37,24 +39,61 @@ api.MapGet("/health", () => Results.Ok());
 
 var summaries = new[]
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+    "Freezing",
+    "Bracing",
+    "Chilly",
+    "Cool",
+    "Mild",
+    "Warm",
+    "Balmy",
+    "Hot",
+    "Sweltering",
+    "Scorching",
 };
 
-api.MapGet("/weatherforecast", () =>
-    {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
+api.MapGet(
+        "/weatherforecast",
+        () =>
+        {
+            var forecast = Enumerable
+                .Range(1, 5)
+                .Select(index => new WeatherForecast(
                     DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
                     Random.Shared.Next(-20, 55),
                     summaries[Random.Shared.Next(summaries.Length)]
                 ))
-            .ToArray();
-        return forecast;
-    })
+                .ToArray();
+            return forecast;
+        }
+    )
     .WithName("GetWeatherForecast");
 
-api.MapGet("/persons", async (AppDbContext db) => await db.Persons.OrderBy(p => p.Id).ToListAsync());
+api.MapGet(
+    "/persons",
+    async (AppDbContext db) => await db.Persons.OrderBy(p => p.Id).ToListAsync()
+);
+
+api.MapPost(
+        "/persons/import",
+        async (IFormFile file, AppDbContext db) =>
+        {
+            List<Person> persons;
+            try
+            {
+                using var reader = new StreamReader(file.OpenReadStream());
+                persons = PersonCsvImporter.Parse(reader);
+            }
+            catch (FormatException e)
+            {
+                return Results.BadRequest(new { error = e.Message });
+            }
+
+            db.Persons.AddRange(persons);
+            await db.SaveChangesAsync();
+            return Results.Ok(new { imported = persons.Count });
+        }
+    )
+    .DisableAntiforgery();
 
 // SPA fallback for client-side routes (not for unknown /api paths or files).
 app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");

@@ -1,0 +1,19 @@
+namespace backend.Person;
+
+public class Person
+{
+    public int Id { get; set; }
+    public required string FirstName { get; set; }
+    public required string LastName { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
+    public DateOnly? JoinedOn { get; set; }
+    public DateOnly? LeftOn { get; set; }
+    public string? Email { get; set; }
+    public string? MobilePhone { get; set; }
+    public string? LandlinePhone { get; set; }
+    public string? Address { get; set; }
+    public string? PostalCode { get; set; }
+    public string? City { get; set; }
+    public string? Country { get; set; }
+    public string? Notes { get; set; }
+}
