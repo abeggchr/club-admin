@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, useRouter, type ErrorComponentProps } from "@tanstack/react-router";
-import { FiUpload } from 'react-icons/fi'
+import { FiDownload, FiUpload } from 'react-icons/fi'
 import {
   columnFilteringFeature,
   createColumnHelper,
@@ -144,15 +144,50 @@ function orDash(value: string | null | undefined) {
   return value ?? '—'
 }
 
+function formatDe(value: string | null): string {
+  if (!value) return ''
+  const [year, month, day] = value.split('-')
+  return `${day}.${month}.${year}`
+}
+
+// Same headers and date format as the backend's PersonCsvImporter, so an
+// exported file can be re-imported unchanged.
+const exportColumns: { header: string; value: (p: Person) => string | null }[] = [
+  { header: 'Vorname', value: (p) => p.firstName },
+  { header: 'Nachname', value: (p) => p.lastName },
+  { header: 'Geburtstag', value: (p) => formatDe(p.dateOfBirth) },
+  { header: 'Eintritt', value: (p) => formatDe(p.joinedOn) },
+  { header: 'Austritt', value: (p) => formatDe(p.leftOn) },
+  { header: 'E-Mail', value: (p) => p.email },
+  { header: 'Mobilfunknummer', value: (p) => p.mobilePhone },
+  { header: 'Festnetznummer', value: (p) => p.landlinePhone },
+  { header: 'Adresse', value: (p) => p.address },
+  { header: 'PLZ', value: (p) => p.postalCode },
+  { header: 'Ort', value: (p) => p.city },
+  { header: 'Land', value: (p) => p.country },
+  { header: 'Notizen', value: (p) => p.notes },
+]
+
+function buildPersonCsv(persons: Person[]): string {
+  const esc = (v: string | null) => {
+    const s = v ?? ''
+    return /[";\n\r]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s
+  }
+  return [
+    exportColumns.map((c) => c.header).join(';'),
+    ...persons.map((p) => exportColumns.map((c) => esc(c.value(p))).join(';')),
+  ].join('\r\n')
+}
+
 const columns = helper.columns([
   helper.accessor('firstName', { header: 'Vorname' }),
   helper.accessor('lastName', { header: 'Nachname' }),
   helper.accessor('dateOfBirth', {
-    header: 'Geburtsdatum',
+    header: 'Geburtstag',
     cell: (info) => orDash(info.getValue()),
   }),
   helper.accessor('joinedOn', {
-    header: 'Beitritt',
+    header: 'Eintritt',
     cell: (info) => orDash(info.getValue()),
   }),
   helper.accessor('leftOn', {
@@ -171,11 +206,11 @@ const columns = helper.columns([
     },
   }),
   helper.accessor('mobilePhone', {
-    header: 'Mobiltelefon',
+    header: 'Mobilfunknummer',
     cell: (info) => orDash(info.getValue()),
   }),
   helper.accessor('landlinePhone', {
-    header: 'Festnetz',
+    header: 'Festnetznummer',
     cell: (info) => orDash(info.getValue()),
   }),
   helper.accessor('address', {
@@ -183,7 +218,7 @@ const columns = helper.columns([
     cell: (info) => orDash(info.getValue()),
   }),
   helper.accessor('postalCode', {
-    header: 'Postleitzahl',
+    header: 'PLZ',
     cell: (info) => orDash(info.getValue()),
   }),
   helper.accessor('city', {
@@ -199,6 +234,21 @@ const columns = helper.columns([
     cell: (info) => orDash(info.getValue()),
   }),
 ])
+
+const views = {
+  active: {
+    label: 'Aktive',
+    filter: (p: Person) => !p.leftOn,
+    columns: columns.filter((c) => !('accessorKey' in c && c.accessorKey === 'leftOn')),
+  },
+  former: {
+    label: 'Ehemalige',
+    filter: (p: Person) => !!p.leftOn,
+    columns,
+  },
+}
+
+type ViewKey = keyof typeof views
 
 function globalSearchFilter(row: Row<Features, Person>, _columnId: string, filterValue: unknown) {
   const query = String(filterValue ?? '').trim()
@@ -234,7 +284,10 @@ function Persons() {
   ])
   const [filter, setFilter] = useState('')
   const [debouncedFilter, setDebouncedFilter] = useState('')
+  const [viewKey, setViewKey] = useState<ViewKey>('active')
   const importDialog = useRef<HTMLDialogElement>(null)
+  const view = views[viewKey]
+  const viewPersons = useMemo(() => persons.filter(view.filter), [persons, view])
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedFilter(filter), 300)
@@ -243,8 +296,8 @@ function Persons() {
 
   const table = useTable({
     features,
-    columns,
-    data: persons,
+    columns: view.columns,
+    data: viewPersons,
     state: { sorting, globalFilter: debouncedFilter },
     onSortingChange: setSorting,
     onGlobalFilterChange: setDebouncedFilter,
@@ -255,6 +308,17 @@ function Persons() {
 
   const rows = table.getRowModel().rows
   const totalRows = table.getRowCount()
+
+  function exportCsv() {
+    const filtered = table.getFilteredRowModel().rows.map((r) => r.original)
+    // BOM so Excel opens the UTF-8 file with the correct encoding.
+    const url = URL.createObjectURL(new Blob([`\uFEFF${buildPersonCsv(filtered)}`], {
+      type: 'text/csv;charset=utf-8',
+    }))
+    const a = Object.assign(document.createElement('a'), { href: url, download: 'personen.csv' })
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="p-8">
@@ -268,14 +332,35 @@ function Persons() {
           onChange={(e) => setFilter(e.target.value)}
           className="w-96 rounded border border-neutral-300 px-3 py-2 text-sm"
         />
-        <button
-          type="button"
-          onClick={() => importDialog.current?.showModal()}
-          className="ml-auto flex items-center gap-2 rounded border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
+        <select
+          value={viewKey}
+          onChange={(e) => setViewKey(e.target.value as ViewKey)}
+          className="rounded border border-neutral-300 px-3 py-2 text-sm"
         >
-          <FiUpload />
-          Import
-        </button>
+          {Object.entries(views).map(([key, v]) => (
+            <option key={key} value={key}>
+              {v.label}
+            </option>
+          ))}
+        </select>
+        <div className="ml-auto flex gap-2">
+          <button
+            type="button"
+            onClick={exportCsv}
+            className="flex items-center gap-2 rounded border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
+          >
+            <FiDownload />
+            Export
+          </button>
+          <button
+            type="button"
+            onClick={() => importDialog.current?.showModal()}
+            className="flex items-center gap-2 rounded border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
+          >
+            <FiUpload />
+            Import
+          </button>
+        </div>
       </div>
       <ImportDialog dialogRef={importDialog} />
 
@@ -309,7 +394,7 @@ function Persons() {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-3 py-8 text-center text-neutral-500">
+                <td colSpan={view.columns.length} className="px-3 py-8 text-center text-neutral-500">
                   {persons.length === 0 ? 'Keine Personen vorhanden.' : 'Keine Personen gefunden.'}
                 </td>
               </tr>
