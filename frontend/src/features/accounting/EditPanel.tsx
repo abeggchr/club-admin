@@ -215,7 +215,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
       >
         + Buchung
       </button>
-      {rest !== null && (
+      {draft.entries.length > 0 && rest !== null && (
         <p className={`text-sm ${rest === 0 ? 'text-slate-600' : 'font-medium text-red-700'}`}>
           Differenz {formatChf(rest)}
         </p>

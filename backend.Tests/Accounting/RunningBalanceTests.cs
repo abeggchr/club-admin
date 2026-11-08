@@ -320,3 +320,49 @@ public class TransactionBalanceTests
     public void No_transactions_give_no_rows() =>
         Assert.Empty(AccountingCalculator.TransactionBalances(Opening, []));
 }
+
+public class UnbookedTransactionBalanceTests
+{
+    // A Bewegung may have zero Buchungen ("Keine Buchung"): it counts in the bank's running Kontostand and in the
+    // balance at a date, and adds nothing to the journal until Buchungen exist (ticket #24).
+
+    private static readonly Settings Opening = new() { OpeningBalance = 1000m, StartDate = new DateOnly(2026, 1, 1) };
+
+    private static Transaction T(int id, DateOnly date, decimal amount) =>
+        new() { Id = id, Date = date, Amount = amount };
+
+    private static Entry E(int id, Transaction t, decimal amount) =>
+        new() { Id = id, Transaction = t, Text = "t", AccountNumber = 3400, Amount = amount };
+
+    [Fact]
+    public void A_transaction_without_entries_counts_in_the_running_balance()
+    {
+        var rows = AccountingCalculator.TransactionBalances(Opening,
+        [
+            T(1, new DateOnly(2026, 2, 1), 100m),
+            T(2, new DateOnly(2026, 3, 1), -50m), // no Buchungen
+        ]);
+
+        Assert.Equal([2, 1], rows.Select(r => r.Transaction.Id));
+        Assert.Equal([1050m, 1100m], rows.Select(r => r.Balance));
+    }
+
+    [Fact]
+    public void A_transaction_without_entries_counts_in_the_balance_at_a_date()
+    {
+        Assert.Equal(950m, AccountingCalculator.TransactionBalance(Opening, [T(1, new DateOnly(2026, 3, 1), -50m)], new DateOnly(2026, 3, 31)));
+    }
+
+    [Fact]
+    public void A_transaction_without_entries_adds_nothing_to_the_journal()
+    {
+        var booked = T(1, new DateOnly(2026, 2, 1), 100m);
+        var unbooked = T(2, new DateOnly(2026, 3, 1), -50m); // zero Buchungen
+        var entries = new[] { E(1, booked, 100m) };
+
+        var rows = AccountingCalculator.RunningBalances(Opening, entries);
+        Assert.Equal([1], rows.Select(r => r.Entry.Id));
+        Assert.Equal(1100m, rows.Single(r => r.Entry.Transaction.Id == booked.Id).Balance);
+        Assert.Equal(1100m, AccountingCalculator.ExpectedBalance(Opening, entries, new DateOnly(2026, 12, 31)));
+    }
+}

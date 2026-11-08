@@ -14,13 +14,16 @@ One account in the Kontoplan, identified by a number and a name (e.g. 3400 Jahre
 The grouping of Konten in the Kontoplan: Einnahmen (_Income_) or Ausgaben (_Expense_). The Kategorie of a Buchung's Konto decides whether it is revenue or expense.
 
 **Bewegung** (code: _Transaction_):
-One money movement on the bank account: the bank's booking date and a signed amount, split into one or more Buchungen. The signed amounts of its Buchungen sum to its amount. Its direction follows from the sign of the amount and is not stored: it is an Einzahlung or an Auszahlung.
+One money movement on the bank account: the bank's booking date and a signed amount, split into Buchungen. It may have zero Buchungen, in which case it is not booked yet and the table shows it as "Keine Buchung"; once it has at least one, the signed amounts of its Buchungen sum to its amount. Its direction follows from the sign of the amount and is not stored: it is an Einzahlung or an Auszahlung.
 
 **Einzahlung** (code: a _Transaction_ with a positive amount):
 A Bewegung where money comes in.
 
 **Auszahlung** (code: a _Transaction_ with a negative amount):
 A Bewegung where money goes out.
+
+**Keine Buchung** (code: a _Transaction_ without Entries):
+The state of a Bewegung without Buchungen: it is not booked yet. The Bewegungen table marks it with a "Keine Buchung" badge; it counts in the running Kontostand and adds nothing to the Buchungsjournal until Buchungen are added.
 
 **Buchung** (code: _Entry_):
 One line of a Bewegung: a text, a Konto and a signed amount (money in is positive, money out is negative). It belongs to exactly one Bewegung and has no date of its own; it takes the date of its Bewegung. Whether it is revenue or expense follows from the Kategorie of its Konto.
@@ -60,7 +63,7 @@ A lifecycle step of a Rechnung, recorded as an append-only status change with a 
 
 ## Relationships
 
-- A Bewegung consists of one or more Buchungen; a Buchung belongs to exactly one Bewegung.
+- A Bewegung may have zero Buchungen (not booked yet, shown as "Keine Buchung") or one or more; once it has at least one, their signed amounts sum to its amount. A Buchung belongs to exactly one Bewegung.
 - A Buchung belongs to exactly one Konto.
 - A Bewegung can optionally be linked to one Person; a Buchung is not linked to a Person.
 - There is one bank account only; cash is not tracked.

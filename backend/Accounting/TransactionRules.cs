@@ -22,10 +22,6 @@ public static class TransactionRules
         {
             return amountError;
         }
-        if (entries.Count == 0)
-        {
-            return "Eine Bewegung braucht mindestens eine Buchung.";
-        }
         foreach (var entry in entries)
         {
             if (EntryRules.ValidateLine(chart, entry.Text, entry.AccountNumber, entry.Amount, entry.ExistingAccountNumber) is { } error)
@@ -33,10 +29,14 @@ public static class TransactionRules
                 return error;
             }
         }
-        var sum = entries.Sum(e => e.Amount);
-        if (sum != amount)
+        // A Bewegung with zero Buchungen is not booked yet ("Keine Buchung"); the sum rule applies once Buchungen exist.
+        if (entries.Count > 0)
         {
-            return $"Die Summe der Buchungen ({sum:0.00}) stimmt nicht mit dem Betrag der Bewegung ({amount:0.00}) überein.";
+            var sum = entries.Sum(e => e.Amount);
+            if (sum != amount)
+            {
+                return $"Die Summe der Buchungen ({sum:0.00}) stimmt nicht mit dem Betrag der Bewegung ({amount:0.00}) überein.";
+            }
         }
         return null;
     }

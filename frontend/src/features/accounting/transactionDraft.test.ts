@@ -152,8 +152,13 @@ describe('validateDraft / can-save', () => {
     expect(validateDraft(draft, accounts, '2026-01-01')?.remainder).toBe('Die Differenz von -20.00 muss 0 sein.')
   })
 
-  it('needs at least one Buchung', () => {
-    expect(validateDraft(filled({ entries: [] }), accounts, '2026-01-01')?.remainder).toBeDefined()
+  it('accepts a draft without Buchungen', () => {
+    expect(validateDraft(filled({ entries: [] }), accounts, '2026-01-01')).toBeNull()
+    expect(canSave(filled({ entries: [] }), accounts, '2026-01-01')).toBe(true)
+  })
+
+  it('sends no Buchungen for a draft without Buchungen', () => {
+    expect(toTransactionInput(filled({ entries: [] }), accounts)?.entries).toEqual([])
   })
 })
 

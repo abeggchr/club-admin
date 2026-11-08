@@ -164,10 +164,8 @@ export function validateDraft(
     errors.entries.push(rowErrors)
   })
 
-  if (draft.entries.length === 0) {
-    errors.remainder = 'Eine Bewegung braucht mindestens eine Buchung.'
-    any = true
-  } else if (total.ok && !errors.entries.some((e) => e.account || e.amount)) {
+  // A Bewegung with zero Buchungen is not booked yet ("Keine Buchung"); the Differenz must be 0 once Buchungen exist.
+  if (draft.entries.length > 0 && total.ok && !errors.entries.some((e) => e.account || e.amount)) {
     const rest = remainder(draft, accounts)
     if (rest !== 0 && rest !== null) {
       errors.remainder = `Die Differenz von ${formatChf(rest)} muss 0 sein.`

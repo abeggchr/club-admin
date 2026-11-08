@@ -57,8 +57,7 @@ public class TransactionRulesTests
         Assert.Contains("Dezimalstellen", Validate(amount: -1.005m, entries: [Line(-1.005m)]));
 
     [Fact]
-    public void A_transaction_without_entries_is_rejected() =>
-        Assert.Contains("Buchung", Validate(entries: []));
+    public void A_transaction_without_entries_is_accepted() => Assert.Null(Validate(entries: []));
 
     [Fact]
     public void An_entry_with_empty_text_is_rejected() =>
