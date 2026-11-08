@@ -118,42 +118,38 @@ api.MapPost(
     .DisableAntiforgery();
 
 api.MapGet(
-    "/opening-balance",
+    "/settings",
     async (AppDbContext db) =>
-        await db.Settings.FindAsync(Settings.SingletonId) is { } ob
-            ? Results.Ok(ob)
+        await db.Settings.FindAsync(Settings.SingletonId) is { } settings
+            ? Results.Ok(settings)
             : Results.NotFound()
 );
 
 api.MapPut(
-    "/opening-balance",
-    async (OpeningBalanceUpdate update, AppDbContext db) =>
+    "/settings",
+    async (SettingsUpdate update, AppDbContext db) =>
     {
-        if (update.OpeningBalance != decimal.Round(update.OpeningBalance, 2))
-        {
-            return Results.BadRequest(new { error = "Der Betrag darf höchstens zwei Dezimalstellen haben." });
-        }
-
         var earliest = await db.Transactions.AnyAsync()
             ? await db.Transactions.MinAsync(t => t.Date)
             : (DateOnly?)null;
-        if (TransactionRules.ValidateOpeningStartDate(update.StartDate, earliest) is { } dateError)
+        if (SettingsRules.Validate(update.OpeningBalance, update.StartDate, update.Iban, earliest) is { } error)
         {
-            return Results.BadRequest(new { error = dateError });
+            return Results.BadRequest(new { error });
         }
 
-        var ob = await db.Settings.FindAsync(Settings.SingletonId);
-        if (ob is null)
+        var settings = await db.Settings.FindAsync(Settings.SingletonId);
+        if (settings is null)
         {
-            ob = new Settings();
-            db.Settings.Add(ob);
+            settings = new Settings();
+            db.Settings.Add(settings);
         }
 
-        ob.OpeningBalance = update.OpeningBalance;
-        ob.StartDate = update.StartDate;
+        settings.OpeningBalance = update.OpeningBalance;
+        settings.StartDate = update.StartDate;
+        settings.Iban = Iban.Normalize(update.Iban)!;
 
         await db.SaveChangesAsync();
-        return Results.Ok(ob);
+        return Results.Ok(settings);
     }
 );
 
@@ -434,7 +430,7 @@ record TransactionInput(DateOnly Date, decimal Amount, string? Text, int? Person
 
 record TransactionDto(int Id, DateOnly Date, decimal Amount, string? Text, int? PersonId, decimal Balance, List<int> EntryIds);
 
-record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
+record SettingsUpdate(decimal OpeningBalance, DateOnly StartDate, string? Iban);
 
 record PersonUpdate(
     string FirstName,

@@ -1,9 +1,9 @@
 import { createFileRoute, type ErrorComponentProps } from "@tanstack/react-router";
-import { openingBalanceQueryOptions } from '../features/accounting/api'
+import { settingsQueryOptions } from '../features/accounting/api'
 import { AccountingPage } from '../features/accounting/AccountingPage'
 
 export const Route = createFileRoute('/accounting')({
-  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(openingBalanceQueryOptions),
+  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(settingsQueryOptions),
   component: AccountingPage,
   pendingComponent: () => <p className="p-8">Laden…</p>,
   errorComponent: ({ error }: ErrorComponentProps) => (

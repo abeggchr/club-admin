@@ -164,6 +164,8 @@ describe('toTransactionInput', () => {
     expect(toTransactionInput(draft, accounts)).toEqual({
       date: '2026-11-08',
       amount: -120,
+      text: null,
+      personId: null,
       entries: [{ id: 7, text: 'Miete', accountNumber: 6010, amount: -120 }],
     })
   })
