@@ -97,9 +97,14 @@ namespace backend.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
+                    b.Property<int?>("PersonId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Date");
+
+                    b.HasIndex("PersonId");
 
                     b.ToTable("Transactions");
                 });
@@ -167,6 +172,14 @@ namespace backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("backend.Accounting.Transaction", b =>
+                {
+                    b.HasOne("backend.Person.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("backend.Accounting.Transaction", b =>

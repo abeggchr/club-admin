@@ -11,5 +11,7 @@ public class Transaction
     public int Id { get; set; }
     public DateOnly Date { get; set; }
     public decimal Amount { get; set; }
+    /// <summary>The optional Person this Bewegung is linked to.</summary>
+    public int? PersonId { get; set; }
     public List<Entry> Entries { get; set; } = [];
 }

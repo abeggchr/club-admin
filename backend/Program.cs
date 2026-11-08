@@ -244,11 +244,16 @@ api.MapPost(
         {
             return Results.BadRequest(new { error });
         }
+        if (input.PersonId is { } personId && !await db.Persons.AnyAsync(p => p.Id == personId))
+        {
+            return Results.BadRequest(new { error = "Die Person existiert nicht." });
+        }
 
         var transaction = new Transaction
         {
             Date = input.Date,
             Amount = input.Amount,
+            PersonId = input.PersonId,
             Entries = lines.Select(l => Line(new Entry(), l.Text, l.AccountNumber, l.Amount)).ToList(),
         };
         db.Transactions.Add(transaction);
@@ -290,9 +295,14 @@ api.MapPut(
         {
             return Results.BadRequest(new { error });
         }
+        if (input.PersonId is { } personId && !await db.Persons.AnyAsync(p => p.Id == personId))
+        {
+            return Results.BadRequest(new { error = "Die Person existiert nicht." });
+        }
 
         transaction.Date = input.Date;
         transaction.Amount = input.Amount;
+        transaction.PersonId = input.PersonId;
         foreach (var line in lines)
         {
             if (line.Id is { } entryId)
@@ -396,6 +406,7 @@ static async Task<List<TransactionDto>> LoadTransactionDtosAsync(AppDbContext db
             r.Transaction.Id,
             r.Transaction.Date,
             r.Transaction.Amount,
+            r.Transaction.PersonId,
             r.Balance,
             r.Transaction.Entries.Select(e => e.Id).Order().ToList()
         ))
@@ -414,9 +425,9 @@ record JournalEntryDto(
 
 record TransactionEntryInput(int? Id, string? Text, int AccountNumber, decimal Amount);
 
-record TransactionInput(DateOnly Date, decimal Amount, List<TransactionEntryInput>? Entries);
+record TransactionInput(DateOnly Date, decimal Amount, int? PersonId, List<TransactionEntryInput>? Entries);
 
-record TransactionDto(int Id, DateOnly Date, decimal Amount, decimal Balance, List<int> EntryIds);
+record TransactionDto(int Id, DateOnly Date, decimal Amount, int? PersonId, decimal Balance, List<int> EntryIds);
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
 

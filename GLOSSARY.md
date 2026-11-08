@@ -38,5 +38,5 @@ The amount the bank account should hold on a given date: the Anfangssaldo plus a
 
 - A Bewegung consists of one or more Buchungen; a Buchung belongs to exactly one Bewegung.
 - A Buchung belongs to exactly one Konto.
-- A Buchung is not linked to a Person.
+- A Bewegung can optionally be linked to one Person; a Buchung is not linked to a Person.
 - There is one bank account only; cash is not tracked.

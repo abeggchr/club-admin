@@ -27,6 +27,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(x => x.Amount).HasPrecision(18, 2);
             e.HasIndex(x => x.Date);
+            e.HasOne<Person>().WithMany().HasForeignKey(x => x.PersonId).OnDelete(DeleteBehavior.SetNull);
         });
         // The database does not enforce that a Bewegung has Buchungen or that they sum to its Betrag (ADR 0003).
         modelBuilder.Entity<Entry>(e =>

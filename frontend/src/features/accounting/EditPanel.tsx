@@ -10,6 +10,7 @@ import {
 import { MdClose } from 'react-icons/md'
 import { formatChf } from './amount'
 import { KontoPicker } from './KontoPicker'
+import { PersonPicker } from './PersonPicker'
 import {
   addEntry,
   canDelete,
@@ -138,6 +139,15 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
           {errors?.amount && <span className="text-red-600">{errors.amount}</span>}
         </label>
       </div>
+
+      <label className="flex flex-col text-sm">
+        Person
+        <PersonPicker
+          value={draft.personId}
+          onChange={(personId) => setDraft((d) => ({ ...d, personId }))}
+          className={input}
+        />
+      </label>
 
       {draft.entries.map((row, i) => (
         <fieldset key={i} className="flex flex-col gap-2 rounded border border-slate-200 p-3">
