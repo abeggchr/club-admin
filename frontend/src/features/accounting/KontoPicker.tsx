@@ -84,7 +84,7 @@ export function KontoPicker({ value, onChange, id, className }: Props) {
         aria-activedescendant={open && options[highlight] ? `${listId}-${options[highlight].number}` : undefined}
         autoComplete="off"
         placeholder="Konto wählen…"
-        className={className}
+        className={`${className ?? ''} ${selected && query === null ? 'pr-24' : ''}`}
         value={text}
         onFocus={(e) => {
           setOpen(true)
@@ -99,6 +99,13 @@ export function KontoPicker({ value, onChange, id, className }: Props) {
         onBlur={close}
         onKeyDown={onKeyDown}
       />
+      {selected && query === null && (
+        <span
+          className={`pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs ${categoryStyle[selected.category]}`}
+        >
+          {categoryLabel[selected.category]}
+        </span>
+      )}
       {open && (
         <ul
           id={listId}

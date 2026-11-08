@@ -67,7 +67,7 @@ export function TransactionsView() {
       )}
 
       <div className="mt-4 flex items-start gap-4">
-        <div className="flex min-w-0 flex-1">
+        <div className="flex flex-1">
           <TransactionsTable
             transactions={transactions}
             selectedId={selection?.kind === 'transaction' ? selection.id : null}
@@ -76,7 +76,7 @@ export function TransactionsView() {
           />
         </div>
         {(mode.kind === 'add' || editing) && (
-          <aside className="w-96 shrink-0 rounded border border-slate-200 p-4">
+          <aside className="flex-1 shrink-0 rounded border border-slate-200 p-4">
             <EditPanel
               key={editing ? editing.id : 'new'}
               transaction={editing}
@@ -88,7 +88,7 @@ export function TransactionsView() {
             />
           </aside>
         )}
-        <div className="flex min-w-0 flex-[2]">
+        <div className="flex flex-1">
           <JournalList
             entries={entries}
             selectedId={selection?.kind === 'entry' ? selection.id : null}

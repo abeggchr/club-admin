@@ -165,25 +165,27 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
             />
             {errors?.entries[i]?.text && <span className="text-red-600">{errors.entries[i].text}</span>}
           </label>
-          <label className="flex flex-col text-sm">
-            Konto
-            <KontoPicker
-              value={row.accountNumber}
-              onChange={(accountNumber) => patchRow(i, { accountNumber })}
-              className={input}
-            />
-            {errors?.entries[i]?.account && <span className="text-red-600">{errors.entries[i].account}</span>}
-          </label>
-          <label className="flex flex-col text-sm">
-            Betrag (CHF)
-            <input
-              inputMode="decimal"
-              value={entryAmount(draft, i, accounts)}
-              onChange={(e) => patchRow(i, { amount: e.target.value })}
-              className={`${input} text-right`}
-            />
-            {errors?.entries[i]?.amount && <span className="text-red-600">{errors.entries[i].amount}</span>}
-          </label>
+          <div className="flex gap-3">
+            <label className="flex flex-[2] flex-col text-sm">
+              Konto
+              <KontoPicker
+                value={row.accountNumber}
+                onChange={(accountNumber) => patchRow(i, { accountNumber })}
+                className={input}
+              />
+              {errors?.entries[i]?.account && <span className="text-red-600">{errors.entries[i].account}</span>}
+            </label>
+            <label className="flex flex-1 flex-col text-sm">
+              Betrag (CHF)
+              <input
+                inputMode="decimal"
+                value={entryAmount(draft, i, accounts)}
+                onChange={(e) => patchRow(i, { amount: e.target.value })}
+                className={`${input} text-right`}
+              />
+              {errors?.entries[i]?.amount && <span className="text-red-600">{errors.entries[i].amount}</span>}
+            </label>
+          </div>
         </fieldset>
       ))}
       <button
