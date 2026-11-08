@@ -41,7 +41,7 @@ public static class TransactionRules
         return null;
     }
 
-    internal static string? ValidateDate(Settings? opening, DateOnly date)
+    private static string? ValidateDate(Settings? opening, DateOnly date)
     {
         if (opening is null)
         {
