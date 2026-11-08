@@ -134,10 +134,10 @@ api.MapPut(
             return Results.BadRequest(new { error = "Der Betrag darf höchstens zwei Dezimalstellen haben." });
         }
 
-        var earliest = await db.JournalEntries.AnyAsync()
-            ? await db.JournalEntries.MinAsync(e => e.Date)
+        var earliest = await db.Transactions.AnyAsync()
+            ? await db.Transactions.MinAsync(t => t.Date)
             : (DateOnly?)null;
-        if (EntryRules.ValidateOpeningStartDate(update.StartDate, earliest) is { } dateError)
+        if (TransactionRules.ValidateOpeningStartDate(update.StartDate, earliest) is { } dateError)
         {
             return Results.BadRequest(new { error = dateError });
         }
@@ -173,11 +173,19 @@ api.MapGet(
             return [];
         }
 
-        var entries = await db.JournalEntries.ToListAsync();
+        var entries = await db.JournalEntries.Include(e => e.Transaction).ToListAsync();
         // Balances are computed over the whole journal; filters only hide rows.
         return JournalFilter
             .Apply(AccountingCalculator.RunningBalances(opening, entries), from, to, accountNumber, search)
-            .Select(r => new JournalEntryDto(r.Entry.Id, r.Entry.Date, r.Entry.Text, r.Entry.AccountNumber, r.Entry.Amount, r.Balance))
+            .Select(r => new JournalEntryDto(
+                r.Entry.Id,
+                r.Entry.TransactionId,
+                r.Entry.Date,
+                r.Entry.Text,
+                r.Entry.AccountNumber,
+                r.Entry.Amount,
+                r.Balance
+            ))
             .ToList();
     }
 );
@@ -192,11 +200,16 @@ api.MapGet(
             return Results.NotFound();
         }
 
-        var entries = await db.JournalEntries.Where(e => e.Date <= date).ToListAsync();
+        var entries = await db.JournalEntries
+            .Include(e => e.Transaction)
+            .Where(e => e.Transaction.Date <= date)
+            .ToListAsync();
         return Results.Ok(new { date, balance = AccountingCalculator.ExpectedBalance(opening, entries, date) });
     }
 );
 
+// Temporary (expand step): the Buchung endpoints below keep the existing UI working by maintaining a
+// Bewegung with that single Buchung behind the scenes. They are removed together with the old UI.
 api.MapPost(
     "/entries",
     async (EntryInput input, AppDbContext db, ChartOfAccounts chart) =>
@@ -207,16 +220,16 @@ api.MapPost(
             return Results.BadRequest(new { error });
         }
 
-        var entry = new Entry
+        var entry = Line(new Entry(), input.Text, input.AccountNumber, input.Amount);
+        var transaction = new Transaction
         {
             Date = input.Date,
-            Text = input.Text.Trim(),
-            AccountNumber = input.AccountNumber,
             Amount = input.Amount,
+            Entries = [entry],
         };
-        db.JournalEntries.Add(entry);
+        db.Transactions.Add(transaction);
         await SaveEntryChangeAsync(db, chart);
-        return Results.Created($"/api/entries/{entry.Id}", entry);
+        return Results.Created($"/api/entries/{entry.Id}", ToDto(entry, transaction));
     }
 );
 
@@ -224,7 +237,7 @@ api.MapPut(
     "/entries/{id:int}",
     async (int id, EntryInput input, AppDbContext db, ChartOfAccounts chart) =>
     {
-        var entry = await db.JournalEntries.FindAsync(id);
+        var entry = await db.JournalEntries.Include(e => e.Transaction).FirstOrDefaultAsync(e => e.Id == id);
         if (entry is null)
         {
             return Results.NotFound();
@@ -245,12 +258,12 @@ api.MapPut(
             return Results.BadRequest(new { error });
         }
 
-        entry.Date = input.Date;
-        entry.Text = input.Text.Trim();
-        entry.AccountNumber = input.AccountNumber;
-        entry.Amount = input.Amount;
+        // The Bewegung keeps the amounts of its other Buchungen (none for a Bewegung made by this path).
+        entry.Transaction.Amount += input.Amount - entry.Amount;
+        entry.Transaction.Date = input.Date;
+        Line(entry, input.Text, input.AccountNumber, input.Amount);
         await SaveEntryChangeAsync(db, chart);
-        return Results.Ok(entry);
+        return Results.Ok(ToDto(entry, entry.Transaction));
     }
 );
 
@@ -258,14 +271,113 @@ api.MapDelete(
     "/entries/{id:int}",
     async (int id, AppDbContext db, ChartOfAccounts chart) =>
     {
-        var entry = await db.JournalEntries.FindAsync(id);
+        var entry = await db.JournalEntries.Include(e => e.Transaction).FirstOrDefaultAsync(e => e.Id == id);
         if (entry is null)
         {
             return Results.NotFound();
         }
-        db.JournalEntries.Remove(entry);
+        var hasSiblings = await db.JournalEntries.AnyAsync(e => e.TransactionId == entry.TransactionId && e.Id != id);
+        if (hasSiblings)
+        {
+            entry.Transaction.Amount -= entry.Amount;
+            db.JournalEntries.Remove(entry);
+        }
+        else
+        {
+            db.Transactions.Remove(entry.Transaction);
+        }
         await SaveEntryChangeAsync(db, chart);
         return Results.NoContent();
+    }
+);
+
+api.MapGet(
+    "/transactions",
+    async (AppDbContext db) =>
+    {
+        var opening = await db.Settings.FindAsync(Settings.SingletonId);
+        return Results.Ok(opening is null ? [] : await LoadTransactionDtosAsync(db, opening));
+    }
+);
+
+api.MapPost(
+    "/transactions",
+    async (TransactionInput input, AppDbContext db, ChartOfAccounts chart) =>
+    {
+        var lines = input.Entries ?? [];
+        if (lines.Any(l => l.Id is not null))
+        {
+            return Results.BadRequest(new { error = "Neue Buchungen dürfen keine Id haben." });
+        }
+        var opening = await db.Settings.FindAsync(Settings.SingletonId);
+        var drafts = lines.Select(l => new EntryDraft(l.Text, l.AccountNumber, l.Amount)).ToList();
+        if (TransactionRules.Validate(opening, chart, input.Date, input.Amount, drafts) is { } error)
+        {
+            return Results.BadRequest(new { error });
+        }
+
+        var transaction = new Transaction
+        {
+            Date = input.Date,
+            Amount = input.Amount,
+            Entries = lines.Select(l => Line(new Entry(), l.Text, l.AccountNumber, l.Amount)).ToList(),
+        };
+        db.Transactions.Add(transaction);
+        await SaveEntryChangeAsync(db, chart);
+        return Results.Created(
+            $"/api/transactions/{transaction.Id}",
+            await LoadTransactionDtoAsync(db, opening!, transaction.Id)
+        );
+    }
+);
+
+api.MapPut(
+    "/transactions/{id:int}",
+    async (int id, TransactionInput input, AppDbContext db, ChartOfAccounts chart) =>
+    {
+        var transaction = await db.Transactions.Include(t => t.Entries).FirstOrDefaultAsync(t => t.Id == id);
+        if (transaction is null)
+        {
+            return Results.NotFound();
+        }
+
+        var lines = input.Entries ?? [];
+        var stored = transaction.Entries.ToDictionary(e => e.Id);
+        var givenIds = lines.Where(l => l.Id is not null).Select(l => l.Id!.Value).ToList();
+        if (givenIds.Any(i => !stored.ContainsKey(i)))
+        {
+            return Results.BadRequest(new { error = "Eine Buchung gehört nicht zu dieser Bewegung." });
+        }
+        if (givenIds.Distinct().Count() != givenIds.Count)
+        {
+            return Results.BadRequest(new { error = "Eine Buchung kommt mehrfach vor." });
+        }
+
+        var opening = await db.Settings.FindAsync(Settings.SingletonId);
+        var drafts = lines
+            .Select(l => new EntryDraft(l.Text, l.AccountNumber, l.Amount, l.Id is { } i ? stored[i].AccountNumber : null))
+            .ToList();
+        if (TransactionRules.Validate(opening, chart, input.Date, input.Amount, drafts) is { } error)
+        {
+            return Results.BadRequest(new { error });
+        }
+
+        transaction.Date = input.Date;
+        transaction.Amount = input.Amount;
+        foreach (var line in lines)
+        {
+            if (line.Id is { } entryId)
+            {
+                Line(stored[entryId], line.Text, line.AccountNumber, line.Amount);
+            }
+            else
+            {
+                transaction.Entries.Add(Line(new Entry(), line.Text, line.AccountNumber, line.Amount));
+            }
+        }
+        db.JournalEntries.RemoveRange(stored.Values.Where(e => !givenIds.Contains(e.Id)));
+        await SaveEntryChangeAsync(db, chart);
+        return Results.Ok(await LoadTransactionDtoAsync(db, opening!, id));
     }
 );
 
@@ -315,9 +427,56 @@ static async Task SaveEntryChangeAsync(AppDbContext db, ChartOfAccounts chart)
     await tx.CommitAsync();
 }
 
+// Sets the fields a client supplies for a Buchung (already validated, so the text is not blank).
+static Entry Line(Entry entry, string? text, int accountNumber, decimal amount)
+{
+    entry.Text = text!.Trim();
+    entry.AccountNumber = accountNumber;
+    entry.Amount = amount;
+    return entry;
+}
+
+static EntryDto ToDto(Entry entry, Transaction transaction) =>
+    new(entry.Id, transaction.Id, transaction.Date, entry.Text, entry.AccountNumber, entry.Amount);
+
+static async Task<TransactionDto> LoadTransactionDtoAsync(AppDbContext db, Settings opening, int id) =>
+    (await LoadTransactionDtosAsync(db, opening)).Single(t => t.Id == id);
+
+// All Bewegungen, newest first, each with the Kontostand after it.
+static async Task<List<TransactionDto>> LoadTransactionDtosAsync(AppDbContext db, Settings opening)
+{
+    var transactions = await db.Transactions.Include(t => t.Entries).AsNoTracking().ToListAsync();
+    return AccountingCalculator
+        .TransactionBalances(opening, transactions)
+        .Select(r => new TransactionDto(
+            r.Transaction.Id,
+            r.Transaction.Date,
+            r.Transaction.Amount,
+            r.Balance,
+            r.Transaction.Entries.Select(e => e.Id).Order().ToList()
+        ))
+        .ToList();
+}
+
 record EntryInput(DateOnly Date, string Text, int AccountNumber, decimal Amount);
 
-record JournalEntryDto(int Id, DateOnly Date, string Text, int AccountNumber, decimal Amount, decimal Balance);
+record EntryDto(int Id, int TransactionId, DateOnly Date, string Text, int AccountNumber, decimal Amount);
+
+record JournalEntryDto(
+    int Id,
+    int TransactionId,
+    DateOnly Date,
+    string Text,
+    int AccountNumber,
+    decimal Amount,
+    decimal Balance
+);
+
+record TransactionEntryInput(int? Id, string? Text, int AccountNumber, decimal Amount);
+
+record TransactionInput(DateOnly Date, decimal Amount, List<TransactionEntryInput>? Entries);
+
+record TransactionDto(int Id, DateOnly Date, decimal Amount, decimal Balance, List<int> EntryIds);
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
 

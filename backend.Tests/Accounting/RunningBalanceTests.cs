@@ -6,8 +6,15 @@ public class ExpectedBalanceWithEntriesTests
 {
     private static readonly Settings Opening = new() { OpeningBalance = 1000m, StartDate = new DateOnly(2026, 1, 1) };
 
-    private static Entry E(int id, DateOnly date, decimal amount) =>
-        new() { Id = id, Date = date, Text = "t", AccountNumber = 3400, Amount = amount };
+    private static Entry E(int id, DateOnly date, decimal amount, int? transactionId = null) =>
+        new()
+        {
+            Id = id,
+            Transaction = new Transaction { Id = transactionId ?? id, Date = date },
+            Text = "t",
+            AccountNumber = 3400,
+            Amount = amount,
+        };
 
     private static readonly Entry[] Entries =
     [
@@ -45,14 +52,35 @@ public class ExpectedBalanceWithEntriesTests
     {
         Assert.Null(AccountingCalculator.ExpectedBalance(Opening, Entries, new DateOnly(2025, 12, 31)));
     }
+
+    [Fact]
+    public void Entries_are_counted_by_the_date_of_their_transaction()
+    {
+        var transaction = new Transaction { Id = 1, Date = new DateOnly(2026, 5, 1), Amount = -100m };
+        Entry[] split =
+        [
+            new() { Id = 1, Transaction = transaction, Text = "a", AccountNumber = 6010, Amount = -60m },
+            new() { Id = 2, Transaction = transaction, Text = "b", AccountNumber = 6010, Amount = -40m },
+        ];
+
+        Assert.Equal(1000m, AccountingCalculator.ExpectedBalance(Opening, split, new DateOnly(2026, 4, 30)));
+        Assert.Equal(900m, AccountingCalculator.ExpectedBalance(Opening, split, new DateOnly(2026, 5, 1)));
+    }
 }
 
 public class RunningBalanceTests
 {
     private static readonly Settings Opening = new() { OpeningBalance = 1000m, StartDate = new DateOnly(2026, 1, 1) };
 
-    private static Entry E(int id, DateOnly date, decimal amount) =>
-        new() { Id = id, Date = date, Text = "t", AccountNumber = 3400, Amount = amount };
+    private static Entry E(int id, DateOnly date, decimal amount, int? transactionId = null) =>
+        new()
+        {
+            Id = id,
+            Transaction = new Transaction { Id = transactionId ?? id, Date = date },
+            Text = "t",
+            AccountNumber = 3400,
+            Amount = amount,
+        };
 
     [Fact]
     public void Rows_are_newest_first_with_the_balance_up_to_each_row()
@@ -115,4 +143,93 @@ public class RunningBalanceTests
             AccountingCalculator.RunningBalances(Opening, [a, b]).Select(r => r.Balance),
             AccountingCalculator.RunningBalances(Opening, [b, a]).Select(r => r.Balance));
     }
+
+    [Fact]
+    public void Entries_are_ordered_by_the_date_of_their_transaction()
+    {
+        // Entry 1 was created first but its Bewegung is the later one.
+        var rows = AccountingCalculator.RunningBalances(Opening,
+        [
+            E(1, new DateOnly(2026, 3, 1), 10m, transactionId: 5),
+            E(2, new DateOnly(2026, 2, 1), 100m, transactionId: 6),
+        ]);
+
+        Assert.Equal([1, 2], rows.Select(r => r.Entry.Id));
+        Assert.Equal([1110m, 1100m], rows.Select(r => r.Balance));
+    }
+
+    [Fact]
+    public void Same_day_entries_are_ordered_by_transaction_id_before_entry_id()
+    {
+        var day = new DateOnly(2026, 2, 1);
+        var rows = AccountingCalculator.RunningBalances(Opening,
+        [
+            E(1, day, 1m, transactionId: 20),
+            E(9, day, 10m, transactionId: 10),
+            E(5, day, 100m, transactionId: 10),
+        ]);
+
+        // Ascending: (tx 10, entry 5), (tx 10, entry 9), (tx 20, entry 1).
+        Assert.Equal([1, 9, 5], rows.Select(r => r.Entry.Id));
+        Assert.Equal([1111m, 1110m, 1100m], rows.Select(r => r.Balance));
+    }
+}
+
+public class TransactionBalanceTests
+{
+    private static readonly Settings Opening = new() { OpeningBalance = 1000m, StartDate = new DateOnly(2026, 1, 1) };
+
+    private static Transaction T(int id, DateOnly date, decimal amount) =>
+        new() { Id = id, Date = date, Amount = amount };
+
+    [Fact]
+    public void Rows_are_newest_first_with_the_balance_up_to_each_transaction()
+    {
+        var rows = AccountingCalculator.TransactionBalances(Opening,
+        [
+            T(2, new DateOnly(2026, 3, 10), -30m),
+            T(1, new DateOnly(2026, 2, 1), 100m),
+        ]);
+
+        Assert.Equal([2, 1], rows.Select(r => r.Transaction.Id));
+        Assert.Equal([1070m, 1100m], rows.Select(r => r.Balance));
+    }
+
+    [Fact]
+    public void Same_day_transactions_are_ordered_by_id_newest_first()
+    {
+        var day = new DateOnly(2026, 2, 1);
+        var rows = AccountingCalculator.TransactionBalances(Opening,
+        [
+            T(7, day, 10m),
+            T(9, day, 1m),
+            T(8, day, 100m),
+        ]);
+
+        Assert.Equal([9, 8, 7], rows.Select(r => r.Transaction.Id));
+        Assert.Equal([1111m, 1110m, 1010m], rows.Select(r => r.Balance));
+    }
+
+    [Fact]
+    public void The_balance_starts_from_the_opening_amount()
+    {
+        var rows = AccountingCalculator.TransactionBalances(Opening, [T(1, new DateOnly(2026, 1, 1), -5m)]);
+
+        Assert.Equal(995m, Assert.Single(rows).Balance);
+    }
+
+    [Fact]
+    public void Input_order_does_not_matter()
+    {
+        var a = T(1, new DateOnly(2026, 2, 1), 100m);
+        var b = T(2, new DateOnly(2026, 3, 1), -30m);
+
+        Assert.Equal(
+            AccountingCalculator.TransactionBalances(Opening, [a, b]).Select(r => r.Balance),
+            AccountingCalculator.TransactionBalances(Opening, [b, a]).Select(r => r.Balance));
+    }
+
+    [Fact]
+    public void No_transactions_give_no_rows() =>
+        Assert.Empty(AccountingCalculator.TransactionBalances(Opening, []));
 }

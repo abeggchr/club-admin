@@ -1,0 +1,5 @@
+# An Account's Category is recorded when an Entry first uses it
+
+ADR 0001 makes the app refuse to start when a used Account changed its Category, but an Entry stores only its account number, so there is nothing to compare the file against. We store the Category an Account had when an Entry first used it (one row per used account number) and compare the ChartOfAccounts file against that record at startup. The record is dropped once no Entry uses the Account any more (the last Entry on it was deleted or moved to another Account), so only Accounts that still have Entries are checked at startup; if the Account is used again later, the Category of the file at that time is recorded. An Account used before this record existed adopts the file's current Category on the first startup after the change.
+
+We rejected deriving the Category from the sign of stored Entries: a refund on an Expense account is positive and a reversed income is negative, so signs do not reliably identify the Category and would cause false startup failures. The cost of the record is one small table that must be written whenever an Account is first used and dropped when it is no longer used.
