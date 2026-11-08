@@ -113,6 +113,32 @@ namespace backend.Migrations
                     b.ToTable("Transactions");
                 });
 
+            modelBuilder.Entity("backend.Invoicing.TextTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Greetings")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TextTemplates");
+                });
+
             modelBuilder.Entity("backend.Person.Person", b =>
                 {
                     b.Property<int>("Id")
