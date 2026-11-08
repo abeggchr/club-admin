@@ -1,13 +1,8 @@
 import { useMemo, useState } from 'react'
-import { keepPreviousData, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createColumnHelper, flexRender, tableFeatures, useTable } from '@tanstack/react-table'
 import { MdAdd } from 'react-icons/md'
-import {
-  accountsQueryOptions,
-  filteredEntriesQueryOptions,
-  noFilters,
-  type JournalFilters,
-} from './api'
+import { accountsQueryOptions, entriesQueryOptions } from './api'
 import { BalanceAtDate } from './BalanceAtDate'
 import { EntryForm } from './EntryForm'
 import { formatChf } from './amount'
@@ -23,17 +18,9 @@ type FormMode = { kind: 'closed' } | { kind: 'add' } | { kind: 'edit'; id: numbe
 export function JournalList() {
   const [mode, setMode] = useState<FormMode>({ kind: 'closed' })
   const [dirty, setDirty] = useState(false)
-  const [filters, setFilters] = useState<JournalFilters>(noFilters)
-  const { data: entries = [], isError } = useQuery({
-    ...filteredEntriesQueryOptions(filters),
-    placeholderData: keepPreviousData,
-  })
+  const { data: entries = [], isError } = useQuery(entriesQueryOptions)
   const { data: accounts } = useSuspenseQuery(accountsQueryOptions)
   const editing = mode.kind === 'edit' ? entries.find((e) => e.id === mode.id) : undefined
-
-  const hasActiveFilters = Object.values(filters).some((v) => v.trim() !== '')
-  const updateFilters = (patch: Partial<JournalFilters>) => setFilters({ ...filters, ...patch })
-  const input = 'rounded border border-slate-300 p-1'
 
   function onSelect(id: number) {
     if (mode.kind === 'edit' && mode.id === id) return
@@ -90,49 +77,6 @@ export function JournalList() {
         <BalanceAtDate />
       </div>
 
-      <div className="mt-4 flex flex-wrap items-end gap-3 text-sm">
-        <label className="flex flex-col">
-          Von
-          <input type="date" value={filters.from} onChange={(e) => updateFilters({ from: e.target.value })} className={input} />
-        </label>
-        <label className="flex flex-col">
-          Bis
-          <input type="date" value={filters.to} onChange={(e) => updateFilters({ to: e.target.value })} className={input} />
-        </label>
-        <label className="flex flex-col">
-          Konto
-          <select value={filters.accountNumber} onChange={(e) => updateFilters({ accountNumber: e.target.value })} className={input}>
-            <option value="">Alle Konten</option>
-            {[
-              { label: 'Einnahmen', category: 'Income' },
-              { label: 'Ausgaben', category: 'Expense' },
-            ].map((g) => (
-              <optgroup key={g.label} label={g.label}>
-                {accounts
-                  .filter((a) => a.category === g.category)
-                  .map((a) => (
-                    <option key={a.number} value={a.number}>
-                      {accountLabel(a)}
-                      {a.active ? '' : ' (inaktiv)'}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col">
-          Suche im Text
-          <input type="search" value={filters.search} onChange={(e) => updateFilters({ search: e.target.value })} className={input} />
-        </label>
-        <button
-          type="button"
-          disabled={!hasActiveFilters}
-          onClick={() => setFilters(noFilters)}
-          className="rounded border border-slate-300 px-3 py-1 enabled:hover:bg-slate-100 disabled:opacity-50"
-        >
-          Filter zurücksetzen
-        </button>
-      </div>
       {isError && <p className="mt-4 text-red-600">Buchungen konnten nicht geladen werden.</p>}
 
       <div className="mt-4 flex items-start gap-4">
@@ -163,7 +107,7 @@ export function JournalList() {
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length} className="px-3 py-8 text-center text-slate-500">
-                    {hasActiveFilters ? 'Keine Buchungen gefunden.' : 'Noch keine Buchungen.'}
+                    Noch keine Buchungen.
                   </td>
                 </tr>
               ) : (
