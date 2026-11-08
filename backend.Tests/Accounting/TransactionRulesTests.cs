@@ -34,6 +34,15 @@ public class TransactionRulesTests
             entries ?? [Line(-120m)]
         );
 
+    private static string? BankFacts(string? bankReference, string newDate = "2026-03-01", decimal newAmount = -120m) =>
+        TransactionRules.ValidateUnchangedBankFacts(
+            bankReference,
+            DateOnly.Parse("2026-03-01"),
+            -120m,
+            DateOnly.Parse(newDate),
+            newAmount
+        );
+
     [Fact]
     public void A_balanced_transaction_has_no_error() => Assert.Null(Validate());
 
@@ -101,6 +110,25 @@ public class TransactionRulesTests
     [Fact]
     public void Mixed_signs_that_do_not_cancel_out_are_unbalanced() =>
         Assert.Contains("Summe", Validate(amount: -100m, entries: [Line(-120m), Line(-20m)]));
+
+    [Fact]
+    public void The_date_of_an_imported_transaction_cannot_change() =>
+        Assert.Contains("Datum", BankFacts("TX1", newDate: "2026-03-02"));
+
+    [Fact]
+    public void The_amount_of_an_imported_transaction_cannot_change() =>
+        Assert.Contains("Betrag", BankFacts("TX1", newAmount: -121m));
+
+    [Fact]
+    public void A_manual_transaction_may_change_its_date_and_amount() =>
+        Assert.Null(BankFacts(null, newDate: "2026-03-02", newAmount: -121m));
+
+    [Fact]
+    public void An_imported_transaction_may_change_its_bookings_when_its_date_and_amount_are_unchanged()
+    {
+        Assert.Null(BankFacts("TX1"));
+        Assert.Null(Validate(entries: [Line(-80m), Line(-40m, text: "Miete April")]));
+    }
 
     [Fact]
     public void The_opening_date_may_move_up_to_the_earliest_transaction() =>
