@@ -13,20 +13,24 @@ One account in the Kontoplan, identified by a number and a name (e.g. 3400 Jahre
 **Kategorie** (code: _Category_):
 The grouping of Konten in the Kontoplan: Einnahmen (_Income_) or Ausgaben (_Expense_). The Kategorie of a Buchung's Konto decides whether it is revenue or expense.
 
+**Bewegung** (code: _Transaction_):
+One money movement on the bank account: the bank's booking date and a signed amount, split into one or more Buchungen. It is an **Einzahlung** (money in, positive amount) or an **Auszahlung** (money out, negative amount); the direction follows from the sign and is not stored. The signed amounts of its Buchungen sum to its amount.
+
 **Buchung** (code: _Entry_):
-One entry in the Buchungsjournal: the bank's booking date, a text, a Konto and a signed amount (money in is positive, money out is negative). Whether it is revenue or expense follows from the Kategorie of its Konto.
+One line of a Bewegung: a text, a Konto and a signed amount (money in is positive, money out is negative). It belongs to exactly one Bewegung and has no date of its own; it takes the date of its Bewegung. Whether it is revenue or expense follows from the Kategorie of its Konto.
 
 **Buchungsjournal** (code: _Journal_):
-The chronological list of all Buchungen. It is the only record of money movements; it can be edited freely.
+The chronological list of all Buchungen, ordered by the date of their Bewegung. It is the only record of money movements; it can be edited freely.
 
 **Anfangssaldo** (code: _OpeningBalance_):
 The bank account balance (an amount and a start date) from which the Erwarteter Kontostand is counted.
 
 **Erwarteter Kontostand** (code: _ExpectedBalance_):
-The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen up to that date. The user compares it by eye against the bank statement.
+The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen whose Bewegung is dated up to that date. The user compares it by eye against the bank statement.
 
 ## Relationships
 
+- A Bewegung consists of one or more Buchungen; a Buchung belongs to exactly one Bewegung.
 - A Buchung belongs to exactly one Konto.
 - A Buchung is not linked to a Person.
 - There is one bank account only; cash is not tracked.

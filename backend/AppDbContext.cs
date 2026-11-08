@@ -6,6 +6,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<Person> Persons => Set<Person>();
     public DbSet<Settings> Settings => Set<Settings>();
+    public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<Entry> JournalEntries => Set<Entry>();
     public DbSet<AccountUsage> AccountUsages => Set<AccountUsage>();
 
@@ -22,11 +23,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(u => u.AccountNumber).ValueGeneratedNever();
             e.Property(u => u.Category).HasConversion<string>();
         });
+        modelBuilder.Entity<Transaction>(e =>
+        {
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.HasIndex(x => x.Date);
+        });
+        // The database does not enforce that a Bewegung has Buchungen or that they sum to its Betrag (ADR 0003).
         modelBuilder.Entity<Entry>(e =>
         {
             e.Property(x => x.Amount).HasPrecision(18, 2);
             e.Property(x => x.Text).HasMaxLength(500);
-            e.HasIndex(x => x.Date);
+            e.HasOne(x => x.Transaction).WithMany(t => t.Entries).HasForeignKey(x => x.TransactionId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

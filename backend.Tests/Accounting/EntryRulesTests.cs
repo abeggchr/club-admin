@@ -76,19 +76,4 @@ public class EntryRulesTests
 
     [Fact]
     public void A_zero_amount_is_rejected() => Assert.NotNull(Validate(amount: 0m));
-
-    [Fact]
-    public void The_opening_date_may_move_up_to_the_earliest_entry() =>
-        Assert.Null(EntryRules.ValidateOpeningStartDate(new DateOnly(2026, 3, 1), new DateOnly(2026, 3, 1)));
-
-    [Fact]
-    public void The_opening_date_cannot_move_later_than_the_earliest_entry() =>
-        Assert.Contains(
-            "frühesten Buchung",
-            EntryRules.ValidateOpeningStartDate(new DateOnly(2026, 3, 2), new DateOnly(2026, 3, 1))
-        );
-
-    [Fact]
-    public void The_opening_date_is_free_when_there_are_no_entries() =>
-        Assert.Null(EntryRules.ValidateOpeningStartDate(new DateOnly(2030, 1, 1), null));
 }

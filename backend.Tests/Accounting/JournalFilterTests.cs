@@ -7,7 +7,14 @@ public class JournalFilterTests
     private static readonly Settings Opening = new() { OpeningBalance = 1000m, StartDate = new DateOnly(2026, 1, 1) };
 
     private static Entry E(int id, DateOnly date, string text, int account, decimal amount) =>
-        new() { Id = id, Date = date, Text = text, AccountNumber = account, Amount = amount };
+        new()
+        {
+            Id = id,
+            Transaction = new Transaction { Id = id, Date = date },
+            Text = text,
+            AccountNumber = account,
+            Amount = amount,
+        };
 
     private static readonly IReadOnlyList<JournalRow> Rows = AccountingCalculator.RunningBalances(Opening,
     [

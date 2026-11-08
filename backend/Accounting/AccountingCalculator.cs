@@ -17,7 +17,10 @@ public static class AccountingCalculator
         return opening.OpeningBalance;
     }
 
-    /// <summary>Erwarteter Kontostand on <paramref name="date"/>, counting all entries dated up to and including it.</summary>
+    /// <summary>
+    /// Erwarteter Kontostand on <paramref name="date"/>, counting all Buchungen whose Bewegung is dated up to
+    /// and including it. The entries need their Bewegung loaded.
+    /// </summary>
     public static decimal? ExpectedBalance(Settings opening, IEnumerable<Entry> entries, DateOnly date)
     {
         if (ExpectedBalance(opening, date) is not { } start)
@@ -29,14 +32,15 @@ public static class AccountingCalculator
     }
 
     /// <summary>
-    /// The whole journal, newest first (same-day ties by creation order, i.e. Id), each row carrying the
-    /// running Erwarteter Kontostand up to and including that row. Always takes the unfiltered journal.
+    /// The whole journal, newest first, each row carrying the running Erwarteter Kontostand up to and including
+    /// that row. Ordered by Bewegung date, then Bewegung Id, then Buchung Id (creation order). Always takes the
+    /// unfiltered journal; the entries need their Bewegung loaded.
     /// </summary>
     public static IReadOnlyList<JournalRow> RunningBalances(Settings opening, IEnumerable<Entry> entries)
     {
         var balance = opening.OpeningBalance;
         var rows = new List<JournalRow>();
-        foreach (var entry in entries.OrderBy(e => e.Date).ThenBy(e => e.Id))
+        foreach (var entry in entries.OrderBy(e => e.Date).ThenBy(e => e.Transaction.Id).ThenBy(e => e.Id))
         {
             balance += entry.Amount;
             rows.Add(new JournalRow(entry, balance));
@@ -45,6 +49,26 @@ public static class AccountingCalculator
         rows.Reverse();
         return rows;
     }
+
+    /// <summary>
+    /// All Bewegungen, newest first (same-day ties by creation order, i.e. Id), each row carrying the Kontostand
+    /// after it: the Anfangssaldo plus the amounts of all Bewegungen up to and including that one.
+    /// </summary>
+    public static IReadOnlyList<TransactionRow> TransactionBalances(Settings opening, IEnumerable<Transaction> transactions)
+    {
+        var balance = opening.OpeningBalance;
+        var rows = new List<TransactionRow>();
+        foreach (var transaction in transactions.OrderBy(t => t.Date).ThenBy(t => t.Id))
+        {
+            balance += transaction.Amount;
+            rows.Add(new TransactionRow(transaction, balance));
+        }
+
+        rows.Reverse();
+        return rows;
+    }
 }
+
+public record TransactionRow(Transaction Transaction, decimal Balance);
 
 public record JournalRow(Entry Entry, decimal Balance);
