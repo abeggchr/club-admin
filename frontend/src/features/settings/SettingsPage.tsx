@@ -10,7 +10,7 @@ import { formatChf, parseAmount } from '../accounting/amount'
 export function SettingsPage() {
   const queryClient = useQueryClient()
   const { data: openingBalance } = useSuspenseQuery(openingBalanceQueryOptions)
-  const [amount, setAmount] = useState(openingBalance ? formatChf(openingBalance.amount) : '')
+  const [amount, setAmount] = useState(openingBalance ? formatChf(openingBalance.openingBalance) : '')
   const [startDate, setStartDate] = useState(openingBalance?.startDate ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -25,10 +25,10 @@ export function SettingsPage() {
       return
     }
     try {
-      const result = await saveOpeningBalance({ amount: parsed.value, startDate })
+      const result = await saveOpeningBalance({ openingBalance: parsed.value, startDate })
       queryClient.setQueryData(openingBalanceQueryOptions.queryKey, result)
       await invalidateJournalQueries(queryClient)
-      setAmount(formatChf(result.amount))
+      setAmount(formatChf(result.openingBalance))
       setSaved(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')

@@ -2,7 +2,7 @@ import { queryOptions, type QueryClient } from '@tanstack/react-query'
 import type { Account, Entry, EntryInput, JournalEntry } from './types'
 
 export type OpeningBalance = {
-  amount: number
+  openingBalance: number
   startDate: string
 }
 

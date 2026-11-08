@@ -4,7 +4,7 @@ namespace backend.Tests.Accounting;
 
 public class ExpectedBalanceTests
 {
-    private static readonly OpeningBalance Opening = new() { Amount = 1234.50m, StartDate = new DateOnly(2026, 1, 1) };
+    private static readonly Settings Opening = new() { OpeningBalance = 1234.50m, StartDate = new DateOnly(2026, 1, 1) };
 
     [Fact]
     public void On_the_opening_date_it_is_the_opening_amount()

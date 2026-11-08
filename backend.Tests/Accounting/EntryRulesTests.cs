@@ -4,7 +4,7 @@ namespace backend.Tests.Accounting;
 
 public class EntryRulesTests
 {
-    private static readonly OpeningBalance Opening = new() { Amount = 0m, StartDate = new DateOnly(2026, 1, 1) };
+    private static readonly Settings Opening = new() { OpeningBalance = 0m, StartDate = new DateOnly(2026, 1, 1) };
 
     private static readonly ChartOfAccounts Chart = ChartOfAccounts.Parse(
         """

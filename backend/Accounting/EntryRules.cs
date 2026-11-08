@@ -4,7 +4,7 @@ namespace backend.Accounting;
 public static class EntryRules
 {
     public static string? Validate(
-        OpeningBalance? opening,
+        Settings? opening,
         ChartOfAccounts chart,
         DateOnly date,
         string? text,

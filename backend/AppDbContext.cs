@@ -5,16 +5,16 @@ using Microsoft.EntityFrameworkCore;
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Person> Persons => Set<Person>();
-    public DbSet<OpeningBalance> OpeningBalances => Set<OpeningBalance>();
-    public DbSet<Entry> Entries => Set<Entry>();
+    public DbSet<Settings> Settings => Set<Settings>();
+    public DbSet<Entry> JournalEntries => Set<Entry>();
     public DbSet<AccountUsage> AccountUsages => Set<AccountUsage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<OpeningBalance>(e =>
+        modelBuilder.Entity<Settings>(e =>
         {
             e.Property(o => o.Id).ValueGeneratedNever();
-            e.Property(o => o.Amount).HasPrecision(18, 2);
+            e.Property(o => o.OpeningBalance).HasPrecision(18, 2);
         });
         modelBuilder.Entity<AccountUsage>(e =>
         {

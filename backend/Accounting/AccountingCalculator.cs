@@ -7,18 +7,18 @@ public static class AccountingCalculator
     /// Erwarteter Kontostand on <paramref name="date"/>: the Anfangssaldo plus all Buchungen up to that date.
     /// Returns null before the Anfangssaldo start date, where no balance is defined.
     /// </summary>
-    public static decimal? ExpectedBalance(OpeningBalance opening, DateOnly date)
+    public static decimal? ExpectedBalance(Settings opening, DateOnly date)
     {
         if (date < opening.StartDate)
         {
             return null;
         }
 
-        return opening.Amount;
+        return opening.OpeningBalance;
     }
 
     /// <summary>Erwarteter Kontostand on <paramref name="date"/>, counting all entries dated up to and including it.</summary>
-    public static decimal? ExpectedBalance(OpeningBalance opening, IEnumerable<Entry> entries, DateOnly date)
+    public static decimal? ExpectedBalance(Settings opening, IEnumerable<Entry> entries, DateOnly date)
     {
         if (ExpectedBalance(opening, date) is not { } start)
         {
@@ -32,9 +32,9 @@ public static class AccountingCalculator
     /// The whole journal, newest first (same-day ties by creation order, i.e. Id), each row carrying the
     /// running Erwarteter Kontostand up to and including that row. Always takes the unfiltered journal.
     /// </summary>
-    public static IReadOnlyList<JournalRow> RunningBalances(OpeningBalance opening, IEnumerable<Entry> entries)
+    public static IReadOnlyList<JournalRow> RunningBalances(Settings opening, IEnumerable<Entry> entries)
     {
-        var balance = opening.Amount;
+        var balance = opening.OpeningBalance;
         var rows = new List<JournalRow>();
         foreach (var entry in entries.OrderBy(e => e.Date).ThenBy(e => e.Id))
         {

@@ -120,7 +120,7 @@ api.MapPost(
 api.MapGet(
     "/opening-balance",
     async (AppDbContext db) =>
-        await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId) is { } ob
+        await db.Settings.FindAsync(Settings.SingletonId) is { } ob
             ? Results.Ok(ob)
             : Results.NotFound()
 );
@@ -129,27 +129,27 @@ api.MapPut(
     "/opening-balance",
     async (OpeningBalanceUpdate update, AppDbContext db) =>
     {
-        if (update.Amount != decimal.Round(update.Amount, 2))
+        if (update.OpeningBalance != decimal.Round(update.OpeningBalance, 2))
         {
             return Results.BadRequest(new { error = "Der Betrag darf höchstens zwei Dezimalstellen haben." });
         }
 
-        var earliest = await db.Entries.AnyAsync()
-            ? await db.Entries.MinAsync(e => e.Date)
+        var earliest = await db.JournalEntries.AnyAsync()
+            ? await db.JournalEntries.MinAsync(e => e.Date)
             : (DateOnly?)null;
         if (EntryRules.ValidateOpeningStartDate(update.StartDate, earliest) is { } dateError)
         {
             return Results.BadRequest(new { error = dateError });
         }
 
-        var ob = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        var ob = await db.Settings.FindAsync(Settings.SingletonId);
         if (ob is null)
         {
-            ob = new OpeningBalance();
-            db.OpeningBalances.Add(ob);
+            ob = new Settings();
+            db.Settings.Add(ob);
         }
 
-        ob.Amount = update.Amount;
+        ob.OpeningBalance = update.OpeningBalance;
         ob.StartDate = update.StartDate;
 
         await db.SaveChangesAsync();
@@ -167,13 +167,13 @@ api.MapGet(
         AppDbContext db
     ) =>
     {
-        var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        var opening = await db.Settings.FindAsync(Settings.SingletonId);
         if (opening is null)
         {
             return [];
         }
 
-        var entries = await db.Entries.ToListAsync();
+        var entries = await db.JournalEntries.ToListAsync();
         // Balances are computed over the whole journal; filters only hide rows.
         return JournalFilter
             .Apply(AccountingCalculator.RunningBalances(opening, entries), from, to, accountNumber, search)
@@ -186,13 +186,13 @@ api.MapGet(
     "/expected-balance",
     async (DateOnly date, AppDbContext db) =>
     {
-        var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        var opening = await db.Settings.FindAsync(Settings.SingletonId);
         if (opening is null)
         {
             return Results.NotFound();
         }
 
-        var entries = await db.Entries.Where(e => e.Date <= date).ToListAsync();
+        var entries = await db.JournalEntries.Where(e => e.Date <= date).ToListAsync();
         return Results.Ok(new { date, balance = AccountingCalculator.ExpectedBalance(opening, entries, date) });
     }
 );
@@ -201,7 +201,7 @@ api.MapPost(
     "/entries",
     async (EntryInput input, AppDbContext db, ChartOfAccounts chart) =>
     {
-        var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        var opening = await db.Settings.FindAsync(Settings.SingletonId);
         if (EntryRules.Validate(opening, chart, input.Date, input.Text, input.AccountNumber, input.Amount) is { } error)
         {
             return Results.BadRequest(new { error });
@@ -214,7 +214,7 @@ api.MapPost(
             AccountNumber = input.AccountNumber,
             Amount = input.Amount,
         };
-        db.Entries.Add(entry);
+        db.JournalEntries.Add(entry);
         await SaveEntryChangeAsync(db, chart);
         return Results.Created($"/api/entries/{entry.Id}", entry);
     }
@@ -224,12 +224,12 @@ api.MapPut(
     "/entries/{id:int}",
     async (int id, EntryInput input, AppDbContext db, ChartOfAccounts chart) =>
     {
-        var entry = await db.Entries.FindAsync(id);
+        var entry = await db.JournalEntries.FindAsync(id);
         if (entry is null)
         {
             return Results.NotFound();
         }
-        var opening = await db.OpeningBalances.FindAsync(OpeningBalance.SingletonId);
+        var opening = await db.Settings.FindAsync(Settings.SingletonId);
         if (
             EntryRules.Validate(
                 opening,
@@ -258,12 +258,12 @@ api.MapDelete(
     "/entries/{id:int}",
     async (int id, AppDbContext db, ChartOfAccounts chart) =>
     {
-        var entry = await db.Entries.FindAsync(id);
+        var entry = await db.JournalEntries.FindAsync(id);
         if (entry is null)
         {
             return Results.NotFound();
         }
-        db.Entries.Remove(entry);
+        db.JournalEntries.Remove(entry);
         await SaveEntryChangeAsync(db, chart);
         return Results.NoContent();
     }
@@ -281,7 +281,7 @@ app.Run();
 static Dictionary<int, Category> SyncAccountUsages(AppDbContext db, ChartOfAccounts chart)
 {
     var usages = db.AccountUsages.ToList();
-    var used = db.Entries.Select(e => e.AccountNumber).Distinct().ToList();
+    var used = db.JournalEntries.Select(e => e.AccountNumber).Distinct().ToList();
     var recordedNumbers = usages.Select(u => u.AccountNumber).ToList();
 
     var unused = AccountUsageRules.Unused(recordedNumbers, used);
@@ -319,7 +319,7 @@ record EntryInput(DateOnly Date, string Text, int AccountNumber, decimal Amount)
 
 record JournalEntryDto(int Id, DateOnly Date, string Text, int AccountNumber, decimal Amount, decimal Balance);
 
-record OpeningBalanceUpdate(decimal Amount, DateOnly StartDate);
+record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
 
 record PersonUpdate(
     string FirstName,
