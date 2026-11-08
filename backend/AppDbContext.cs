@@ -28,7 +28,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         });
         modelBuilder.Entity<TextTemplate>(e =>
         {
-            e.Property(x => x.Title).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Subject).IsRequired().HasMaxLength(200);
             e.Property(x => x.Text).IsRequired();
             e.Property(x => x.Greetings).IsRequired();
         });

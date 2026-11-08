@@ -74,7 +74,7 @@ export function CreatePanel({ onDone }: { onDone: () => void }) {
           <option value="">Textvorlage wählen…</option>
           {templates.map((t) => (
             <option key={t.id} value={t.id}>
-              {t.title}
+              {t.subject}
             </option>
           ))}
         </select>

@@ -35,7 +35,7 @@ The bank account balance (an amount and a start date) from which the Erwarteter 
 The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen whose Bewegung is dated up to that date. The user compares it by eye against the bank statement.
 
 **Textvorlage** (code: _TextTemplate_):
-A reusable set of Titel, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. Zero Textvorlagen is a valid state.
+A reusable set of Betreff, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. Zero Textvorlagen is a valid state.
 
 **Rechnung** (code: _Invoice_):
 A bill to one Person, created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Textvorlage texts live only in that PDF. It has no link to a Textvorlage and none to the Buchhaltung.

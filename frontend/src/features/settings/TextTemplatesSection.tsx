@@ -19,7 +19,7 @@ export function TextTemplatesSection() {
     setError(null)
     setEditing(
       template
-        ? { id: template.id, draft: { title: template.title, text: template.text, greetings: template.greetings } }
+        ? { id: template.id, draft: { subject: template.subject, text: template.text, greetings: template.greetings } }
         : { id: null, draft: emptyTextTemplateDraft },
     )
   }
@@ -81,7 +81,7 @@ export function TextTemplatesSection() {
               onClick={() => open(t)}
               className={`w-full rounded px-3 py-2 text-left hover:bg-sky-50 ${editing?.id === t.id ? 'bg-sky-100' : ''}`}
             >
-              {t.title}
+              {t.subject}
             </button>
           </li>
         ))}
@@ -89,8 +89,8 @@ export function TextTemplatesSection() {
       {editing && (
         <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3 rounded border border-slate-200 p-4">
           <label className="flex flex-col text-sm">
-            Titel
-            <input value={editing.draft.title} onChange={(e) => change('title', e.target.value)} className={inputClass} />
+            Betreff
+            <input value={editing.draft.subject} onChange={(e) => change('subject', e.target.value)} className={inputClass} />
           </label>
           <label className="flex flex-col text-sm">
             Text

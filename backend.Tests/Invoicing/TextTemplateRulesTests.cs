@@ -12,18 +12,18 @@ public class TextTemplateRulesTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void A_missing_title_is_rejected(string? title) =>
-        Assert.Equal("Der Titel ist erforderlich.", TextTemplateRules.Validate(title, "Text", "Grüsse"));
+    public void A_missing_title_is_rejected(string? subject) =>
+        Assert.Equal("Der Betreff ist erforderlich.", TextTemplateRules.Validate(subject, "Text", "Grüsse"));
 
     [Theory]
     [InlineData(null)]
     [InlineData(" ")]
     public void A_missing_text_is_rejected(string? text) =>
-        Assert.Equal("Der Text ist erforderlich.", TextTemplateRules.Validate("Titel", text, "Grüsse"));
+        Assert.Equal("Der Text ist erforderlich.", TextTemplateRules.Validate("Betreff", text, "Grüsse"));
 
     [Theory]
     [InlineData(null)]
     [InlineData(" ")]
     public void Missing_greetings_are_rejected(string? greetings) =>
-        Assert.Equal("Die Grüsse sind erforderlich.", TextTemplateRules.Validate("Titel", "Text", greetings));
+        Assert.Equal("Die Grüsse sind erforderlich.", TextTemplateRules.Validate("Betreff", "Text", greetings));
 }

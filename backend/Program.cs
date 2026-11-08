@@ -349,14 +349,14 @@ api.MapDelete(
 
 api.MapGet(
     "/text-templates",
-    async (AppDbContext db) => await db.TextTemplates.OrderBy(t => t.Title).ThenBy(t => t.Id).ToListAsync()
+    async (AppDbContext db) => await db.TextTemplates.OrderBy(t => t.Subject).ThenBy(t => t.Id).ToListAsync()
 );
 
 api.MapPost(
     "/text-templates",
     async (TextTemplateInput input, AppDbContext db) =>
     {
-        if (TextTemplateRules.Validate(input.Title, input.Text, input.Greetings) is { } error)
+        if (TextTemplateRules.Validate(input.Subject, input.Text, input.Greetings) is { } error)
         {
             return Results.BadRequest(new { error });
         }
@@ -371,7 +371,7 @@ api.MapPut(
     "/text-templates/{id:int}",
     async (int id, TextTemplateInput input, AppDbContext db) =>
     {
-        if (TextTemplateRules.Validate(input.Title, input.Text, input.Greetings) is { } error)
+        if (TextTemplateRules.Validate(input.Subject, input.Text, input.Greetings) is { } error)
         {
             return Results.BadRequest(new { error });
         }
@@ -544,7 +544,7 @@ static async Task<Dictionary<int, Person>> PeopleByIdAsync(AppDbContext db, IEnu
 // Copies an already validated Textvorlage input onto the entity, trimmed.
 static TextTemplate ApplyInput(TextTemplate template, TextTemplateInput input)
 {
-    template.Title = input.Title!.Trim();
+    template.Subject = input.Subject!.Trim();
     template.Text = input.Text!.Trim();
     template.Greetings = input.Greetings!.Trim();
     return template;
@@ -585,7 +585,7 @@ record TransactionInput(DateOnly Date, decimal Amount, string? Text, int? Person
 
 record TransactionDto(int Id, DateOnly Date, decimal Amount, string? Text, int? PersonId, decimal Balance, List<int> EntryIds);
 
-record TextTemplateInput(string? Title, string? Text, string? Greetings);
+record TextTemplateInput(string? Subject, string? Text, string? Greetings);
 
 record InvoiceLineInput(string? Text, decimal Amount);
 

@@ -36,7 +36,7 @@ public class InvoiceCreator(AppDbContext db, IInvoiceStorage storage, ILogger<In
                     InvoiceTime.ZurichDate(now),
                     $"{person.FirstName} {person.LastName}",
                     InvoiceDocument.AddressLines(person.Address, person.PostalCode, person.City, person.Country),
-                    template.Title,
+                    template.Subject,
                     template.Text,
                     template.Greetings,
                     invoice.Lines.Select(l => new InvoiceLineDraft(l.Text, l.Amount)).ToList()
