@@ -10,6 +10,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Invoicing\logo-placeholder.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="4.0.104.11" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
