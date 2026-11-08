@@ -319,7 +319,8 @@ api.MapPut(
                 transaction.Amount,
                 input.Date,
                 input.Amount
-            ) is { } bankFactError
+            ) is
+            { } bankFactError
         )
         {
             return Results.BadRequest(new { error = bankFactError });
@@ -423,6 +424,7 @@ api.MapPost(
                 .Transactions.Where(t => t.BankReference != null)
                 .Select(t => t.BankReference!)
                 .ToListAsync();
+            var persons = await db.Persons.ToListAsync();
             byte[] zip;
             await using (var upload = file.OpenReadStream())
             using (var memory = new MemoryStream())
@@ -431,7 +433,10 @@ api.MapPost(
                 zip = memory.ToArray();
             }
 
-            var result = BankImport.Import(zip, new ImportSnapshot(settings, existingReferences));
+            var result = BankImport.Import(
+                zip,
+                new ImportSnapshot(settings, existingReferences, persons)
+            );
             if (result.Errors.Count > 0)
             {
                 return Results.BadRequest(new { errors = result.Errors });
@@ -444,6 +449,7 @@ api.MapPost(
                     Amount = t.Amount,
                     Text = t.Text,
                     BankReference = t.BankReference,
+                    PersonId = t.PersonId,
                 })
             );
             await SaveEntryChangeAsync(db, chart);

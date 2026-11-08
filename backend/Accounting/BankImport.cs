@@ -1,18 +1,21 @@
 using System.Globalization;
 using System.IO.Compression;
+using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 
 namespace backend.Accounting;
 
-/// <summary>
-/// The state the bank import validates against: the club settings (Klub-IBAN, Startdatum) and the
-/// BankReferences already stored. Persons will join this snapshot with Person matching.
-/// </summary>
-public record ImportSnapshot(Settings Settings, IReadOnlyCollection<string> ExistingBankReferences);
+using Person = backend.Person.Person;
 
-/// <summary>One imported Bewegung to save: the bank's booking date, the signed amount, the text and the BankReference. It has no Buchungen yet.</summary>
-public record ImportedTransaction(DateOnly Date, decimal Amount, string? Text, string BankReference);
+/// <summary>
+/// The state the bank import validates against: the club settings (Klub-IBAN, Startdatum), the
+/// BankReferences already stored, and all Persons (including former members) for counterparty matching.
+/// </summary>
+public record ImportSnapshot(Settings Settings, IReadOnlyCollection<string> ExistingBankReferences, IReadOnlyCollection<Person> Persons);
+
+/// <summary>One imported Bewegung to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId.</summary>
+public record ImportedTransaction(DateOnly Date, decimal Amount, string? Text, string BankReference, int? PersonId);
 
 /// <summary>One problem found in one file; File is null for a problem of the zip itself.</summary>
 public record ImportError(string? File, string Message);
@@ -24,7 +27,8 @@ public record BankImportResult(List<ImportedTransaction> Transactions, int Skipp
 /// The pure bank import: reads every CAMT.053 file of an eBanking zip entirely in memory and creates one
 /// Bewegung per transaction: an entry without TxDtls, or one of its TxDtls for a batch entry. It does no
 /// database access, uses only the .NET standard library's zip and XML support, and never uses entry names
-/// as file paths. Person matching comes in a follow-up ticket.
+/// as file paths. The counterparty of each transaction is linked to the matching Person when the bank
+/// address matches; the parser and the matcher are internal details of this module.
 /// </summary>
 public static class BankImport
 {
@@ -39,6 +43,9 @@ public static class BankImport
 
     /// <summary>The maximum length of a Bewegung text, the same limit as the Text column.</summary>
     private const int MaxTextLength = 500;
+
+    /// <summary>The minimum similarity for a street or house number to count as nearly identical.</summary>
+    private const double MinimumSimilarity = 0.9;
 
     /// <summary>DTDs are prohibited, which also disables external entities.</summary>
     private static readonly XmlReaderSettings XmlReaderSettings = new()
@@ -320,25 +327,268 @@ public static class BankImport
             .ToList();
         var addtlNtryInf = Local(ntry, "AddtlNtryInf")?.Value?.Trim();
         var text = ustrd.Count > 0 ? string.Join(' ', ustrd) : (string.IsNullOrEmpty(addtlNtryInf) ? null : addtlNtryInf);
-        // No Person is matched yet; until one is, the counterparty name goes in front of the text.
-        var counterparty = CounterpartyNameOf(transaction, direction);
-        if (text is not null && counterparty is not null)
+        var counterpartyParty = CounterpartyPartyOf(transaction, direction);
+        var counterparty = CounterpartyNameOf(counterpartyParty);
+        var person = MatchPerson(counterparty, BankAddressOf(counterpartyParty), context.Snapshot.Persons);
+        // A matched counterparty is linked to its Person and the text is kept as-is; otherwise the name goes in front.
+        if (person is null && text is not null && counterparty is not null)
         {
             var prefixed = $"{counterparty} – {text}";
             text = prefixed.Length > MaxTextLength ? prefixed[..MaxTextLength] : prefixed;
         }
-        context.Transactions.Add(new ImportedTransaction(date, signedAmount, text, bankReference));
+        context.Transactions.Add(new ImportedTransaction(date, signedAmount, text, bankReference, person?.Id));
+    }
+
+    /// <summary>The counterparty party of a transaction: the Dbtr (payer) for a credit, the Cdtr (payee) for a debit.</summary>
+    private static XElement? CounterpartyPartyOf(XElement transaction, string direction) =>
+        direction == "CRDT" ? Local(transaction, "Dbtr") : Local(transaction, "Cdtr");
+
+    /// <summary>
+    /// The counterparty name of a party, read in both known shapes (<c>Nm</c> in .02, <c>Pty/Nm</c> in .08).
+    /// </summary>
+    private static string? CounterpartyNameOf(XElement? party)
+    {
+        var name = (Local(party, "Nm")?.Value ?? Local(Local(party, "Pty"), "Nm")?.Value)?.Trim();
+        return string.IsNullOrEmpty(name) ? null : name;
+    }
+
+    /// <summary>The normalised PLZ, street and house number of a bank counterparty's postal address.</summary>
+    private sealed record BankAddress(string PostalCode, string Street, string HouseNumber);
+
+    /// <summary>
+    /// The postal address (PstA, directly or under Pty) of a party, reduced to what matching needs: the PLZ,
+    /// the street and the house number, all normalised. Street and number come from StrtNm plus BldgNb; without
+    /// a BldgNb, StrtNm is split at the last token that starts with a digit; otherwise the first AdrLine that
+    /// looks like street plus number is used. The PLZ comes from PstCd, or else from an AdrLine of the form
+    /// "&lt;PLZ&gt; &lt;Ort&gt;". Null when any of the three is missing on the bank side.
+    /// </summary>
+    private static BankAddress? BankAddressOf(XElement? party)
+    {
+        var address = party is null ? null : Local(party, "PstA") ?? Local(Local(party, "Pty"), "PstA");
+        if (address is null)
+        {
+            return null;
+        }
+
+        var streetName = Local(address, "StrtNm")?.Value?.Trim();
+        var buildingNumber = Local(address, "BldgNb")?.Value?.Trim();
+        var addressLines = LocalAll(address, "AdrLine").Select(l => l.Value.Trim()).Where(l => l.Length > 0).ToList();
+
+        string? street = null;
+        string? houseNumber = null;
+        if (!string.IsNullOrEmpty(streetName) && !string.IsNullOrEmpty(buildingNumber))
+        {
+            street = streetName;
+            houseNumber = buildingNumber;
+        }
+        else if (!string.IsNullOrEmpty(streetName))
+        {
+            var tokens = streetName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var splitAt = IndexOfLastDigitToken(tokens);
+            if (splitAt > 0)
+            {
+                street = string.Join(' ', tokens[..splitAt]);
+                houseNumber = tokens[splitAt];
+            }
+        }
+        if (street is null)
+        {
+            foreach (var line in addressLines)
+            {
+                var tokens = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (tokens.Length >= 2 && char.IsDigit(tokens[^1][0]) && tokens[..^1].Any(t => !char.IsDigit(t[0])))
+                {
+                    street = string.Join(' ', tokens[..^1]);
+                    houseNumber = tokens[^1];
+                    break;
+                }
+            }
+        }
+
+        var postalCode = Local(address, "PstCd")?.Value?.Trim();
+        if (string.IsNullOrEmpty(postalCode))
+        {
+            postalCode = PostalCodeFromAddressLines(addressLines);
+        }
+
+        if (string.IsNullOrEmpty(street) || string.IsNullOrEmpty(houseNumber) || string.IsNullOrEmpty(postalCode))
+        {
+            return null;
+        }
+
+        return new BankAddress(Normalize(postalCode), NormalizeStreet(street), Normalize(houseNumber));
+    }
+
+    /// <summary>The index of the last token that starts with a digit, or -1 when there is none.</summary>
+    private static int IndexOfLastDigitToken(string[] tokens)
+    {
+        for (var i = tokens.Length - 1; i >= 0; i--)
+        {
+            if (char.IsDigit(tokens[i][0]))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /// <summary>The PLZ of the first AdrLine of the form "&lt;PLZ&gt; &lt;Ort&gt;", or null when there is none.</summary>
+    private static string? PostalCodeFromAddressLines(IReadOnlyList<string> lines)
+    {
+        foreach (var line in lines)
+        {
+            var tokens = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length >= 2 && tokens[0].Length is >= 4 and <= 5 && tokens[0].All(char.IsDigit))
+            {
+                return tokens[0];
+            }
+        }
+        return null;
     }
 
     /// <summary>
-    /// The counterparty name of a transaction: the Dbtr (payer) for a credit, the Cdtr (payee) for a debit,
-    /// read from the transaction's related parties in both known shapes (<c>Nm</c> in .02, <c>Pty/Nm</c> in .08).
+    /// The Person whose address matches the counterparty's bank address: the PLZ is equal, the street and the
+    /// house number are nearly identical (similarity at least 0.9) and the normalised last name appears in the
+    /// normalised bank name. All Persons are candidates, including former members; a candidate whose first name
+    /// is also in the bank name ranks first, and within the same rank the lowest PersonId wins.
     /// </summary>
-    private static string? CounterpartyNameOf(XElement transaction, string direction)
+    private static Person? MatchPerson(string? bankName, BankAddress? bankAddress, IReadOnlyCollection<Person> persons)
     {
-        var party = direction == "CRDT" ? Local(transaction, "Dbtr") : Local(transaction, "Cdtr");
-        var name = (Local(party, "Nm")?.Value ?? Local(Local(party, "Pty"), "Nm")?.Value)?.Trim();
-        return string.IsNullOrEmpty(name) ? null : name;
+        if (bankAddress is null)
+        {
+            return null;
+        }
+
+        var normalizedBankName = bankName is null ? null : Normalize(bankName);
+        var best = (Person?)null;
+        var bestFirstHit = false;
+        foreach (var person in persons)
+        {
+            if (!Matches(person, bankAddress, normalizedBankName))
+            {
+                continue;
+            }
+
+            var firstHit = !string.IsNullOrEmpty(person.FirstName)
+                && normalizedBankName is not null
+                && normalizedBankName.Contains(Normalize(person.FirstName), StringComparison.Ordinal);
+            if (best is null
+                || (firstHit && !bestFirstHit)
+                || (firstHit == bestFirstHit && person.Id < best.Id))
+            {
+                best = person;
+                bestFirstHit = firstHit;
+            }
+        }
+        return best;
+    }
+
+    private static bool Matches(Person person, BankAddress address, string? bankName)
+    {
+        if (string.IsNullOrEmpty(person.PostalCode) || string.IsNullOrEmpty(person.Street) || string.IsNullOrEmpty(person.HouseNumber))
+        {
+            return false;
+        }
+
+        var lastName = Normalize(person.LastName);
+        if (lastName.Length == 0 || bankName is null || !bankName.Contains(lastName, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return Normalize(person.PostalCode) == address.PostalCode
+            && Similarity(NormalizeStreet(person.Street), address.Street) >= MinimumSimilarity
+            && Similarity(Normalize(person.HouseNumber), address.HouseNumber) >= MinimumSimilarity;
+    }
+
+    /// <summary>The similarity of two strings: 1 minus the Levenshtein distance divided by the length of the longer string; two empty strings are identical.</summary>
+    private static double Similarity(string a, string b)
+    {
+        var longer = Math.Max(a.Length, b.Length);
+        return longer == 0 ? 1 : 1 - (double)LevenshteinDistance(a, b) / longer;
+    }
+
+    /// <summary>The Levenshtein distance by dynamic programming over one row; address parts are short strings.</summary>
+    private static int LevenshteinDistance(string a, string b)
+    {
+        var distance = new int[b.Length + 1];
+        for (var j = 0; j <= b.Length; j++)
+        {
+            distance[j] = j;
+        }
+        for (var i = 1; i <= a.Length; i++)
+        {
+            var previous = distance[0];
+            distance[0] = i;
+            for (var j = 1; j <= b.Length; j++)
+            {
+                var current = distance[j];
+                distance[j] = Math.Min(distance[j] + 1, Math.Min(distance[j - 1] + 1, previous + (a[i - 1] == b[j - 1] ? 0 : 1)));
+                previous = current;
+            }
+        }
+        return distance[b.Length];
+    }
+
+    /// <summary>The whitespace characters collapsed when normalising.</summary>
+    private static readonly char[] Whitespace = [' ', '\t', '\n', '\r', '\f', '\v'];
+
+    /// <summary>
+    /// Normalises both sides of the match: lower case, trimmed, whitespace collapsed, accents stripped (which
+    /// folds the umlauts), ß becomes ss, and the umlaut spellings ae/oe/ue become the single letter.
+    /// </summary>
+    private static string Normalize(string value)
+    {
+        var collapsed = string.Join(' ', value.ToLowerInvariant().Split(Whitespace, StringSplitOptions.RemoveEmptyEntries));
+        var withoutAccents = new string(
+            collapsed.Normalize(NormalizationForm.FormD).Where(c => char.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray()
+        );
+        return withoutAccents.Replace("ß", "ss").Replace("ae", "a").Replace("oe", "o").Replace("ue", "u");
+    }
+
+    /// <summary>Normalises a street name and expands the street abbreviations as whole tokens or word endings.</summary>
+    private static string NormalizeStreet(string value) =>
+        string.Join(' ', Normalize(value).Split(' ').Select(ExpandStreetAbbreviation));
+
+    private static string ExpandStreetAbbreviation(string token)
+    {
+        if (token is "str." or "str")
+        {
+            return "strasse";
+        }
+        if (token.EndsWith("str.", StringComparison.Ordinal))
+        {
+            return token[..^4] + "strasse";
+        }
+        if (token.EndsWith("str", StringComparison.Ordinal))
+        {
+            return token[..^3] + "strasse";
+        }
+        if (token is "g.")
+        {
+            return "gasse";
+        }
+        if (token.EndsWith("g.", StringComparison.Ordinal))
+        {
+            return token[..^2] + "gasse";
+        }
+        if (token is "pl.")
+        {
+            return "platz";
+        }
+        if (token.EndsWith("pl.", StringComparison.Ordinal))
+        {
+            return token[..^3] + "platz";
+        }
+        if (token is "wg.")
+        {
+            return "weg";
+        }
+        if (token.EndsWith("wg.", StringComparison.Ordinal))
+        {
+            return token[..^3] + "weg";
+        }
+        return token;
     }
 
     private sealed class ImportContext(ImportSnapshot snapshot)
