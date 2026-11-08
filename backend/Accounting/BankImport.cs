@@ -37,6 +37,9 @@ public static class BankImport
     /// <summary>...and about this many bytes in total, uncompressed.</summary>
     private const long MaxUncompressedBytes = 10 * 1024 * 1024;
 
+    /// <summary>The maximum length of a Bewegung text, the same limit as the Text column.</summary>
+    private const int MaxTextLength = 500;
+
     /// <summary>DTDs are prohibited, which also disables external entities.</summary>
     private static readonly XmlReaderSettings XmlReaderSettings = new()
     {
@@ -316,14 +319,26 @@ public static class BankImport
             .Where(v => v.Length > 0)
             .ToList();
         var addtlNtryInf = Local(ntry, "AddtlNtryInf")?.Value?.Trim();
-        context.Transactions.Add(
-            new ImportedTransaction(
-                date,
-                signedAmount,
-                ustrd.Count > 0 ? string.Join(' ', ustrd) : (string.IsNullOrEmpty(addtlNtryInf) ? null : addtlNtryInf),
-                bankReference
-            )
-        );
+        var text = ustrd.Count > 0 ? string.Join(' ', ustrd) : (string.IsNullOrEmpty(addtlNtryInf) ? null : addtlNtryInf);
+        // No Person is matched yet; until one is, the counterparty name goes in front of the text.
+        var counterparty = CounterpartyNameOf(transaction, direction);
+        if (text is not null && counterparty is not null)
+        {
+            var prefixed = $"{counterparty} – {text}";
+            text = prefixed.Length > MaxTextLength ? prefixed[..MaxTextLength] : prefixed;
+        }
+        context.Transactions.Add(new ImportedTransaction(date, signedAmount, text, bankReference));
+    }
+
+    /// <summary>
+    /// The counterparty name of a transaction: the Dbtr (payer) for a credit, the Cdtr (payee) for a debit,
+    /// read from the transaction's related parties in both known shapes (<c>Nm</c> in .02, <c>Pty/Nm</c> in .08).
+    /// </summary>
+    private static string? CounterpartyNameOf(XElement transaction, string direction)
+    {
+        var party = direction == "CRDT" ? Local(transaction, "Dbtr") : Local(transaction, "Cdtr");
+        var name = (Local(party, "Nm")?.Value ?? Local(Local(party, "Pty"), "Nm")?.Value)?.Trim();
+        return string.IsNullOrEmpty(name) ? null : name;
     }
 
     private sealed class ImportContext(ImportSnapshot snapshot)
