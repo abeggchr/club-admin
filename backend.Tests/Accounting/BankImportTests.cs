@@ -80,6 +80,84 @@ public class BankImportTests
     }
 
     [Fact]
+    public void The_counterparty_of_a_credit_is_the_Dbtr_name_in_front_of_the_text()
+    {
+        var ntry = """
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <TxDtls>
+                <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
+                <Amt Ccy="CHF">100.00</Amt>
+                <Dbtr><Pty><Nm>M. Muster</Nm></Pty></Dbtr>
+                <Cdtr><Pty><Nm>SCW Zug</Nm></Pty></Cdtr>
+                <Ustrd>Jahresbeitrag</Ustrd>
+              </TxDtls>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        Assert.Equal("M. Muster – Jahresbeitrag", Assert.Single(Import(zip).Transactions).Text);
+    }
+
+    [Fact]
+    public void The_counterparty_of_a_debit_is_the_Cdtr_name_in_front_of_the_text()
+    {
+        var ntry = """
+            <Ntry>
+              <Amt Ccy="CHF">45.20</Amt>
+              <CdtDbtInd>DBIT</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <TxDtls>
+                <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
+                <Amt Ccy="CHF">45.20</Amt>
+                <Dbtr><Pty><Nm>SCW Zug</Nm></Pty></Dbtr>
+                <Cdtr><Pty><Nm>Bäckerei Beispiel</Nm></Pty></Cdtr>
+                <Ustrd>Miete Februar</Ustrd>
+              </TxDtls>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        Assert.Equal("Bäckerei Beispiel – Miete Februar", Assert.Single(Import(zip).Transactions).Text);
+    }
+
+    [Fact]
+    public void Without_a_counterparty_the_text_is_unchanged()
+    {
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1", ustrd: "Jahresbeitrag"))));
+
+        Assert.Equal("Jahresbeitrag", Assert.Single(Import(zip).Transactions).Text);
+    }
+
+    [Fact]
+    public void The_prefixed_text_is_truncated_to_the_500_character_limit()
+    {
+        var ntry = $"""
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <TxDtls>
+                <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
+                <Amt Ccy="CHF">100.00</Amt>
+                <Dbtr><Pty><Nm>Langer Name</Nm></Pty></Dbtr>
+                <Ustrd>{new string('a', 490)}</Ustrd>
+              </TxDtls>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var text = Assert.Single(Import(zip).Transactions).Text!;
+        Assert.Equal(500, text.Length);
+        Assert.StartsWith("Langer Name – ", text);
+    }
+
+    [Fact]
     public void A_file_with_a_namespace_that_is_not_CAMT_053_is_an_error_naming_the_file()
     {
         var zip = Zip(
@@ -141,7 +219,8 @@ public class BankImportTests
         var transaction = Assert.Single(result.Transactions);
         Assert.Empty(result.Errors);
         Assert.Equal(100.00m, transaction.Amount);
-        Assert.Equal("Jahresbeitrag", transaction.Text);
+        // The dot 02 counterparty name (Dbtr/Nm) is put in front of the text, too.
+        Assert.Equal("M. Muster – Jahresbeitrag", transaction.Text);
         Assert.Equal("TX1", transaction.BankReference);
     }
 
@@ -448,14 +527,32 @@ public class BankImportTests
     }
 
     [Fact]
+    public void A_batch_entry_uses_the_counterparty_of_its_own_TxDtls_per_transaction()
+    {
+        var ntry = BatchNtry(
+            "150.00",
+            "DBIT",
+            "2026-02-10",
+            ("B1", "100.00", "Mitgliedsbeitrag", "A. Anna"),
+            ("B2", "50.00", "Verbandsbeitrag", "B. Beat")
+        );
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var result = Import(zip);
+        Assert.Empty(result.Errors);
+        Assert.Equal("A. Anna – Mitgliedsbeitrag", result.Transactions[0].Text);
+        Assert.Equal("B. Beat – Verbandsbeitrag", result.Transactions[1].Text);
+    }
+
+    [Fact]
     public void A_batch_entry_becomes_one_transaction_per_TxDtls_with_own_amount_text_and_reference()
     {
         var ntry = BatchNtry(
             "150.00",
             "DBIT",
             "2026-02-10",
-            ("B1", "100.00", "Miete Februar"),
-            ("B2", "50.00", "Strom")
+            ("B1", "100.00", "Miete Februar", null),
+            ("B2", "50.00", "Strom", null)
         );
         var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
 
@@ -482,8 +579,8 @@ public class BankImportTests
             "150.00",
             "DBIT",
             "2026-02-10",
-            ("B1", "100.00", "Miete Februar"),
-            ("B2", "40.00", "Strom")
+            ("B1", "100.00", "Miete Februar", null),
+            ("B2", "40.00", "Strom", null)
         );
         var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
 
@@ -501,8 +598,8 @@ public class BankImportTests
             "150.00",
             "DBIT",
             "2026-02-10",
-            ("B1", "100.00", "Miete Februar"),
-            ("B2", "50.00", "Strom")
+            ("B1", "100.00", "Miete Februar", null),
+            ("B2", "50.00", "Strom", null)
         );
         var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
 
@@ -673,8 +770,8 @@ public class BankImportTests
         </Ntry>
         """;
 
-    /// <summary>One Ntry with several TxDtls, the shape of a batch payment: one debit paying several people.</summary>
-    private static string BatchNtry(string ntryAmount, string direction, string date, params (string Ref, string Amount, string? Ustrd)[] details)
+    /// <summary>One Ntry with several TxDtls, the shape of a batch payment: one debit paying several people. Each TxDtls may carry its own Cdtr.</summary>
+    private static string BatchNtry(string ntryAmount, string direction, string date, params (string Ref, string Amount, string? Ustrd, string? Cdtr)[] details)
     {
         var txDtls = string.Join(
             "\n",
@@ -684,6 +781,7 @@ public class BankImportTests
                       <Refs><AcctSvcrRef>{d.Ref}</AcctSvcrRef></Refs>
                       <Amt Ccy="CHF">{d.Amount}</Amt>
                       {(d.Ustrd is null ? "" : $"<Ustrd>{d.Ustrd}</Ustrd>")}
+                      {(d.Cdtr is null ? "" : $"<Cdtr><Pty><Nm>{d.Cdtr}</Nm></Pty></Cdtr>")}
                     </TxDtls>
                     """
             )
