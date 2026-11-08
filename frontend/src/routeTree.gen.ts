@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountingRouteImport } from './routes/accounting'
+import { Route as InvoicesRouteImport } from './routes/invoices'
 import { Route as PersonsRouteImport } from './routes/persons'
 import { Route as SettingsRouteImport } from './routes/settings'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const AccountingRoute = AccountingRouteImport.update({
   id: '/accounting',
   path: '/accounting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoicesRoute = InvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PersonsRoute = PersonsRouteImport.update({
@@ -38,12 +44,14 @@ const SettingsRoute = SettingsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
+  '/invoices': typeof InvoicesRoute
   '/persons': typeof PersonsRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
+  '/invoices': typeof InvoicesRoute
   '/persons': typeof PersonsRoute
   '/settings': typeof SettingsRoute
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
+  '/invoices': typeof InvoicesRoute
   '/persons': typeof PersonsRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/accounting' | '/persons' | '/settings'
+  fullPaths: '/' | '/accounting' | '/invoices' | '/persons' | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/accounting' | '/persons' | '/settings'
-  id: '__root__' | '/' | '/accounting' | '/persons' | '/settings'
+  to: '/' | '/accounting' | '/invoices' | '/persons' | '/settings'
+  id: '__root__' | '/' | '/accounting' | '/invoices' | '/persons' | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountingRoute: typeof AccountingRoute
+  InvoicesRoute: typeof InvoicesRoute
   PersonsRoute: typeof PersonsRoute
   SettingsRoute: typeof SettingsRoute
 }
@@ -83,6 +93,13 @@ declare module '@tanstack/react-router' {
       path: '/accounting'
       fullPath: '/accounting'
       preLoaderRoute: typeof AccountingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoices': {
+      id: '/invoices'
+      path: '/invoices'
+      fullPath: '/invoices'
+      preLoaderRoute: typeof InvoicesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/persons': {
@@ -105,6 +122,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountingRoute: AccountingRoute,
+  InvoicesRoute: InvoicesRoute,
   PersonsRoute: PersonsRoute,
   SettingsRoute: SettingsRoute,
 }
