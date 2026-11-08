@@ -11,5 +11,5 @@ public interface IInvoiceStorage
 
 public static class InvoiceStorageKey
 {
-    public static string For(int number) => $"invoices/{number:D4}.pdf";
+    public static string For(int number) => $"invoices/{InvoiceRules.FormatNumber(number)}.pdf";
 }

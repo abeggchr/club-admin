@@ -13,7 +13,7 @@ docker run --name scw-postgres -d -p 5432:5432 \
   -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=railway postgres:17
 ```
 
-This matches the connection string in `backend/appsettings.json`. Migrations are applied on backend startup.
+This matches the connection string in `backend/appsettings.Development.json`. Migrations are applied on backend startup.
 
 ### 2. MinIO (object storage)
 

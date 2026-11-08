@@ -34,12 +34,11 @@ public static class InvoiceDocument
 
     private static readonly byte[] Logo = LoadLogo();
 
-    /// <summary>The club is well below the revenue threshold of the QuestPDF Community license.</summary>
+    /// <summary>The club is well below the revenue threshold of the QuestPDF Community license. Call once at startup.</summary>
     public static void UseCommunityLicense() => QuestPDF.Settings.License = LicenseType.Community;
 
     public static byte[] Render(InvoiceDocumentData data)
     {
-        UseCommunityLicense();
         var total = InvoiceRules.Total(data.Lines);
         return Document
             .Create(doc =>

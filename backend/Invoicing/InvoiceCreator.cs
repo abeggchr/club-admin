@@ -8,8 +8,6 @@ public record InvoiceCreationResult(Invoice? Invoice, string? Error);
 /// </summary>
 public class InvoiceCreator(AppDbContext db, IInvoiceStorage storage, ILogger<InvoiceCreator> logger)
 {
-    private static readonly TimeZoneInfo Zurich = TimeZoneInfo.FindSystemTimeZoneById("Europe/Zurich");
-
     public async Task<InvoiceCreationResult> CreateAsync(
         backend.Person.Person person,
         TextTemplate template,
@@ -20,7 +18,7 @@ public class InvoiceCreator(AppDbContext db, IInvoiceStorage storage, ILogger<In
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         try
         {
-            var now = TimeZoneInfo.ConvertTime(DateTime.UtcNow, Zurich);
+            var now = DateTime.UtcNow;
             var invoice = new Invoice
             {
                 PersonId = person.Id,
@@ -35,7 +33,7 @@ public class InvoiceCreator(AppDbContext db, IInvoiceStorage storage, ILogger<In
             var pdf = InvoiceDocument.Render(
                 new InvoiceDocumentData(
                     InvoiceRules.FormatNumber(invoice.Id),
-                    DateOnly.FromDateTime(now),
+                    InvoiceTime.ZurichDate(now),
                     $"{person.FirstName} {person.LastName}",
                     InvoiceDocument.AddressLines(person.Address, person.PostalCode, person.City, person.Country),
                     template.Title,
@@ -47,6 +45,11 @@ public class InvoiceCreator(AppDbContext db, IInvoiceStorage storage, ILogger<In
             await storage.PutAsync(invoice.Id, pdf, ct);
             await tx.CommitAsync(ct);
             return new InvoiceCreationResult(invoice, null);
+        }
+        catch (OperationCanceledException)
+        {
+            db.ChangeTracker.Clear();
+            throw;
         }
         catch (Exception e)
         {

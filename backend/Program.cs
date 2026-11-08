@@ -360,12 +360,7 @@ api.MapPost(
         {
             return Results.BadRequest(new { error });
         }
-        var template = new TextTemplate
-        {
-            Title = input.Title!.Trim(),
-            Text = input.Text!.Trim(),
-            Greetings = input.Greetings!.Trim(),
-        };
+        var template = ApplyInput(new TextTemplate(), input);
         db.TextTemplates.Add(template);
         await db.SaveChangesAsync();
         return Results.Created($"/api/text-templates/{template.Id}", template);
@@ -385,9 +380,7 @@ api.MapPut(
         {
             return Results.NotFound();
         }
-        template.Title = input.Title!.Trim();
-        template.Text = input.Text!.Trim();
-        template.Greetings = input.Greetings!.Trim();
+        ApplyInput(template, input);
         await db.SaveChangesAsync();
         return Results.Ok(template);
     }
@@ -412,14 +405,11 @@ api.MapGet(
     "/invoices",
     async (AppDbContext db) =>
     {
-        var invoices = await db.Invoices
-            .AsNoTracking()
-            .Include(i => i.Lines)
-            .Include(i => i.StatusChanges)
+        var invoices = await db.Invoices.WithDetails()
             .OrderByDescending(i => i.Id)
             .ToListAsync();
         var people = await PeopleByIdAsync(db, invoices.Select(i => i.PersonId));
-        return invoices.Select(i => ToInvoiceListItem(i, people[i.PersonId])).ToList();
+        return invoices.Select(i => InvoiceMapping.ToInvoiceListItem(i, people[i.PersonId])).ToList();
     }
 );
 
@@ -427,17 +417,14 @@ api.MapGet(
     "/invoices/{id:int}",
     async (int id, AppDbContext db) =>
     {
-        var invoice = await db.Invoices
-            .AsNoTracking()
-            .Include(i => i.Lines)
-            .Include(i => i.StatusChanges)
+        var invoice = await db.Invoices.WithDetails()
             .FirstOrDefaultAsync(i => i.Id == id);
         if (invoice is null)
         {
             return Results.NotFound();
         }
         var people = await PeopleByIdAsync(db, [invoice.PersonId]);
-        return Results.Ok(ToInvoiceDetail(invoice, people[invoice.PersonId]));
+        return Results.Ok(InvoiceMapping.ToInvoiceDetail(invoice, people[invoice.PersonId]));
     }
 );
 
@@ -466,7 +453,7 @@ api.MapPost(
         {
             return Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status500InternalServerError);
         }
-        return Results.Created($"/api/invoices/{invoice.Id}", ToInvoiceDetail(invoice, person));
+        return Results.Created($"/api/invoices/{invoice.Id}", InvoiceMapping.ToInvoiceDetail(invoice, person));
     }
 );
 
@@ -554,35 +541,14 @@ static async Task<Dictionary<int, Person>> PeopleByIdAsync(AppDbContext db, IEnu
     return await db.Persons.AsNoTracking().Where(p => wanted.Contains(p.Id)).ToDictionaryAsync(p => p.Id);
 }
 
-static string DisplayName(Person p) => $"{p.LastName} {p.FirstName}";
-
-static InvoiceStatusChange CurrentStatus(Invoice i) => i.StatusChanges.OrderBy(s => s.Timestamp).ThenBy(s => s.Id).Last();
-
-static DateOnly InvoiceDate(Invoice i) =>
-    DateOnly.FromDateTime(i.StatusChanges.First(s => s.Status == InvoiceStatus.Created).Timestamp);
-
-static InvoiceListItemDto ToInvoiceListItem(Invoice i, Person p) =>
-    new(
-        i.Id,
-        InvoiceRules.FormatNumber(i.Id),
-        InvoiceDate(i),
-        new InvoicePersonDto(p.Id, DisplayName(p)),
-        i.Lines.Sum(l => l.Amount),
-        CurrentStatus(i).Status.ToString()
-    );
-
-static InvoiceDetailDto ToInvoiceDetail(Invoice i, Person p) =>
-    new(
-        i.Id,
-        InvoiceRules.FormatNumber(i.Id),
-        InvoiceDate(i),
-        new InvoicePersonDetailDto(p.Id, DisplayName(p), p.Address, p.PostalCode, p.City, p.Country),
-        i.Lines.OrderBy(l => l.Position).Select(l => new InvoiceLineDto(l.Text, l.Amount)).ToList(),
-        i.Lines.Sum(l => l.Amount),
-        CurrentStatus(i).Status.ToString(),
-        i.StatusChanges.OrderBy(s => s.Timestamp).ThenBy(s => s.Id)
-            .Select(s => new InvoiceStatusChangeDto(s.Status.ToString(), s.Timestamp)).ToList()
-    );
+// Copies an already validated Textvorlage input onto the entity, trimmed.
+static TextTemplate ApplyInput(TextTemplate template, TextTemplateInput input)
+{
+    template.Title = input.Title!.Trim();
+    template.Text = input.Text!.Trim();
+    template.Greetings = input.Greetings!.Trim();
+    return template;
+}
 
 static string? NormalizeText(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
@@ -624,41 +590,6 @@ record TextTemplateInput(string? Title, string? Text, string? Greetings);
 record InvoiceLineInput(string? Text, decimal Amount);
 
 record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines);
-
-record InvoicePersonDto(int Id, string Name);
-
-record InvoiceListItemDto(
-    int Id,
-    string Number,
-    DateOnly Date,
-    InvoicePersonDto Person,
-    decimal Total,
-    string Status
-);
-
-record InvoiceLineDto(string Text, decimal Amount);
-
-record InvoiceStatusChangeDto(string Status, DateTime Timestamp);
-
-record InvoicePersonDetailDto(
-    int Id,
-    string Name,
-    string? Address,
-    string? PostalCode,
-    string? City,
-    string? Country
-);
-
-record InvoiceDetailDto(
-    int Id,
-    string Number,
-    DateOnly Date,
-    InvoicePersonDetailDto Person,
-    List<InvoiceLineDto> Lines,
-    decimal Total,
-    string Status,
-    List<InvoiceStatusChangeDto> StatusHistory
-);
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
 
