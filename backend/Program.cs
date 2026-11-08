@@ -337,6 +337,55 @@ api.MapDelete(
     }
 );
 
+// Imports one Bewegung per simple CAMT.053 entry of the eBanking zip (ticket #25); a re-import skips
+// transactions whose BankReference is already stored.
+api.MapPost(
+        "/transactions/import",
+        async (IFormFile file, AppDbContext db, ChartOfAccounts chart) =>
+        {
+            var settings = await db.Settings.FindAsync(Settings.SingletonId);
+            if (settings is null)
+            {
+                return Results.BadRequest(
+                    new { error = "Bitte zuerst die Einstellungen (Anfangssaldo, Startdatum, IBAN) speichern." }
+                );
+            }
+
+            var existingReferences = await db.Transactions
+                .Where(t => t.BankReference != null)
+                .Select(t => t.BankReference!)
+                .ToListAsync();
+            byte[] zip;
+            await using (var upload = file.OpenReadStream())
+            using (var memory = new MemoryStream())
+            {
+                await upload.CopyToAsync(memory);
+                zip = memory.ToArray();
+            }
+
+            var result = BankImport.Import(zip, new ImportSnapshot(settings, existingReferences));
+            if (result.Errors.Count > 0)
+            {
+                return Results.BadRequest(new { errors = result.Errors });
+            }
+
+            db.Transactions.AddRange(
+                result.Transactions.Select(
+                    t => new Transaction
+                    {
+                        Date = t.Date,
+                        Amount = t.Amount,
+                        Text = t.Text,
+                        BankReference = t.BankReference,
+                    }
+                )
+            );
+            await SaveEntryChangeAsync(db, chart);
+            return Results.Ok(new { imported = result.Transactions.Count, skippedDuplicates = result.SkippedDuplicates });
+        }
+    )
+    .DisableAntiforgery();
+
 // SPA fallback for client-side routes (not for unknown /api paths or files).
 app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
@@ -409,6 +458,7 @@ static async Task<List<TransactionDto>> LoadTransactionDtosAsync(AppDbContext db
             r.Transaction.Amount,
             r.Transaction.Text,
             r.Transaction.PersonId,
+            r.Transaction.BankReference,
             r.Balance,
             r.Transaction.Entries.Select(e => e.Id).Order().ToList()
         ))
@@ -429,7 +479,7 @@ record TransactionEntryInput(int? Id, string? Text, int AccountNumber, decimal A
 
 record TransactionInput(DateOnly Date, decimal Amount, string? Text, int? PersonId, List<TransactionEntryInput>? Entries);
 
-record TransactionDto(int Id, DateOnly Date, decimal Amount, string? Text, int? PersonId, decimal Balance, List<int> EntryIds);
+record TransactionDto(int Id, DateOnly Date, decimal Amount, string? Text, int? PersonId, string? BankReference, decimal Balance, List<int> EntryIds);
 
 record SettingsUpdate(decimal OpeningBalance, DateOnly StartDate, string? Iban);
 

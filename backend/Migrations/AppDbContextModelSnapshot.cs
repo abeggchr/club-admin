@@ -99,6 +99,10 @@ namespace backend.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("BankReference")
+                        .HasMaxLength(35)
+                        .HasColumnType("character varying(35)");
+
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
@@ -110,6 +114,9 @@ namespace backend.Migrations
                         .HasColumnType("character varying(500)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BankReference")
+                        .IsUnique();
 
                     b.HasIndex("Date");
 

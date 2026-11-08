@@ -29,6 +29,8 @@ export type Transaction = {
   text: string | null
   /** The optional Person this Bewegung is linked to. */
   personId: number | null
+  /** The bank's reference of an imported Bewegung; null for manual ones. */
+  bankReference: string | null
   /** The Ids of its Buchungen; empty means it is not booked yet ("Keine Buchung"). */
   entryIds: number[]
   balance: number
