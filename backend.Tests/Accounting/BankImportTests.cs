@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Linq;
 using backend.Accounting;
 
 namespace backend.Tests.Accounting;
@@ -76,6 +77,288 @@ public class BankImportTests
         var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, TxDtlsNtry("50.00", "CRDT", "2026-02-10", "TX1", addtl: "Zahlungsverkehrspreise"))));
 
         Assert.Equal("Zahlungsverkehrspreise", Assert.Single(Import(zip).Transactions).Text);
+    }
+
+    [Fact]
+    public void A_file_with_a_namespace_that_is_not_CAMT_053_is_an_error_naming_the_file()
+    {
+        var zip = Zip(
+            ("20260210.xml", CamtFileIn("urn:iso:std:iso:20022:tech:xsd:camt.054.001.08", "20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")))
+        );
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Contains("CAMT.053", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void A_file_without_a_namespace_is_an_error()
+    {
+        var zip = Zip(
+            ("20260210.xml", CamtFileIn("", "20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")))
+        );
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Contains("CAMT.053", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void A_dot_02_shaped_file_is_imported()
+    {
+        var ntry = """
+            <Ntry>
+              <AmtDtls>
+                <TxAmt><Amt Ccy="CHF">100.00</Amt></TxAmt>
+              </AmtDtls>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <TxDtls>
+                <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
+                <AmtDtls>
+                  <TxAmt><Amt Ccy="CHF">100.00</Amt></TxAmt>
+                </AmtDtls>
+                <Dbtr>
+                  <Nm>M. Muster</Nm>
+                </Dbtr>
+                <Ustrd>Jahresbeitrag</Ustrd>
+              </TxDtls>
+            </Ntry>
+            """;
+        var zip = Zip(
+            (
+                "20260210.xml",
+                CamtFileIn("urn:iso:std:iso:20022:tech:xsd:camt.053.001.02", "20260210", ClubIban, ntry)
+            )
+        );
+
+        var result = Import(zip);
+        var transaction = Assert.Single(result.Transactions);
+        Assert.Empty(result.Errors);
+        Assert.Equal(100.00m, transaction.Amount);
+        Assert.Equal("Jahresbeitrag", transaction.Text);
+        Assert.Equal("TX1", transaction.BankReference);
+    }
+
+    [Fact]
+    public void An_entry_without_a_status_is_an_error_naming_the_file()
+    {
+        var ntry = """
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <AcctSvcrRef>TX1</AcctSvcrRef>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Contains("Status", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Theory]
+    [InlineData("PDNG")]
+    [InlineData("POST")]
+    [InlineData("CHAR")]
+    public void An_entry_with_a_status_other_than_BOOK_is_an_error_naming_the_file(string status)
+    {
+        var ntry = $"""
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts>{status}</Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <AcctSvcrRef>TX1</AcctSvcrRef>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Contains(status, error.Message);
+        Assert.Contains("BOOK", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void A_status_written_as_Sts_Cd_is_read_the_same_way()
+    {
+        var ntry = """
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts><Cd>BOOK</Cd></Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <AcctSvcrRef>TX1</AcctSvcrRef>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var result = Import(zip);
+        Assert.Single(result.Transactions);
+        Assert.Empty(result.Errors);
+    }
+
+    [Fact]
+    public void An_entry_marked_as_reversal_is_an_error_naming_the_file()
+    {
+        var ntry = """
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <RvslInd>true</RvslInd>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <AcctSvcrRef>TX1</AcctSvcrRef>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Contains("Storn", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void A_reversal_marked_inside_the_transaction_details_is_an_error()
+    {
+        var ntry = """
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <TxDtls>
+                <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
+                <Amt Ccy="CHF">100.00</Amt>
+                <RvslInd>true</RvslInd>
+              </TxDtls>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var error = Assert.Single(Import(zip).Errors);
+        Assert.Contains("Storn", error.Message);
+    }
+
+    [Fact]
+    public void A_file_without_the_account_IBAN_is_an_error_naming_the_file()
+    {
+        var ntry = """
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <AcctSvcrRef>TX1</AcctSvcrRef>
+            </Ntry>
+            """;
+        var document = $"""
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Stmt xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+              <Id>20260210</Id>
+              {ntry}
+            </Stmt>
+            """;
+        var zip = Zip(("20260210.xml", document));
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Contains("IBAN", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void An_entry_without_an_amount_is_an_error_naming_the_file()
+    {
+        var ntry = """
+            <Ntry>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <AcctSvcrRef>TX1</AcctSvcrRef>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Contains("Betrag", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void An_entry_without_a_direction_is_an_error_naming_the_file()
+    {
+        var ntry = """
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <AcctSvcrRef>TX1</AcctSvcrRef>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Contains("Gutschrift", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void An_entry_without_a_booking_date_is_an_error_naming_the_file()
+    {
+        var ntry = """
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <AcctSvcrRef>TX1</AcctSvcrRef>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Contains("Buchungsdatum", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void An_entry_without_a_bank_reference_is_an_error_naming_the_file()
+    {
+        var ntry = """
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+            </Ntry>
+            """;
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Contains("Bankreferenz", error.Message);
+        Assert.Empty(result.Transactions);
     }
 
     [Fact]
@@ -191,6 +474,91 @@ public class BankImportTests
     }
 
     [Fact]
+    public void A_zip_with_more_than_100_xml_files_is_rejected()
+    {
+        var files = Enumerable.Range(1, 101)
+            .Select(i => ($"{i:000}.xml", CamtFile($"{i:000}", ClubIban, TxDtlsNtry("1.00", "CRDT", "2026-02-10", $"TX{i}"))))
+            .ToArray();
+
+        var result = Import(Zip(files));
+        var error = Assert.Single(result.Errors);
+        Assert.Null(error.File);
+        Assert.Contains("100", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void A_zip_with_exactly_100_xml_files_is_accepted()
+    {
+        var files = Enumerable.Range(1, 100)
+            .Select(i => ($"{i:000}.xml", CamtFile($"{i:000}", ClubIban, TxDtlsNtry("1.00", "CRDT", "2026-02-10", $"TX{i}"))))
+            .ToArray();
+
+        var result = Import(Zip(files));
+        Assert.Equal(100, result.Transactions.Count);
+        Assert.Empty(result.Errors);
+    }
+
+    [Fact]
+    public void A_zip_with_more_than_10_MB_uncompressed_is_rejected()
+    {
+        var zip = Zip(("big.xml", new string('a', 10 * 1024 * 1024 + 1)));
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Null(error.File);
+        Assert.Contains("10 MB", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void A_file_with_a_DTD_is_rejected_naming_the_file()
+    {
+        var document = $"""
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE Stmt [
+              <!ENTITY status "BOOK">
+            ]>
+            <Stmt xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+              <Id>20260210</Id>
+              <Acct>
+                <Id>
+                  <IBAN>{ClubIban}</IBAN>
+                </Id>
+              </Acct>
+              <Ntry>
+                <Amt Ccy="CHF">100.00</Amt>
+                <CdtDbtInd>CRDT</CdtDbtInd>
+                <Sts>&status;</Sts>
+                <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+                <AcctSvcrRef>TX1</AcctSvcrRef>
+              </Ntry>
+            </Stmt>
+            """;
+        var zip = Zip(("20260210.xml", document));
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void Non_xml_entries_and_directories_are_ignored()
+    {
+        var zip = Zip(
+            ("readme.txt", "Kein XML"),
+            ("documents.xml/", ""),
+            ("20260210/", ""),
+            ("20260210.xml", CamtFile("20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")))
+        );
+
+        var result = Import(zip);
+        Assert.Single(result.Transactions);
+        Assert.Empty(result.Errors);
+    }
+
+    [Fact]
     public void Non_xml_entries_are_ignored()
     {
         var zip = Zip(
@@ -231,9 +599,12 @@ public class BankImportTests
         return stream.ToArray();
     }
 
-    private static string CamtFile(string name, string iban, params string[] ntries) => $"""
+    private static string CamtFile(string name, string iban, params string[] ntries) =>
+        CamtFileIn("urn:iso:std:iso:20022:tech:xsd:camt.053.001.08", name, iban, ntries);
+
+    private static string CamtFileIn(string ns, string name, string iban, params string[] ntries) => $"""
         <?xml version="1.0" encoding="UTF-8"?>
-        <Stmt xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+        <Stmt xmlns="{ns}">
           <Id>{name}</Id>
           <CreDtTm>2026-02-11T00:00:00</CreDtTm>
           <Acct>
