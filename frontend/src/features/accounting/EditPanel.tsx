@@ -38,7 +38,7 @@ type Props = {
   onDirtyChange?: (dirty: boolean) => void
 }
 
-export function EntryForm({ entry, onDone, onDirtyChange }: Props = {}) {
+export function EditPanel({ entry, onDone, onDirtyChange }: Props = {}) {
   const queryClient = useQueryClient()
   const { data: accounts } = useSuspenseQuery(accountsQueryOptions)
   const { data: openingBalance } = useSuspenseQuery(openingBalanceQueryOptions)

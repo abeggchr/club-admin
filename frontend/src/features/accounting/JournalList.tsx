@@ -4,7 +4,7 @@ import { createColumnHelper, flexRender, tableFeatures, useTable } from '@tansta
 import { MdAdd } from 'react-icons/md'
 import { accountsQueryOptions, entriesQueryOptions } from './api'
 import { BalanceAtDate } from './BalanceAtDate'
-import { EntryForm } from './EntryForm'
+import { EditPanel } from './EditPanel.tsx'
 import { formatChf } from './amount'
 import { accountLabel } from './KontoPicker'
 import type { JournalEntry } from './types'
@@ -83,7 +83,7 @@ export function JournalList() {
       <div className="mt-4 flex items-start gap-4">
         {(mode.kind === 'add' || editing) && (
           <aside className="w-1/3 shrink-0 rounded border border-slate-200 p-4">
-            <EntryForm
+            <EditPanel
               key={editing ? editing.id : 'new'}
               entry={editing}
               onDone={() => setMode({ kind: 'closed' })}
