@@ -127,7 +127,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
           {errors?.date && <span className="text-red-600">{errors.date}</span>}
         </label>
         <label className="flex flex-1 flex-col text-sm">
-          Betrag (CHF)
+          Betrag
           <input
             inputMode="decimal"
             value={draft.amount}
@@ -176,7 +176,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
               {errors?.entries[i]?.account && <span className="text-red-600">{errors.entries[i].account}</span>}
             </label>
             <label className="flex flex-1 flex-col text-sm">
-              Betrag (CHF)
+              Betrag
               <input
                 inputMode="decimal"
                 value={entryAmount(draft, i, accounts)}
@@ -197,7 +197,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
       </button>
       {rest !== null && (
         <p className={`text-sm ${rest === 0 ? 'text-slate-600' : 'font-medium text-red-700'}`}>
-          Differenz CHF {formatChf(rest)}
+          Differenz {formatChf(rest)}
         </p>
       )}
       {errors?.remainder && <p className="text-red-600">{errors.remainder}</p>}

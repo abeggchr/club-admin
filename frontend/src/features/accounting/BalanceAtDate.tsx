@@ -21,7 +21,7 @@ export function BalanceAtDate() {
       >
         {isError ? (
           <span className="text-red-600">konnte nicht geladen werden.</span>
-        ) : data ? (data.balance === null ? 'vor dem Anfangssaldo' : `CHF ${formatChf(data.balance)}`) : ''}
+        ) : data ? (data.balance === null ? 'vor dem Anfangssaldo' : formatChf(data.balance)) : ''}
       </span>
     </p>
   )

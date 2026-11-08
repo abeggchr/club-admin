@@ -41,7 +41,7 @@ export function SettingsPage() {
       <form onSubmit={onSubmit} noValidate className="mt-6 flex max-w-sm flex-col gap-3">
         <h3 className="font-medium">Anfangssaldo</h3>
         <label className="flex flex-col text-sm">
-          Betrag (CHF)
+          Betrag
           <input
             inputMode="decimal"
             value={amount}
