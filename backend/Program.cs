@@ -14,6 +14,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 );
 
 builder.Services.AddObjectStorage(builder.Configuration);
+builder.Services.AddScoped<InvoiceCreator>();
+InvoiceDocument.UseCommunityLicense();
 
 // A malformed Kontoplan file fails startup (see ADR 0001).
 builder.Services.AddSingleton(
@@ -406,6 +408,87 @@ api.MapDelete(
     }
 );
 
+api.MapGet(
+    "/invoices",
+    async (AppDbContext db) =>
+    {
+        var invoices = await db.Invoices
+            .AsNoTracking()
+            .Include(i => i.Lines)
+            .Include(i => i.StatusChanges)
+            .OrderByDescending(i => i.Id)
+            .ToListAsync();
+        var people = await PeopleByIdAsync(db, invoices.Select(i => i.PersonId));
+        return invoices.Select(i => ToInvoiceListItem(i, people[i.PersonId])).ToList();
+    }
+);
+
+api.MapGet(
+    "/invoices/{id:int}",
+    async (int id, AppDbContext db) =>
+    {
+        var invoice = await db.Invoices
+            .AsNoTracking()
+            .Include(i => i.Lines)
+            .Include(i => i.StatusChanges)
+            .FirstOrDefaultAsync(i => i.Id == id);
+        if (invoice is null)
+        {
+            return Results.NotFound();
+        }
+        var people = await PeopleByIdAsync(db, [invoice.PersonId]);
+        return Results.Ok(ToInvoiceDetail(invoice, people[invoice.PersonId]));
+    }
+);
+
+api.MapPost(
+    "/invoices",
+    async (InvoiceInput input, AppDbContext db, InvoiceCreator creator, CancellationToken ct) =>
+    {
+        var lines = (input.Lines ?? []).Select(l => new InvoiceLineDraft(l.Text, l.Amount)).ToList();
+        if (InvoiceRules.Validate(input.PersonId, input.TemplateId, lines) is { } error)
+        {
+            return Results.BadRequest(new { error });
+        }
+        var person = await db.Persons.FindAsync([input.PersonId!.Value], ct);
+        if (person is null)
+        {
+            return Results.BadRequest(new { error = "Die Person existiert nicht." });
+        }
+        var template = await db.TextTemplates.FindAsync([input.TemplateId!.Value], ct);
+        if (template is null)
+        {
+            return Results.BadRequest(new { error = "Die Textvorlage existiert nicht." });
+        }
+
+        var result = await creator.CreateAsync(person, template, lines, ct);
+        if (result.Invoice is not { } invoice)
+        {
+            return Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status500InternalServerError);
+        }
+        return Results.Created($"/api/invoices/{invoice.Id}", ToInvoiceDetail(invoice, person));
+    }
+);
+
+api.MapGet(
+    "/invoices/{id:int}/pdf",
+    async (int id, AppDbContext db, IInvoiceStorage storage, HttpContext http, CancellationToken ct) =>
+    {
+        if (!await db.Invoices.AnyAsync(i => i.Id == id, ct))
+        {
+            return Results.NotFound();
+        }
+        var pdf = await storage.GetAsync(id, ct);
+        if (pdf is null)
+        {
+            return Results.NotFound();
+        }
+        // Set directly: Results.File with a filename would emit "attachment".
+        http.Response.Headers.ContentDisposition = $"inline; filename=\"Rechnung-{InvoiceRules.FormatNumber(id)}.pdf\"";
+        return Results.Bytes(pdf, "application/pdf");
+    }
+);
+
 // SPA fallback for client-side routes (not for unknown /api paths or files).
 app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
@@ -465,6 +548,42 @@ static async Task<TransactionDto> LoadTransactionDtoAsync(AppDbContext db, Setti
     (await LoadTransactionDtosAsync(db, opening)).Single(t => t.Id == id);
 
 // All Bewegungen, newest first, each with the Kontostand after it.
+static async Task<Dictionary<int, Person>> PeopleByIdAsync(AppDbContext db, IEnumerable<int> ids)
+{
+    var wanted = ids.Distinct().ToList();
+    return await db.Persons.AsNoTracking().Where(p => wanted.Contains(p.Id)).ToDictionaryAsync(p => p.Id);
+}
+
+static string DisplayName(Person p) => $"{p.LastName} {p.FirstName}";
+
+static InvoiceStatusChange CurrentStatus(Invoice i) => i.StatusChanges.OrderBy(s => s.Timestamp).ThenBy(s => s.Id).Last();
+
+static DateOnly InvoiceDate(Invoice i) =>
+    DateOnly.FromDateTime(i.StatusChanges.First(s => s.Status == InvoiceStatus.Created).Timestamp);
+
+static InvoiceListItemDto ToInvoiceListItem(Invoice i, Person p) =>
+    new(
+        i.Id,
+        InvoiceRules.FormatNumber(i.Id),
+        InvoiceDate(i),
+        new InvoicePersonDto(p.Id, DisplayName(p)),
+        i.Lines.Sum(l => l.Amount),
+        CurrentStatus(i).Status.ToString()
+    );
+
+static InvoiceDetailDto ToInvoiceDetail(Invoice i, Person p) =>
+    new(
+        i.Id,
+        InvoiceRules.FormatNumber(i.Id),
+        InvoiceDate(i),
+        new InvoicePersonDetailDto(p.Id, DisplayName(p), p.Address, p.PostalCode, p.City, p.Country),
+        i.Lines.OrderBy(l => l.Position).Select(l => new InvoiceLineDto(l.Text, l.Amount)).ToList(),
+        i.Lines.Sum(l => l.Amount),
+        CurrentStatus(i).Status.ToString(),
+        i.StatusChanges.OrderBy(s => s.Timestamp).ThenBy(s => s.Id)
+            .Select(s => new InvoiceStatusChangeDto(s.Status.ToString(), s.Timestamp)).ToList()
+    );
+
 static string? NormalizeText(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
 static async Task<List<TransactionDto>> LoadTransactionDtosAsync(AppDbContext db, Settings opening)
@@ -501,6 +620,45 @@ record TransactionInput(DateOnly Date, decimal Amount, string? Text, int? Person
 record TransactionDto(int Id, DateOnly Date, decimal Amount, string? Text, int? PersonId, decimal Balance, List<int> EntryIds);
 
 record TextTemplateInput(string? Title, string? Text, string? Greetings);
+
+record InvoiceLineInput(string? Text, decimal Amount);
+
+record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines);
+
+record InvoicePersonDto(int Id, string Name);
+
+record InvoiceListItemDto(
+    int Id,
+    string Number,
+    DateOnly Date,
+    InvoicePersonDto Person,
+    decimal Total,
+    string Status
+);
+
+record InvoiceLineDto(string Text, decimal Amount);
+
+record InvoiceStatusChangeDto(string Status, DateTime Timestamp);
+
+record InvoicePersonDetailDto(
+    int Id,
+    string Name,
+    string? Address,
+    string? PostalCode,
+    string? City,
+    string? Country
+);
+
+record InvoiceDetailDto(
+    int Id,
+    string Number,
+    DateOnly Date,
+    InvoicePersonDetailDto Person,
+    List<InvoiceLineDto> Lines,
+    decimal Total,
+    string Status,
+    List<InvoiceStatusChangeDto> StatusHistory
+);
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
 

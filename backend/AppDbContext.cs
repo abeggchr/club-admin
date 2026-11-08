@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Entry> JournalEntries => Set<Entry>();
     public DbSet<AccountUsage> AccountUsages => Set<AccountUsage>();
     public DbSet<TextTemplate> TextTemplates => Set<TextTemplate>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +31,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Title).IsRequired().HasMaxLength(200);
             e.Property(x => x.Text).IsRequired();
             e.Property(x => x.Greetings).IsRequired();
+        });
+        modelBuilder.Entity<Invoice>(e =>
+        {
+            e.HasOne<Person>().WithMany().HasForeignKey(x => x.PersonId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<InvoiceLine>(e =>
+        {
+            e.Property(x => x.Text).IsRequired().HasMaxLength(500);
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.HasOne<Invoice>().WithMany(i => i.Lines).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<InvoiceStatusChange>(e =>
+        {
+            e.Property(x => x.Status).HasConversion<string>();
+            e.HasOne<Invoice>().WithMany(i => i.StatusChanges).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<Transaction>(e =>
         {

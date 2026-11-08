@@ -37,9 +37,25 @@ The amount the bank account should hold on a given date: the Anfangssaldo plus a
 **Textvorlage** (code: _TextTemplate_):
 A reusable set of Titel, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. Zero Textvorlagen is a valid state.
 
+**Rechnung** (code: _Invoice_):
+A bill to one Person, created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Textvorlage texts live only in that PDF. It has no link to a Textvorlage and none to the Buchhaltung.
+
+**Rechnungsposition** (code: _InvoiceLine_):
+One line of a Rechnung: a text and an amount greater than 0. The total of a Rechnung is the sum of its Rechnungspositionen and is not stored.
+
+**Rechnungsnummer**:
+The ID of a Rechnung with at least four digits (0042, 12345). Gaps are possible when a creation fails.
+
+**Rechnungsdatum**:
+The date a Rechnung was created: the date of its Erstellt status change.
+
+**Rechnungsstatus** (code: _InvoiceStatus_):
+A lifecycle step of a Rechnung, recorded as an append-only status change with a timestamp. Currently only Erstellt (_Created_) exists.
+
 ## Relationships
 
 - A Bewegung consists of one or more Buchungen; a Buchung belongs to exactly one Bewegung.
 - A Buchung belongs to exactly one Konto.
 - A Bewegung can optionally be linked to one Person; a Buchung is not linked to a Person.
 - There is one bank account only; cash is not tracked.
+- A Rechnung belongs to exactly one Person, has one or more Rechnungspositionen and one or more status changes.
