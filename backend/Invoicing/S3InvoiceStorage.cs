@@ -95,7 +95,7 @@ public static class ObjectStorageSetup
         var s3 = services.GetRequiredService<IAmazonS3>();
         var bucket = services.GetRequiredService<IOptions<ObjectStorageOptions>>().Value.Bucket;
         var buckets = await s3.ListBucketsAsync();
-        if (!buckets.Buckets.Any(b => b.BucketName == bucket))
+        if (buckets.Buckets is null || !buckets.Buckets.Any(b => b.BucketName == bucket))
         {
             await s3.PutBucketAsync(new PutBucketRequest { BucketName = bucket });
         }
