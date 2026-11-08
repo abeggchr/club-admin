@@ -47,56 +47,89 @@ public static class InvoiceDocument
                     page.Size(PageSizes.A4);
                     page.Margin(PageMarginMm, Unit.Millimetre);
                     page.DefaultTextStyle(t => t.FontSize(11).FontFamily(Fonts.Arial));
-                    page.Content().Column(col =>
-                    {
-                        col.Item().Height(LogoHeightMm, Unit.Millimetre).Width(LogoWidthMm, Unit.Millimetre).Image(Logo);
+                    page.Content()
+                        .Column(col =>
+                        {
+                            col.Item()
+                                .Height(LogoHeightMm, Unit.Millimetre)
+                                .Width(LogoWidthMm, Unit.Millimetre)
+                                .Image(Logo);
 
-                        col.Item()
-                            .PaddingTop(AddressTopMm - PageMarginMm - LogoHeightMm, Unit.Millimetre)
-                            .PaddingLeft(AddressLeftMm - PageMarginMm, Unit.Millimetre)
-                            .Width(AddressWidthMm, Unit.Millimetre)
-                            .Column(addr =>
-                            {
-                                addr.Item().Text(data.RecipientName);
-                                foreach (var line in data.RecipientAddressLines)
-                                    addr.Item().Text(line);
-                            });
+                            col.Item()
+                                .PaddingTop(
+                                    AddressTopMm - PageMarginMm - LogoHeightMm,
+                                    Unit.Millimetre
+                                )
+                                .PaddingLeft(AddressLeftMm - PageMarginMm, Unit.Millimetre)
+                                .Width(AddressWidthMm, Unit.Millimetre)
+                                .Column(addr =>
+                                {
+                                    addr.Item().Text(data.RecipientName);
+                                    foreach (var line in data.RecipientAddressLines)
+                                        addr.Item().Text(line);
+                                });
 
-                        col.Item().PaddingTop(25, Unit.Millimetre).Text($"Rechnungsdatum: {data.Date:dd.MM.yyyy}");
-                        col.Item().PaddingTop(2, Unit.Millimetre).Text($"Rechnung Nr. {data.Number}");
-                        col.Item().PaddingTop(10, Unit.Millimetre).Text(data.TemplateTitle).Bold().FontSize(13);
-                        col.Item().PaddingTop(4, Unit.Millimetre).Text(data.TemplateText);
-                        col.Item()
-                            .PaddingTop(8, Unit.Millimetre)
-                            .Table(table =>
-                            {
-                                table.ColumnsDefinition(c =>
+                            col.Item()
+                                .PaddingTop(25, Unit.Millimetre)
+                                .Text($"Rechnungsdatum: {data.Date:dd.MM.yyyy}");
+                            col.Item()
+                                .PaddingTop(2, Unit.Millimetre)
+                                .Text($"Rechnung Nr. {data.Number}");
+                            col.Item()
+                                .PaddingTop(10, Unit.Millimetre)
+                                .Text(data.TemplateTitle)
+                                .Bold()
+                                .FontSize(13);
+                            col.Item().PaddingTop(4, Unit.Millimetre).Text(data.TemplateText);
+                            col.Item()
+                                .PaddingTop(8, Unit.Millimetre)
+                                .Table(table =>
                                 {
-                                    c.RelativeColumn();
-                                    c.ConstantColumn(35, Unit.Millimetre);
+                                    table.ColumnsDefinition(c =>
+                                    {
+                                        c.RelativeColumn();
+                                        c.ConstantColumn(35, Unit.Millimetre);
+                                    });
+                                    table.Header(h =>
+                                    {
+                                        h.Cell().Element(HeaderCell).Text("Text").Bold();
+                                        h.Cell()
+                                            .Element(HeaderCell)
+                                            .AlignRight()
+                                            .Text("Betrag")
+                                            .Bold();
+                                    });
+                                    foreach (var line in data.Lines)
+                                    {
+                                        table.Cell().Element(BodyCell).Text(line.Text);
+                                        table
+                                            .Cell()
+                                            .Element(BodyCell)
+                                            .AlignRight()
+                                            .Text(FormatAmount(line.Amount));
+                                    }
+                                    table.Cell().Element(TotalCell).Text("Total").Bold();
+                                    table
+                                        .Cell()
+                                        .Element(TotalCell)
+                                        .AlignRight()
+                                        .Text(FormatAmount(total))
+                                        .Bold();
                                 });
-                                table.Header(h =>
-                                {
-                                    h.Cell().Element(HeaderCell).Text("Text").Bold();
-                                    h.Cell().Element(HeaderCell).AlignRight().Text("Betrag").Bold();
-                                });
-                                foreach (var line in data.Lines)
-                                {
-                                    table.Cell().Element(BodyCell).Text(line.Text);
-                                    table.Cell().Element(BodyCell).AlignRight().Text(FormatAmount(line.Amount));
-                                }
-                                table.Cell().Element(TotalCell).Text("Total").Bold();
-                                table.Cell().Element(TotalCell).AlignRight().Text(FormatAmount(total)).Bold();
-                            });
-                        col.Item().PaddingTop(10, Unit.Millimetre).Text(data.TemplateGreetings);
-                    });
+                            col.Item().PaddingTop(10, Unit.Millimetre).Text(data.TemplateGreetings);
+                        });
                 })
             )
             .GeneratePdf();
     }
 
     /// <summary>Address lines below the name: street, "PLZ Ort", Land. Missing parts are omitted.</summary>
-    public static IReadOnlyList<string> AddressLines(string? address, string? postalCode, string? city, string? country)
+    public static IReadOnlyList<string> AddressLines(
+        string? address,
+        string? postalCode,
+        string? city,
+        string? country
+    )
     {
         var lines = new List<string>();
         if (!string.IsNullOrWhiteSpace(address))
@@ -111,7 +144,11 @@ public static class InvoiceDocument
 
     /// <summary>Swiss format, e.g. CHF 1'234.50.</summary>
     public static string FormatAmount(decimal amount) =>
-        "CHF " + amount.ToString("#,##0.00", new NumberFormatInfo { NumberGroupSeparator = "'", NumberDecimalSeparator = "." });
+        "CHF "
+        + amount.ToString(
+            "#,##0.00",
+            new NumberFormatInfo { NumberGroupSeparator = "'", NumberDecimalSeparator = "." }
+        );
 
     private static IContainer HeaderCell(IContainer c) =>
         c.BorderBottom(1).BorderColor(Colors.Black).PaddingVertical(2, Unit.Millimetre);
@@ -124,7 +161,7 @@ public static class InvoiceDocument
     private static byte[] LoadLogo()
     {
         var asm = Assembly.GetExecutingAssembly();
-        var name = asm.GetManifestResourceNames().Single(n => n.EndsWith("logo-placeholder.png"));
+        var name = asm.GetManifestResourceNames().Single(n => n.EndsWith("logo.png"));
         using var stream = asm.GetManifestResourceStream(name)!;
         using var ms = new MemoryStream();
         stream.CopyTo(ms);

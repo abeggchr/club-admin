@@ -6,11 +6,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Update="Accounting\chart-of-accounts.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content
+      Update="Accounting\chart-of-accounts.json"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Invoicing\logo-placeholder.png" />
+    <EmbeddedResource Include="Invoicing\logo.png" />
   </ItemGroup>
 
   <ItemGroup>
