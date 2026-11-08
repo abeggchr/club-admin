@@ -34,6 +34,9 @@ The bank account balance (an amount and a start date) from which the Erwarteter 
 **Erwarteter Kontostand** (code: _ExpectedBalance_):
 The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen whose Bewegung is dated up to that date. The user compares it by eye against the bank statement.
 
+**Textvorlage** (code: _TextTemplate_):
+A reusable set of Titel, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. Zero Textvorlagen is a valid state.
+
 ## Relationships
 
 - A Bewegung consists of one or more Buchungen; a Buchung belongs to exactly one Bewegung.

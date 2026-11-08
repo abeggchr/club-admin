@@ -7,13 +7,13 @@ export type OpeningBalance = {
 }
 
 /** Throws the backend's German error message, or a generic one, for a non-OK response. */
-async function ensureOk(res: Response): Promise<void> {
+export async function ensureOk(res: Response): Promise<void> {
   if (res.ok) return
   const data = await res.json().catch(() => null)
   throw new Error(data?.error ?? `Backend returned ${res.status}`)
 }
 
-async function requestJson<T>(url: string, method: 'POST' | 'PUT', body: unknown): Promise<T> {
+export async function requestJson<T>(url: string, method: 'POST' | 'PUT', body: unknown): Promise<T> {
   const res = await fetch(url, {
     method,
     headers: { 'Content-Type': 'application/json' },
@@ -23,7 +23,7 @@ async function requestJson<T>(url: string, method: 'POST' | 'PUT', body: unknown
   return res.json()
 }
 
-async function getJson<T>(url: string): Promise<T> {
+export async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
   await ensureOk(res)
   return res.json()

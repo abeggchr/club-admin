@@ -1,4 +1,5 @@
 using backend.Accounting;
+using backend.Invoicing;
 using backend.Person;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<Entry> JournalEntries => Set<Entry>();
     public DbSet<AccountUsage> AccountUsages => Set<AccountUsage>();
+    public DbSet<TextTemplate> TextTemplates => Set<TextTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,6 +24,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(u => u.AccountNumber);
             e.Property(u => u.AccountNumber).ValueGeneratedNever();
             e.Property(u => u.Category).HasConversion<string>();
+        });
+        modelBuilder.Entity<TextTemplate>(e =>
+        {
+            e.Property(x => x.Title).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Text).IsRequired();
+            e.Property(x => x.Greetings).IsRequired();
         });
         modelBuilder.Entity<Transaction>(e =>
         {

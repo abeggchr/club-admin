@@ -345,6 +345,67 @@ api.MapDelete(
     }
 );
 
+api.MapGet(
+    "/text-templates",
+    async (AppDbContext db) => await db.TextTemplates.OrderBy(t => t.Title).ThenBy(t => t.Id).ToListAsync()
+);
+
+api.MapPost(
+    "/text-templates",
+    async (TextTemplateInput input, AppDbContext db) =>
+    {
+        if (TextTemplateRules.Validate(input.Title, input.Text, input.Greetings) is { } error)
+        {
+            return Results.BadRequest(new { error });
+        }
+        var template = new TextTemplate
+        {
+            Title = input.Title!.Trim(),
+            Text = input.Text!.Trim(),
+            Greetings = input.Greetings!.Trim(),
+        };
+        db.TextTemplates.Add(template);
+        await db.SaveChangesAsync();
+        return Results.Created($"/api/text-templates/{template.Id}", template);
+    }
+);
+
+api.MapPut(
+    "/text-templates/{id:int}",
+    async (int id, TextTemplateInput input, AppDbContext db) =>
+    {
+        if (TextTemplateRules.Validate(input.Title, input.Text, input.Greetings) is { } error)
+        {
+            return Results.BadRequest(new { error });
+        }
+        var template = await db.TextTemplates.FindAsync(id);
+        if (template is null)
+        {
+            return Results.NotFound();
+        }
+        template.Title = input.Title!.Trim();
+        template.Text = input.Text!.Trim();
+        template.Greetings = input.Greetings!.Trim();
+        await db.SaveChangesAsync();
+        return Results.Ok(template);
+    }
+);
+
+api.MapDelete(
+    "/text-templates/{id:int}",
+    async (int id, AppDbContext db) =>
+    {
+        var template = await db.TextTemplates.FindAsync(id);
+        if (template is null)
+        {
+            return Results.NotFound();
+        }
+        db.TextTemplates.Remove(template);
+        await db.SaveChangesAsync();
+        return Results.NoContent();
+    }
+);
+
 // SPA fallback for client-side routes (not for unknown /api paths or files).
 app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
@@ -438,6 +499,8 @@ record TransactionEntryInput(int? Id, string? Text, int AccountNumber, decimal A
 record TransactionInput(DateOnly Date, decimal Amount, string? Text, int? PersonId, List<TransactionEntryInput>? Entries);
 
 record TransactionDto(int Id, DateOnly Date, decimal Amount, string? Text, int? PersonId, decimal Balance, List<int> EntryIds);
+
+record TextTemplateInput(string? Title, string? Text, string? Greetings);
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
 
