@@ -448,29 +448,70 @@ public class BankImportTests
     }
 
     [Fact]
-    public void An_entry_with_several_TxDtls_is_an_error()
+    public void A_batch_entry_becomes_one_transaction_per_TxDtls_with_own_amount_text_and_reference()
     {
-        var ntry = """
-            <Ntry>
-              <Amt Ccy="CHF">150.00</Amt>
-              <CdtDbtInd>DBIT</CdtDbtInd>
-              <Sts>BOOK</Sts>
-              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-              <AcctSvcrRef>BATCH1</AcctSvcrRef>
-              <TxDtls>
-                <Refs><AcctSvcrRef>B1</AcctSvcrRef></Refs>
-                <Amt Ccy="CHF">100.00</Amt>
-              </TxDtls>
-              <TxDtls>
-                <Refs><AcctSvcrRef>B2</AcctSvcrRef></Refs>
-                <Amt Ccy="CHF">50.00</Amt>
-              </TxDtls>
-            </Ntry>
-            """;
+        var ntry = BatchNtry(
+            "150.00",
+            "DBIT",
+            "2026-02-10",
+            ("B1", "100.00", "Miete Februar"),
+            ("B2", "50.00", "Strom")
+        );
         var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
 
-        var error = Assert.Single(Import(zip).Errors);
-        Assert.Contains("noch nicht unterstützt", error.Message);
+        var result = Import(zip);
+        Assert.Empty(result.Errors);
+        Assert.Equal(2, result.Transactions.Count);
+
+        var first = result.Transactions[0];
+        Assert.Equal(new DateOnly(2026, 2, 10), first.Date);
+        Assert.Equal(-100.00m, first.Amount);
+        Assert.Equal("Miete Februar", first.Text);
+        Assert.Equal("B1", first.BankReference);
+
+        var second = result.Transactions[1];
+        Assert.Equal(-50.00m, second.Amount);
+        Assert.Equal("Strom", second.Text);
+        Assert.Equal("B2", second.BankReference);
+    }
+
+    [Fact]
+    public void A_batch_whose_TxDtls_amounts_do_not_add_up_to_the_entry_amount_is_an_error()
+    {
+        var ntry = BatchNtry(
+            "150.00",
+            "DBIT",
+            "2026-02-10",
+            ("B1", "100.00", "Miete Februar"),
+            ("B2", "40.00", "Strom")
+        );
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var result = Import(zip);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal("20260210.xml", error.File);
+        Assert.Contains("addieren", error.Message);
+        Assert.Empty(result.Transactions);
+    }
+
+    [Fact]
+    public void Re_importing_a_batch_skips_the_parts_that_are_already_stored()
+    {
+        var ntry = BatchNtry(
+            "150.00",
+            "DBIT",
+            "2026-02-10",
+            ("B1", "100.00", "Miete Februar"),
+            ("B2", "50.00", "Strom")
+        );
+        var zip = Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+
+        var result = Import(zip, ["B1"]);
+        var transaction = Assert.Single(result.Transactions);
+        Assert.Equal("B2", transaction.BankReference);
+        Assert.Equal(-50.00m, transaction.Amount);
+        Assert.Equal(1, result.SkippedDuplicates);
+        Assert.Empty(result.Errors);
     }
 
     [Fact]
@@ -631,6 +672,32 @@ public class BankImportTests
           {(addtl is null ? "" : $"<AddtlNtryInf>{addtl}</AddtlNtryInf>")}
         </Ntry>
         """;
+
+    /// <summary>One Ntry with several TxDtls, the shape of a batch payment: one debit paying several people.</summary>
+    private static string BatchNtry(string ntryAmount, string direction, string date, params (string Ref, string Amount, string? Ustrd)[] details)
+    {
+        var txDtls = string.Join(
+            "\n",
+            details.Select(
+                d => $"""
+                    <TxDtls>
+                      <Refs><AcctSvcrRef>{d.Ref}</AcctSvcrRef></Refs>
+                      <Amt Ccy="CHF">{d.Amount}</Amt>
+                      {(d.Ustrd is null ? "" : $"<Ustrd>{d.Ustrd}</Ustrd>")}
+                    </TxDtls>
+                    """
+            )
+        );
+        return $"""
+            <Ntry>
+              <Amt Ccy="CHF">{ntryAmount}</Amt>
+              <CdtDbtInd>{direction}</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>{date}</Dt></BookgDt>
+              {txDtls}
+            </Ntry>
+            """;
+    }
 
     /// <summary>One Ntry without TxDtls, e.g. the fee entry "Zahlungsverkehrspreise".</summary>
     private static string PlainNtry(string amount, string direction, string date, string entryRef, string? ustrd = null, string? addtl = null) => $"""
