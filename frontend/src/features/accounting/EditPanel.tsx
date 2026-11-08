@@ -1,9 +1,20 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { accountsQueryOptions, invalidateJournalQueries, openingBalanceQueryOptions, saveTransaction } from './api'
+import {
+  accountsQueryOptions,
+  deleteTransaction,
+  invalidateJournalQueries,
+  openingBalanceQueryOptions,
+  saveTransaction,
+} from './api'
+import { MdClose } from 'react-icons/md'
 import { formatChf } from './amount'
 import { KontoPicker } from './KontoPicker'
 import {
+  addEntry,
+  canDelete,
+  canSave,
+  removeEntry,
   remainder,
   draftFromTransaction,
   emptyDraft,
@@ -28,13 +39,17 @@ type Props = {
   /** When set, the form edits this saved Bewegung (with its Buchungen) instead of creating a new one. */
   transaction?: Transaction
   entries?: JournalEntry[]
+  /** The Buchung whose row gets the focus when set or changed. */
+  focusEntryId?: number | null
   /** Closes the form: "Abbrechen", and automatically after saving. */
   onDone: () => void
+  /** Called after the Bewegung was deleted (the form closes afterwards). */
+  onDeleted?: () => void
   /** Reports whether the form holds unsaved changes. */
   onDirtyChange?: (dirty: boolean) => void
 }
 
-export function EditPanel({ transaction, entries = [], onDone, onDirtyChange }: Props) {
+export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onDeleted, onDirtyChange }: Props) {
   const queryClient = useQueryClient()
   const { data: accounts } = useSuspenseQuery(accountsQueryOptions)
   const { data: openingBalance } = useSuspenseQuery(openingBalanceQueryOptions)
@@ -46,6 +61,18 @@ export function EditPanel({ transaction, entries = [], onDone, onDirtyChange }: 
   const [serverError, setServerError] = useState<string>()
   const dirty = isDraftDirty(baseline, draft, accounts)
   const rest = remainder(draft, accounts)
+  const deletable = canDelete(draft)
+  const savable = canSave(draft, accounts, openingBalance?.startDate)
+  const textInputs = useRef<(HTMLInputElement | null)[]>([])
+  // Latest draft for the focus effect, which must only re-run when the focused Buchung changes.
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+
+  useEffect(() => {
+    if (focusEntryId == null) return
+    const index = draftRef.current.entries.findIndex((row) => row.id === focusEntryId)
+    textInputs.current[index]?.focus()
+  }, [focusEntryId])
 
   useEffect(() => {
     onDirtyChange?.(dirty)
@@ -54,6 +81,19 @@ export function EditPanel({ transaction, entries = [], onDone, onDirtyChange }: 
 
   function patchRow(index: number, patch: Partial<EntryRow>) {
     setDraft((d) => ({ ...d, entries: d.entries.map((row, i) => (i === index ? { ...row, ...patch } : row)) }))
+  }
+
+  async function onDelete() {
+    if (!transaction) return
+    setServerError(undefined)
+    try {
+      await deleteTransaction(transaction.id)
+      await invalidateJournalQueries(queryClient)
+      onDeleted?.()
+      onDone()
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen.')
+    }
   }
 
   async function onSubmit(e: FormEvent) {
@@ -101,10 +141,24 @@ export function EditPanel({ transaction, entries = [], onDone, onDirtyChange }: 
 
       {draft.entries.map((row, i) => (
         <fieldset key={i} className="flex flex-col gap-2 rounded border border-slate-200 p-3">
-          <legend className="px-1 text-sm text-slate-500">Buchung</legend>
+          <legend className="flex items-center gap-2 px-1 text-sm text-slate-500">
+            Buchung
+            <button
+              type="button"
+              onClick={() => setDraft((d) => removeEntry(d, i))}
+              aria-label="Buchung entfernen"
+              title="Buchung entfernen"
+              className="rounded p-0.5 hover:bg-sky-100"
+            >
+              <MdClose className="size-4" />
+            </button>
+          </legend>
           <label className="flex flex-col text-sm">
             Text
             <input
+              ref={(el) => {
+                textInputs.current[i] = el
+              }}
               value={row.text}
               onChange={(e) => patchRow(i, { text: e.target.value })}
               className={input}
@@ -132,14 +186,40 @@ export function EditPanel({ transaction, entries = [], onDone, onDirtyChange }: 
           </label>
         </fieldset>
       ))}
-      {rest !== null && rest !== 0 && <p className="text-sm text-slate-600">Differenz: {formatChf(rest)}</p>}
+      <button
+        type="button"
+        onClick={() => setDraft((d) => addEntry(d, accounts))}
+        className="self-start rounded border border-slate-300 px-3 py-1 text-sm hover:bg-sky-100"
+      >
+        + Buchung
+      </button>
+      {rest !== null && (
+        <p className={`text-sm ${rest === 0 ? 'text-slate-600' : 'font-medium text-red-700'}`}>
+          Differenz CHF {formatChf(rest)}
+        </p>
+      )}
       {errors?.remainder && <p className="text-red-600">{errors.remainder}</p>}
 
       <div className="flex justify-end gap-2">
+        {transaction && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={!deletable}
+            title={deletable ? 'Bewegung löschen' : 'Zuerst alle Buchungen entfernen'}
+            className="mr-auto rounded border border-red-300 px-4 py-2 text-red-700 enabled:hover:bg-red-50 disabled:opacity-40"
+          >
+            Löschen
+          </button>
+        )}
         <button type="button" onClick={onDone} className="rounded border border-slate-300 hover:bg-sky-100 px-4 py-2">
           Abbrechen
         </button>
-        <button type="submit" className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700">
+        <button
+          type="submit"
+          disabled={!savable}
+          className="rounded bg-sky-600 px-4 py-2 text-white enabled:hover:bg-sky-700 disabled:opacity-40"
+        >
           {transaction ? 'Speichern' : 'Buchen'}
         </button>
       </div>

@@ -3,14 +3,23 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { createColumnHelper, flexRender, tableFeatures, useTable } from '@tanstack/react-table'
 import { accountsQueryOptions } from './api'
 import { formatChf } from './amount'
+import { rowTint, useScrollHighlightIntoView } from './highlight'
 import { accountLabel } from './KontoPicker'
 import type { JournalEntry } from './types'
 
 const features = tableFeatures({})
 const helper = createColumnHelper<typeof features, JournalEntry>()
 
+type Props = {
+  entries: JournalEntry[]
+  selectedId: number | null
+  highlightedIds: number[]
+  onSelect: (entry: JournalEntry) => void
+}
+
 /** The Buchungsjournal: every Buchung with the date of its Bewegung and the running Kontostand. */
-export function JournalList({ entries }: { entries: JournalEntry[] }) {
+export function JournalList({ entries, selectedId, highlightedIds, onSelect }: Props) {
+  const containerRef = useScrollHighlightIntoView(highlightedIds)
   const { data: accounts } = useSuspenseQuery(accountsQueryOptions)
 
   const columns = useMemo(() => {
@@ -48,7 +57,7 @@ export function JournalList({ entries }: { entries: JournalEntry[] }) {
   const rows = table.getRowModel().rows
 
   return (
-    <div className="min-w-0 flex-1 overflow-x-auto rounded border border-slate-200">
+    <div ref={containerRef} className="min-w-0 flex-1 overflow-x-auto rounded border border-slate-200">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-slate-200 bg-slate-50">
           {table.getHeaderGroups().map((headerGroup) => (
@@ -69,15 +78,26 @@ export function JournalList({ entries }: { entries: JournalEntry[] }) {
               </td>
             </tr>
           ) : (
-            rows.map((row) => (
-              <tr key={row.id} className="border-b border-slate-100 last:border-0">
-                {row.getAllCells().map((cell) => (
-                  <td key={cell.id} className="px-3 py-2">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))
+            rows.map((row) => {
+              const entry = row.original
+              const selected = entry.id === selectedId
+              const highlighted = highlightedIds.includes(entry.id)
+              return (
+                <tr
+                  key={row.id}
+                  onClick={() => onSelect(entry)}
+                  aria-selected={selected}
+                  data-highlighted={highlighted}
+                  className={`cursor-pointer border-b border-slate-100 last:border-0 ${rowTint(selected, highlighted)}`}
+                >
+                  {row.getAllCells().map((cell) => (
+                    <td key={cell.id} className="px-3 py-2">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              )
+            })
           )}
         </tbody>
       </table>
