@@ -8,10 +8,12 @@ type Props = {
   value: number | null
   onChange: (id: number | null) => void
   className?: string
+  /** Also offer Persons who have left (marked "(ausgetreten)"). */
+  includeFormer?: boolean
 }
 
 /** Person autocomplete: type part of a name to filter. Persons who have left are not offered. */
-export function PersonPicker({ value, onChange, className }: Props) {
+export function PersonPicker({ value, onChange, className, includeFormer }: Props) {
   const { data: persons } = useSuspenseQuery(personsQueryOptions)
   const listId = useId()
   const [query, setQuery] = useState<string | null>(null) // null = not editing
@@ -20,7 +22,7 @@ export function PersonPicker({ value, onChange, className }: Props) {
 
   const selected = persons.find((p) => p.id === value) ?? null
   const text = query ?? (selected ? personLabel(selected) : '')
-  const options = filterPersons(persons, query ?? '', value)
+  const options = filterPersons(persons, query ?? '', value, { includeFormer })
 
   const close = () => {
     setOpen(false)

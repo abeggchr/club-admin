@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { navItems } from './nav'
 
 describe('navItems', () => {
-  it('lists Persons and Buchhaltung at the start, in that order', () => {
+  it('lists Persons, Buchhaltung and Rechnungen at the start, in that order', () => {
     expect(navItems.filter((i) => i.align === 'start').map((i) => i.to)).toEqual([
       '/persons',
       '/accounting',
+      '/invoices',
     ])
   })
 
