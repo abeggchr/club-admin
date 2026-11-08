@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { getRouteApi } from '@tanstack/react-router'
 import { useTable } from '@tanstack/react-table'
 import type { SortingState } from '@tanstack/react-table'
 import { personsQueryOptions } from './api'
@@ -12,7 +13,10 @@ import { PersonsToolbar } from './PersonsToolbar'
 import { globalSearchFilter } from './search'
 import { views, type ViewKey } from './views'
 
+const route = getRouteApi('/persons')
+
 export function PersonsPage() {
+  const { person: linkedPersonId } = route.useSearch()
   const { data: persons } = useSuspenseQuery(personsQueryOptions)
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'lastName', desc: false },
@@ -21,7 +25,7 @@ export function PersonsPage() {
   const [filter, setFilter] = useState('')
   const [debouncedFilter, setDebouncedFilter] = useState('')
   const [viewKey, setViewKey] = useState<ViewKey>('active')
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(linkedPersonId ?? null)
   const selected = persons.find((p) => p.id === selectedId) ?? null
   const importDialog = useRef<HTMLDialogElement>(null)
   const view = views[viewKey]

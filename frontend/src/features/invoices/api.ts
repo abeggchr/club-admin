@@ -17,6 +17,34 @@ export const invoicesQueryOptions = queryOptions({
   queryFn: () => getJson<InvoiceListItem[]>('/api/invoices'),
 })
 
+export type InvoiceDetail = {
+  id: number
+  number: string
+  date: string
+  person: {
+    id: number
+    name: string
+    address: string | null
+    postalCode: string | null
+    city: string | null
+    country: string | null
+  }
+  lines: { text: string; amount: number }[]
+  total: number
+  status: string
+  statusHistory: { status: string; timestamp: string }[]
+}
+
+export const invoiceDetailQueryOptions = (id: number) =>
+  queryOptions({
+    queryKey: ['invoices', id],
+    queryFn: () => getJson<InvoiceDetail>(`/api/invoices/${id}`),
+  })
+
+export function invoicePdfUrl(id: number): string {
+  return `/api/invoices/${id}/pdf`
+}
+
 /** Creates the Rechnung (the backend renders and stores the PDF); rejects with the backend's message. */
 export function createInvoice(input: InvoiceInput): Promise<unknown> {
   return requestJson('/api/invoices', 'POST', input)
