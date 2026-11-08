@@ -4,8 +4,8 @@ import {
   accountsQueryOptions,
   deleteTransaction,
   invalidateJournalQueries,
-  openingBalanceQueryOptions,
   saveTransaction,
+  settingsQueryOptions,
 } from './api'
 import { MdClose } from 'react-icons/md'
 import { formatChf } from './amount'
@@ -53,7 +53,7 @@ type Props = {
 export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onDeleted, onDirtyChange }: Props) {
   const queryClient = useQueryClient()
   const { data: accounts } = useSuspenseQuery(accountsQueryOptions)
-  const { data: openingBalance } = useSuspenseQuery(openingBalanceQueryOptions)
+  const { data: settings } = useSuspenseQuery(settingsQueryOptions)
   const [baseline] = useState<TransactionDraft>(() =>
     transaction ? draftFromTransaction(transaction, entries, accounts) : emptyDraft(today()),
   )
@@ -63,7 +63,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
   const dirty = isDraftDirty(baseline, draft, accounts)
   const rest = remainder(draft, accounts)
   const deletable = canDelete(draft)
-  const savable = canSave(draft, accounts, openingBalance?.startDate)
+  const savable = canSave(draft, accounts, settings?.startDate)
   const textInputs = useRef<(HTMLInputElement | null)[]>([])
   // Latest draft for the focus effect, which must only re-run when the focused Buchung changes.
   const draftRef = useRef(draft)
@@ -99,7 +99,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    const found = validateDraft(draft, accounts, openingBalance?.startDate)
+    const found = validateDraft(draft, accounts, settings?.startDate)
     setErrors(found)
     setServerError(undefined)
     const body = found ? null : toTransactionInput(draft, accounts)

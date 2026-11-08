@@ -70,6 +70,11 @@ namespace backend.Migrations
                     b.Property<int>("Id")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Iban")
+                        .IsRequired()
+                        .HasMaxLength(21)
+                        .HasColumnType("character varying(21)");
+
                     b.Property<decimal>("OpeningBalance")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
