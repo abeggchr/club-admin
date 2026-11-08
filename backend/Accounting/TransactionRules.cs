@@ -67,6 +67,25 @@ public static class TransactionRules
         return null;
     }
 
+    /// <summary>
+    /// The date and amount of an imported Bewegung (one with a BankReference) are bank facts; a change is rejected.
+    /// Manual Bewegungen have no BankReference and are unchanged.
+    /// </summary>
+    public static string? ValidateUnchangedBankFacts(
+        string? bankReference,
+        DateOnly existingDate,
+        decimal existingAmount,
+        DateOnly newDate,
+        decimal newAmount
+    ) =>
+        bankReference is null
+            ? null
+            : newDate != existingDate
+                ? "Das Datum einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+                : newAmount != existingAmount
+                    ? "Der Betrag einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+                    : null;
+
     /// <summary>The Anfangssaldo date must not be later than the earliest Bewegung.</summary>
     public static string? ValidateOpeningStartDate(DateOnly startDate, DateOnly? earliestTransaction) =>
         earliestTransaction is { } earliest && startDate > earliest

@@ -60,6 +60,8 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
   const [draft, setDraft] = useState(baseline)
   const [errors, setErrors] = useState<DraftErrors | null>(null)
   const [serverError, setServerError] = useState<string>()
+  // The date and amount of an imported Bewegung are bank facts; the form shows them read-only.
+  const imported = transaction?.bankReference != null
   const dirty = isDraftDirty(baseline, draft, accounts)
   const rest = remainder(draft, accounts)
   const deletable = canDelete(draft)
@@ -123,6 +125,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
             type="date"
             value={draft.date}
             onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+            readOnly={imported}
             className={input}
           />
           {errors?.date && <span className="text-red-600">{errors.date}</span>}
@@ -134,6 +137,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
             value={draft.amount}
             onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
             placeholder="Auszahlung mit -"
+            readOnly={imported}
             className={`${input} text-right`}
           />
           {errors?.amount && <span className="text-red-600">{errors.amount}</span>}

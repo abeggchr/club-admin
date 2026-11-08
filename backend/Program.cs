@@ -311,6 +311,20 @@ api.MapPut(
             return Results.NotFound();
         }
 
+        // The date and amount of an imported Bewegung are bank facts and cannot change.
+        if (
+            TransactionRules.ValidateUnchangedBankFacts(
+                transaction.BankReference,
+                transaction.Date,
+                transaction.Amount,
+                input.Date,
+                input.Amount
+            ) is { } bankFactError
+        )
+        {
+            return Results.BadRequest(new { error = bankFactError });
+        }
+
         var lines = input.Entries ?? [];
         var stored = transaction.Entries.ToDictionary(e => e.Id);
         var givenIds = lines.Where(l => l.Id is not null).Select(l => l.Id!.Value).ToList();
