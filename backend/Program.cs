@@ -84,7 +84,8 @@ api.MapPut(
         person.Email = update.Email;
         person.MobilePhone = update.MobilePhone;
         person.LandlinePhone = update.LandlinePhone;
-        person.Address = update.Address;
+        person.Street = update.Street;
+        person.HouseNumber = update.HouseNumber;
         person.PostalCode = update.PostalCode;
         person.City = update.City;
         person.Country = update.Country;
@@ -441,7 +442,8 @@ record PersonUpdate(
     string? Email,
     string? MobilePhone,
     string? LandlinePhone,
-    string? Address,
+    string? Street,
+    string? HouseNumber,
     string? PostalCode,
     string? City,
     string? Country,

@@ -37,6 +37,9 @@ The IBAN of the club's bank account (CH or LI, 21 characters, valid mod-97 check
 **Erwarteter Kontostand** (code: _ExpectedBalance_):
 The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen whose Bewegung is dated up to that date. The user compares it by eye against the bank statement.
 
+**Person** (code: _Person_):
+A club member or contact: a name, membership dates and contact data. The address is stored as Strasse plus Hausnummer (code: _Street_ and _HouseNumber_), not as one line, so that imported bank addresses can be matched against it.
+
 ## Relationships
 
 - A Bewegung consists of one or more Buchungen; a Buchung belongs to exactly one Bewegung.

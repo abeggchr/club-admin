@@ -64,8 +64,12 @@ export const columns = helper.columns([
     header: 'Festnetznummer',
     cell: (info) => orDash(info.getValue()),
   }),
-  helper.accessor('address', {
-    header: 'Adresse',
+  helper.accessor('street', {
+    header: 'Strasse',
+    cell: (info) => orDash(info.getValue()),
+  }),
+  helper.accessor('houseNumber', {
+    header: 'Hausnummer',
     cell: (info) => orDash(info.getValue()),
   }),
   helper.accessor('postalCode', {

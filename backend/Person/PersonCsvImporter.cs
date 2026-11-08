@@ -58,6 +58,8 @@ public static class PersonCsvImporter
             if (firstName is null || lastName is null)
                 throw new FormatException($"Row {row}: first and last name are required.");
 
+            var (street, houseNumber) = SplitAddress(Get("Adresse"));
+
             persons.Add(
                 new Person
                 {
@@ -69,7 +71,8 @@ public static class PersonCsvImporter
                     Email = Get("E-Mail"),
                     MobilePhone = Get("Mobilfunknummer"),
                     LandlinePhone = Get("Festnetznummer"),
-                    Address = Get("Adresse"),
+                    Street = street,
+                    HouseNumber = houseNumber,
                     PostalCode = Get("PLZ"),
                     City = Get("Ort"),
                     Country = Get("Land"),
@@ -79,6 +82,23 @@ public static class PersonCsvImporter
         }
 
         return persons;
+    }
+
+    /// <summary>
+    /// Splits the "Adresse" column into street and house number: the house number is the last token that
+    /// starts with a digit, everything before it is the street. A value without such a token goes whole
+    /// into the street.
+    /// </summary>
+    private static (string? Street, string? HouseNumber) SplitAddress(string? address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+            return (null, null);
+        var tokens = address.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var number = Array.FindLastIndex(tokens, t => char.IsDigit(t[0]));
+        if (number < 0)
+            return (address, null);
+        var street = string.Join(' ', tokens[..number]);
+        return (street.Length > 0 ? street : null, tokens[number]);
     }
 
     /// <summary>RFC 4180 reader; the delimiter (comma, semicolon or tab) is detected from the header line.</summary>
