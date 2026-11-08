@@ -5,6 +5,7 @@ import {
   openingBalanceQueryOptions,
   saveOpeningBalance,
 } from '../accounting/api'
+import { TextTemplatesSection } from './TextTemplatesSection'
 import { formatChf, parseAmount } from '../accounting/amount'
 
 export function SettingsPage() {
@@ -65,6 +66,7 @@ export function SettingsPage() {
         {saved && <p className="text-green-700">Gespeichert.</p>}
         {error && <p className="text-red-600">{error}</p>}
       </form>
+      <TextTemplatesSection />
     </div>
   )
 }

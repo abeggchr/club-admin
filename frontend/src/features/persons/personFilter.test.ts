@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Person } from '../persons/types'
+import type { Person } from './types'
 import { filterPersons } from './personFilter'
 
 function person(id: number, firstName: string, lastName: string, leftOn: string | null = null): Person {
@@ -18,6 +18,9 @@ describe('filterPersons', () => {
   })
   it('keeps a left person when they are the current value', () => {
     expect(filterPersons(persons, '', 2).map((p) => p.id)).toEqual([2, 1, 3])
+  })
+  it('offers persons who have left when former members are included', () => {
+    expect(filterPersons(persons, '', null, { includeFormer: true }).map((p) => p.id)).toEqual([2, 1, 3])
   })
   it('matches parts of first and last name in any order', () => {
     expect(filterPersons(persons, 'meier an', null).map((p) => p.id)).toEqual([1])

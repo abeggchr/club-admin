@@ -1,4 +1,4 @@
-import type { Person } from '../persons/types'
+import type { Person } from './types'
 
 export function personLabel(person: Person): string {
   return `${person.lastName} ${person.firstName}`
@@ -8,10 +8,15 @@ export function personLabel(person: Person): string {
  * Persons matching what the user typed (any part of first or last name, case-insensitive), sorted by last then
  * first name. Persons who have left (leftOn set) are only offered when they are the current value.
  */
-export function filterPersons(persons: Person[], query: string, currentValue: number | null): Person[] {
+export function filterPersons(
+  persons: Person[],
+  query: string,
+  currentValue: number | null,
+  options: { includeFormer?: boolean } = {},
+): Person[] {
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
   return persons
-    .filter((p) => p.leftOn === null || p.id === currentValue)
+    .filter((p) => options.includeFormer || p.leftOn === null || p.id === currentValue)
     .filter((p) => {
       const name = `${p.firstName} ${p.lastName}`.toLowerCase()
       return words.every((w) => name.includes(w))

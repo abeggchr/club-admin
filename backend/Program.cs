@@ -1,4 +1,5 @@
 using backend.Accounting;
+using backend.Invoicing;
 using backend.Person;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,10 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
 );
+
+builder.Services.AddObjectStorage(builder.Configuration);
+builder.Services.AddScoped<InvoiceCreator>();
+InvoiceDocument.UseCommunityLicense();
 
 // A malformed Kontoplan file fails startup (see ADR 0001).
 builder.Services.AddSingleton(
@@ -38,6 +43,8 @@ using (var scope = app.Services.CreateScope())
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    // Local MinIO starts empty; production buckets are provisioned by Railway.
+    await app.Services.EnsureBucketAsync();
     app.MapOpenApi();
 }
 
@@ -340,6 +347,135 @@ api.MapDelete(
     }
 );
 
+api.MapGet(
+    "/text-templates",
+    async (AppDbContext db) => await db.TextTemplates.OrderBy(t => t.Subject).ThenBy(t => t.Id).ToListAsync()
+);
+
+api.MapPost(
+    "/text-templates",
+    async (TextTemplateInput input, AppDbContext db) =>
+    {
+        if (TextTemplateRules.Validate(input.Subject, input.Text, input.Greetings) is { } error)
+        {
+            return Results.BadRequest(new { error });
+        }
+        var template = ApplyInput(new TextTemplate(), input);
+        db.TextTemplates.Add(template);
+        await db.SaveChangesAsync();
+        return Results.Created($"/api/text-templates/{template.Id}", template);
+    }
+);
+
+api.MapPut(
+    "/text-templates/{id:int}",
+    async (int id, TextTemplateInput input, AppDbContext db) =>
+    {
+        if (TextTemplateRules.Validate(input.Subject, input.Text, input.Greetings) is { } error)
+        {
+            return Results.BadRequest(new { error });
+        }
+        var template = await db.TextTemplates.FindAsync(id);
+        if (template is null)
+        {
+            return Results.NotFound();
+        }
+        ApplyInput(template, input);
+        await db.SaveChangesAsync();
+        return Results.Ok(template);
+    }
+);
+
+api.MapDelete(
+    "/text-templates/{id:int}",
+    async (int id, AppDbContext db) =>
+    {
+        var template = await db.TextTemplates.FindAsync(id);
+        if (template is null)
+        {
+            return Results.NotFound();
+        }
+        db.TextTemplates.Remove(template);
+        await db.SaveChangesAsync();
+        return Results.NoContent();
+    }
+);
+
+api.MapGet(
+    "/invoices",
+    async (AppDbContext db) =>
+    {
+        var invoices = await db.Invoices.WithDetails()
+            .OrderByDescending(i => i.Id)
+            .ToListAsync();
+        var people = await PeopleByIdAsync(db, invoices.Select(i => i.PersonId));
+        return invoices.Select(i => InvoiceMapping.ToInvoiceListItem(i, people[i.PersonId])).ToList();
+    }
+);
+
+api.MapGet(
+    "/invoices/{id:int}",
+    async (int id, AppDbContext db) =>
+    {
+        var invoice = await db.Invoices.WithDetails()
+            .FirstOrDefaultAsync(i => i.Id == id);
+        if (invoice is null)
+        {
+            return Results.NotFound();
+        }
+        var people = await PeopleByIdAsync(db, [invoice.PersonId]);
+        return Results.Ok(InvoiceMapping.ToInvoiceDetail(invoice, people[invoice.PersonId]));
+    }
+);
+
+api.MapPost(
+    "/invoices",
+    async (InvoiceInput input, AppDbContext db, InvoiceCreator creator, CancellationToken ct) =>
+    {
+        var lines = (input.Lines ?? []).Select(l => new InvoiceLineDraft(l.Text, l.Amount)).ToList();
+        if (InvoiceRules.Validate(input.PersonId, input.TemplateId, lines) is { } error)
+        {
+            return Results.BadRequest(new { error });
+        }
+        var person = await db.Persons.FindAsync([input.PersonId!.Value], ct);
+        if (person is null)
+        {
+            return Results.BadRequest(new { error = "Die Person existiert nicht." });
+        }
+        var template = await db.TextTemplates.FindAsync([input.TemplateId!.Value], ct);
+        if (template is null)
+        {
+            return Results.BadRequest(new { error = "Die Textvorlage existiert nicht." });
+        }
+
+        var result = await creator.CreateAsync(person, template, lines, ct);
+        if (result.Invoice is not { } invoice)
+        {
+            return Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status500InternalServerError);
+        }
+        return Results.Created($"/api/invoices/{invoice.Id}", InvoiceMapping.ToInvoiceDetail(invoice, person));
+    }
+);
+
+api.MapGet(
+    "/invoices/{id:int}/pdf",
+    async (int id, AppDbContext db, IInvoiceStorage storage, HttpContext http, CancellationToken ct) =>
+    {
+        if (!await db.Invoices.AnyAsync(i => i.Id == id, ct))
+        {
+            return Results.NotFound();
+        }
+        var pdf = await storage.GetAsync(id, ct);
+        if (pdf is null)
+        {
+            return Results.NotFound();
+        }
+        // Set directly: Results.File with a filename would emit "attachment".
+        http.Response.Headers.ContentDisposition = $"inline; filename=\"Rechnung-{InvoiceRules.FormatNumber(id)}.pdf\"";
+        return Results.Bytes(pdf, "application/pdf");
+    }
+);
+
 // SPA fallback for client-side routes (not for unknown /api paths or files).
 app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
@@ -399,6 +535,21 @@ static async Task<TransactionDto> LoadTransactionDtoAsync(AppDbContext db, Setti
     (await LoadTransactionDtosAsync(db, opening)).Single(t => t.Id == id);
 
 // All Bewegungen, newest first, each with the Kontostand after it.
+static async Task<Dictionary<int, Person>> PeopleByIdAsync(AppDbContext db, IEnumerable<int> ids)
+{
+    var wanted = ids.Distinct().ToList();
+    return await db.Persons.AsNoTracking().Where(p => wanted.Contains(p.Id)).ToDictionaryAsync(p => p.Id);
+}
+
+// Copies an already validated Textvorlage input onto the entity, trimmed.
+static TextTemplate ApplyInput(TextTemplate template, TextTemplateInput input)
+{
+    template.Subject = input.Subject!.Trim();
+    template.Text = input.Text!.Trim();
+    template.Greetings = input.Greetings!.Trim();
+    return template;
+}
+
 static string? NormalizeText(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
 static async Task<List<TransactionDto>> LoadTransactionDtosAsync(AppDbContext db, Settings opening)
@@ -433,6 +584,12 @@ record TransactionEntryInput(int? Id, string? Text, int AccountNumber, decimal A
 record TransactionInput(DateOnly Date, decimal Amount, string? Text, int? PersonId, List<TransactionEntryInput>? Entries);
 
 record TransactionDto(int Id, DateOnly Date, decimal Amount, string? Text, int? PersonId, decimal Balance, List<int> EntryIds);
+
+record TextTemplateInput(string? Subject, string? Text, string? Greetings);
+
+record InvoiceLineInput(string? Text, decimal Amount);
+
+record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines);
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
 
