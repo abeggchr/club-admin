@@ -97,7 +97,15 @@ export async function invalidateJournalQueries(queryClient: QueryClient): Promis
   await queryClient.invalidateQueries({ queryKey: ['expected-balance'] })
 }
 
-export type ExpectedBalance = { date: string; balance: number | null }
+export type ExpectedBalance = {
+  date: string
+  /** Erwarteter Kontostand from the Buchungen as of the date. */
+  balance: number | null
+  /** Kontostand from the Bewegungen (the bank's view) as of the date. */
+  transactionBalance: number | null
+  /** True when the two views disagree; "Kontostand heute" turns red. */
+  differs: boolean
+}
 
 export const expectedBalanceQueryOptions = (date: string) =>
   queryOptions({

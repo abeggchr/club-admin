@@ -15,7 +15,10 @@ export function BalanceAtDate() {
   return (
     <p className="flex items-baseline gap-2 text-sm">
       <span className="text-slate-600">Kontostand heute</span>
-      <span className="text-lg tabular-nums">
+      <span
+        className={`text-lg tabular-nums ${data?.differs ? 'text-red-600' : ''}`}
+        title={data?.differs ? 'Bewegungen und Buchungsjournal stimmen nicht überein.' : undefined}
+      >
         {isError ? (
           <span className="text-red-600">konnte nicht geladen werden.</span>
         ) : data ? (data.balance === null ? 'vor dem Anfangssaldo' : `CHF ${formatChf(data.balance)}`) : ''}

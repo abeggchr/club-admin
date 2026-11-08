@@ -175,6 +175,93 @@ public class RunningBalanceTests
     }
 }
 
+public class TransactionBalanceAtDateTests
+{
+    private static readonly Settings Opening = new() { OpeningBalance = 1000m, StartDate = new DateOnly(2026, 1, 1) };
+
+    private static Transaction T(int id, DateOnly date, decimal amount) =>
+        new() { Id = id, Date = date, Amount = amount };
+
+    private static readonly Transaction[] Transactions =
+    [
+        T(1, new DateOnly(2026, 1, 1), 100m),
+        T(2, new DateOnly(2026, 3, 10), -30m),
+        T(3, new DateOnly(2026, 3, 20), 5.50m),
+    ];
+
+    [Fact]
+    public void Transaction_on_the_opening_date_is_included()
+    {
+        Assert.Equal(1100m, AccountingCalculator.TransactionBalance(Opening, Transactions, new DateOnly(2026, 1, 1)));
+    }
+
+    [Fact]
+    public void Transactions_on_the_boundary_date_are_included()
+    {
+        Assert.Equal(1070m, AccountingCalculator.TransactionBalance(Opening, Transactions, new DateOnly(2026, 3, 10)));
+    }
+
+    [Fact]
+    public void Transactions_after_the_date_are_ignored()
+    {
+        Assert.Equal(1100m, AccountingCalculator.TransactionBalance(Opening, Transactions, new DateOnly(2026, 3, 9)));
+    }
+
+    [Fact]
+    public void Date_after_all_transactions_includes_everything()
+    {
+        Assert.Equal(1075.50m, AccountingCalculator.TransactionBalance(Opening, Transactions, new DateOnly(2026, 12, 31)));
+    }
+
+    [Fact]
+    public void Before_the_opening_date_it_is_undefined()
+    {
+        Assert.Null(AccountingCalculator.TransactionBalance(Opening, Transactions, new DateOnly(2025, 12, 31)));
+    }
+
+    [Fact]
+    public void Input_order_does_not_matter()
+    {
+        Assert.Equal(
+            AccountingCalculator.TransactionBalance(Opening, Transactions, new DateOnly(2026, 3, 10)),
+            AccountingCalculator.TransactionBalance(Opening, Transactions.ToList().AsEnumerable().Reverse(), new DateOnly(2026, 3, 10)));
+    }
+
+    [Fact]
+    public void No_transactions_give_the_opening_amount()
+    {
+        Assert.Equal(1000m, AccountingCalculator.TransactionBalance(Opening, [], new DateOnly(2026, 6, 30)));
+    }
+}
+
+public class BalanceComparisonTests
+{
+    [Fact]
+    public void Differing_balances_differ()
+    {
+        Assert.True(AccountingCalculator.BalancesDiffer(1070m, 1075.50m));
+    }
+
+    [Fact]
+    public void Equal_balances_do_not_differ()
+    {
+        Assert.False(AccountingCalculator.BalancesDiffer(1075.50m, 1075.50m));
+    }
+
+    [Fact]
+    public void Both_balances_undefined_do_not_differ()
+    {
+        Assert.False(AccountingCalculator.BalancesDiffer(null, null));
+    }
+
+    [Fact]
+    public void A_defined_balance_differs_from_an_undefined_one()
+    {
+        Assert.True(AccountingCalculator.BalancesDiffer(1000m, null));
+        Assert.True(AccountingCalculator.BalancesDiffer(null, 1000m));
+    }
+}
+
 public class TransactionBalanceTests
 {
     private static readonly Settings Opening = new() { OpeningBalance = 1000m, StartDate = new DateOnly(2026, 1, 1) };
