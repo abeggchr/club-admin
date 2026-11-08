@@ -52,7 +52,7 @@ export function EditPanel({ person, onClose }: { person: Person; onClose: () => 
       <form onSubmit={submit}>
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Person bearbeiten</h2>
-          <button type="button" onClick={onClose} aria-label="Schliessen" className="p-1">
+          <button type="button" onClick={onClose} aria-label="Abbrechen" className="p-1">
             <FiX />
           </button>
         </div>
@@ -82,18 +82,14 @@ export function EditPanel({ person, onClose }: { person: Person; onClose: () => 
         })}
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
         {saved && <p className="mt-3 text-sm text-green-700">Gespeichert.</p>}
-        <div className="mt-4 flex justify-end gap-2 text-sm">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded border border-neutral-300 px-3 py-1"
-          >
-            Schliessen
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded border border-slate-300 hover:bg-sky-100 px-4 py-2">
+            Abbrechen
           </button>
           <button
             type="submit"
             disabled={busy}
-            className="rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-40"
+            className="rounded bg-sky-600 px-4 py-2 text-white enabled:hover:bg-sky-700 disabled:opacity-40"
           >
             {busy ? 'Speichere…' : 'Speichern'}
           </button>
