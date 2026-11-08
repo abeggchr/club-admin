@@ -34,6 +34,6 @@ public class InvoiceStatusChange
     public int Id { get; set; }
     public int InvoiceId { get; set; }
     public InvoiceStatus Status { get; set; }
-    /// <summary>Local time in Europe/Zurich.</summary>
+    /// <summary>UTC; shown in Europe/Zurich (see <see cref="InvoiceTime"/>).</summary>
     public DateTime Timestamp { get; set; }
 }

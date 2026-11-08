@@ -6,6 +6,8 @@ namespace backend.Tests.Invoicing;
 
 public class InvoiceDocumentTests
 {
+    static InvoiceDocumentTests() => InvoiceDocument.UseCommunityLicense();
+
     private static InvoiceDocumentData Data(IReadOnlyList<string>? address = null) =>
         new(
             Number: "0042",
