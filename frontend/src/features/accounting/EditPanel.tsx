@@ -10,7 +10,7 @@ import {
 import { MdClose } from 'react-icons/md'
 import { formatChf } from './amount'
 import { KontoPicker } from './KontoPicker'
-import { PersonPicker } from './PersonPicker'
+import { PersonPicker } from '../persons/PersonPicker'
 import {
   addEntry,
   canDelete,

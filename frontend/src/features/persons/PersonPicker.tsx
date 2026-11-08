@@ -1,8 +1,8 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
-import { personsQueryOptions } from '../persons/api'
+import { personsQueryOptions } from './api'
 import { filterPersons, personLabel } from './personFilter'
-import type { Person } from '../persons/types'
+import type { Person } from './types'
 
 type Props = {
   value: number | null
