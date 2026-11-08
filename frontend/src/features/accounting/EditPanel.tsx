@@ -148,6 +148,16 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
           className={input}
         />
       </label>
+      
+      <label className="flex flex-col text-sm">
+        Text
+        <input
+          value={draft.text}
+          maxLength={500}
+          onChange={(e) => setDraft({ ...draft, text: e.target.value })}
+          className={input}
+        />
+      </label>
 
       {draft.entries.map((row, i) => (
         <fieldset key={i} className="flex flex-col gap-2 rounded border border-slate-200 p-3">

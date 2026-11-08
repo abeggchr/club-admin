@@ -100,6 +100,10 @@ namespace backend.Migrations
                     b.Property<int?>("PersonId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Date");

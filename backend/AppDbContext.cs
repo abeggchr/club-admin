@@ -26,6 +26,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Transaction>(e =>
         {
             e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.Text).HasMaxLength(500);
             e.HasIndex(x => x.Date);
             e.HasOne<Person>().WithMany().HasForeignKey(x => x.PersonId).OnDelete(DeleteBehavior.SetNull);
         });

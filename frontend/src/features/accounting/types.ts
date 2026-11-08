@@ -25,6 +25,8 @@ export type Transaction = {
   date: string
   /** Signed from the bank's point of view: Einzahlung positive, Auszahlung negative. */
   amount: number
+  /** Optional free text describing this Bewegung. */
+  text: string | null
   /** The optional Person this Bewegung is linked to. */
   personId: number | null
   balance: number
@@ -33,6 +35,7 @@ export type Transaction = {
 export type TransactionInput = {
   date: string
   amount: number
+  text: string | null
   personId: number | null
   entries: { id: number | null; text: string; accountNumber: number; amount: number }[]
 }

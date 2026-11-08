@@ -26,6 +26,7 @@ function filled(overrides: Partial<TransactionDraft> = {}): TransactionDraft {
   return {
     date: '2026-11-08',
     amount: '-120',
+    text: '',
     personId: null,
     entries: [{ id: null, text: 'Miete', accountNumber: 6010, amount: null }],
     ...overrides,
@@ -102,6 +103,7 @@ describe('isDraftDirty', () => {
   it.each([
     ['date', (d: TransactionDraft) => ({ ...d, date: '2026-11-09' })],
     ['amount', (d: TransactionDraft) => ({ ...d, amount: '5' })],
+    ['Bewegung text', (d: TransactionDraft) => ({ ...d, text: 'x' })],
     ['person', (d: TransactionDraft) => ({ ...d, personId: 3 })],
     ['text', (d: TransactionDraft) => ({ ...d, entries: [{ ...d.entries[0], text: 'x' }] })],
     ['account', (d: TransactionDraft) => ({ ...d, entries: [{ ...d.entries[0], accountNumber: 6010 }] })],
@@ -117,12 +119,13 @@ describe('isDraftDirty', () => {
 
   it('is clean for a loaded Bewegung until something is changed', () => {
     const loaded = draftFromTransaction(
-      { date: '2026-03-01', amount: -120, personId: 4 },
+      { date: '2026-03-01', amount: -120, text: 'Hallenmiete', personId: 4 },
       [{ id: 7, date: '2026-03-01', text: 'Miete', accountNumber: 6010, amount: -120 }],
       accounts,
     )
     expect(loaded.amount).toBe('-120.00')
     expect(loaded.personId).toBe(4)
+    expect(loaded.text).toBe('Hallenmiete')
     expect(loaded.entries[0]).toEqual({ id: 7, text: 'Miete', accountNumber: 6010, amount: '120.00' })
     expect(isDraftDirty(loaded, structuredClone(loaded), accounts)).toBe(false)
   })

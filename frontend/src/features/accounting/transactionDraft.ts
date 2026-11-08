@@ -20,6 +20,7 @@ export type EntryRow = {
 export type TransactionDraft = {
   date: string
   amount: string
+  text: string
   personId: number | null
   entries: EntryRow[]
 }
@@ -32,17 +33,18 @@ export type DraftErrors = {
 }
 
 export function emptyDraft(date: string): TransactionDraft {
-  return { date, amount: '', personId: null, entries: [{ id: null, text: '', accountNumber: null, amount: null }] }
+  return { date, amount: '', text: '', personId: null, entries: [{ id: null, text: '', accountNumber: null, amount: null }] }
 }
 
 export function draftFromTransaction(
-  transaction: { date: string; amount: number; personId: number | null },
+  transaction: { date: string; amount: number; text: string | null; personId: number | null },
   entries: Entry[],
   accounts: Account[],
 ): TransactionDraft {
   return {
     date: transaction.date,
     amount: formatChf(transaction.amount),
+    text: transaction.text ?? '',
     personId: transaction.personId,
     entries: entries.map((e) => {
       const account = accounts.find((a) => a.number === e.accountNumber)
@@ -125,7 +127,7 @@ export function canDelete(draft: TransactionDraft): boolean {
 
 /** True when the user has changed anything away from where the form started. */
 export function isDraftDirty(initial: TransactionDraft, current: TransactionDraft, accounts: Account[]): boolean {
-  if (initial.date !== current.date || initial.amount !== current.amount || initial.personId !== current.personId) return true
+  if (initial.date !== current.date || initial.amount !== current.amount || initial.text !== current.text || initial.personId !== current.personId) return true
   if (initial.entries.length !== current.entries.length) return true
   return current.entries.some((row, i) => {
     const before = initial.entries[i]
@@ -186,5 +188,5 @@ export function toTransactionInput(draft: TransactionDraft, accounts: Account[])
     const row = draft.entries[i]
     entries.push({ id: row.id, text: row.text.trim(), accountNumber: row.accountNumber!, amount })
   }
-  return { date: draft.date, amount: total.value, personId: draft.personId, entries }
+  return { date: draft.date, amount: total.value, text: draft.text.trim() === '' ? null : draft.text.trim(), personId: draft.personId, entries }
 }

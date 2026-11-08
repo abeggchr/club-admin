@@ -253,6 +253,7 @@ api.MapPost(
         {
             Date = input.Date,
             Amount = input.Amount,
+            Text = NormalizeText(input.Text),
             PersonId = input.PersonId,
             Entries = lines.Select(l => Line(new Entry(), l.Text, l.AccountNumber, l.Amount)).ToList(),
         };
@@ -302,6 +303,7 @@ api.MapPut(
 
         transaction.Date = input.Date;
         transaction.Amount = input.Amount;
+        transaction.Text = NormalizeText(input.Text);
         transaction.PersonId = input.PersonId;
         foreach (var line in lines)
         {
@@ -397,6 +399,8 @@ static async Task<TransactionDto> LoadTransactionDtoAsync(AppDbContext db, Setti
     (await LoadTransactionDtosAsync(db, opening)).Single(t => t.Id == id);
 
 // All Bewegungen, newest first, each with the Kontostand after it.
+static string? NormalizeText(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+
 static async Task<List<TransactionDto>> LoadTransactionDtosAsync(AppDbContext db, Settings opening)
 {
     var transactions = await db.Transactions.Include(t => t.Entries).AsNoTracking().ToListAsync();
@@ -406,6 +410,7 @@ static async Task<List<TransactionDto>> LoadTransactionDtosAsync(AppDbContext db
             r.Transaction.Id,
             r.Transaction.Date,
             r.Transaction.Amount,
+            r.Transaction.Text,
             r.Transaction.PersonId,
             r.Balance,
             r.Transaction.Entries.Select(e => e.Id).Order().ToList()
@@ -425,9 +430,9 @@ record JournalEntryDto(
 
 record TransactionEntryInput(int? Id, string? Text, int AccountNumber, decimal Amount);
 
-record TransactionInput(DateOnly Date, decimal Amount, int? PersonId, List<TransactionEntryInput>? Entries);
+record TransactionInput(DateOnly Date, decimal Amount, string? Text, int? PersonId, List<TransactionEntryInput>? Entries);
 
-record TransactionDto(int Id, DateOnly Date, decimal Amount, int? PersonId, decimal Balance, List<int> EntryIds);
+record TransactionDto(int Id, DateOnly Date, decimal Amount, string? Text, int? PersonId, decimal Balance, List<int> EntryIds);
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
 
