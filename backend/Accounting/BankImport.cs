@@ -22,9 +22,9 @@ public record BankImportResult(List<ImportedTransaction> Transactions, int Skipp
 
 /// <summary>
 /// The pure bank import: reads every CAMT.053 file of an eBanking zip entirely in memory and creates one
-/// Bewegung per simple entry (an entry without TxDtls, or with exactly one). It does no database access,
-/// uses only the .NET standard library's zip and XML support, and never uses entry names as file paths.
-/// Batch entries, Person matching and zip safety limits come in follow-up tickets.
+/// Bewegung per transaction: an entry without TxDtls, or one of its TxDtls for a batch entry. It does no
+/// database access, uses only the .NET standard library's zip and XML support, and never uses entry names
+/// as file paths. Person matching comes in a follow-up ticket.
 /// </summary>
 public static class BankImport
 {
@@ -167,13 +167,6 @@ public static class BankImport
     private static void ParseEntry(XElement ntry, string file, ImportContext context)
     {
         var txDtls = LocalAll(ntry, "TxDtls");
-        if (txDtls.Count > 1)
-        {
-            context.Errors.Add(new ImportError(file, "Einträge mit mehreren Transaktionen (TxDtls) werden noch nicht unterstützt."));
-            return;
-        }
-        // The simple entry: exactly one TxDtls, or none (then the entry itself is the transaction).
-        var transaction = txDtls.Count == 1 ? txDtls[0] : ntry;
 
         var status = StatusOf(ntry);
         if (string.IsNullOrWhiteSpace(status))
@@ -188,7 +181,7 @@ public static class BankImport
             );
             return;
         }
-        if (ReversalIndicated(ntry, transaction))
+        if (ReversalIndicated(ntry))
         {
             context.Errors.Add(new ImportError(file, "Der Eintrag ist eine Stornierung (RvslInd) und wird nicht importiert."));
             return;
@@ -206,18 +199,10 @@ public static class BankImport
             return;
         }
 
-        var ntryAmount = AmountOf(ntry);
-        if (ntryAmount is null)
+        var ntryAmountElement = AmountOf(ntry);
+        if (ntryAmountElement is null)
         {
             context.Errors.Add(new ImportError(file, "Es fehlt der Betrag (Amt)."));
-            return;
-        }
-        var amountElement = ReferenceEquals(transaction, ntry) ? ntryAmount : AmountOf(transaction);
-        if (!decimal.TryParse(amountElement?.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount))
-        {
-            context.Errors.Add(
-                new ImportError(file, amountElement is null ? "Es fehlt der Betrag (Amt)." : $"Ungültiger Betrag: {amountElement.Value}")
-            );
             return;
         }
 
@@ -227,6 +212,81 @@ public static class BankImport
             context.Errors.Add(
                 new ImportError(file, dateElement is null ? "Es fehlt das Buchungsdatum (BookgDt/Dt)." : $"Ungültiges Buchungsdatum: {dateElement.Value}")
             );
+            return;
+        }
+
+        if (txDtls.Count > 1)
+        {
+            // A batch entry: one Bewegung per TxDtls; the sign and the booking date come from the entry.
+            var txAmounts = new decimal[txDtls.Count];
+            for (var i = 0; i < txDtls.Count; i++)
+            {
+                var txAmountElement = AmountOf(txDtls[i]);
+                if (!decimal.TryParse(txAmountElement?.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var txAmount))
+                {
+                    context.Errors.Add(
+                        new ImportError(file, txAmountElement is null ? "Es fehlt der Betrag (Amt)." : $"Ungültiger Betrag: {txAmountElement.Value}")
+                    );
+                    return;
+                }
+                txAmounts[i] = txAmount;
+            }
+
+            if (!decimal.TryParse(ntryAmountElement.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var ntryAmount))
+            {
+                context.Errors.Add(new ImportError(file, $"Ungültiger Betrag: {ntryAmountElement.Value}"));
+                return;
+            }
+            if (txAmounts.Sum() != ntryAmount)
+            {
+                context.Errors.Add(
+                    new ImportError(
+                        file,
+                        $"Die Transaktionsbeträge addieren sich nicht auf den Eintragsbetrag: {txAmounts.Sum().ToString("0.00", CultureInfo.InvariantCulture)} statt {ntryAmount.ToString("0.00", CultureInfo.InvariantCulture)}."
+                    )
+                );
+                return;
+            }
+
+            for (var i = 0; i < txDtls.Count; i++)
+            {
+                ParseTransaction(ntry, txDtls[i], txAmounts[i], direction, date, file, context);
+            }
+            return;
+        }
+
+        // The simple entry: exactly one TxDtls, or none (then the entry itself is the transaction).
+        var transaction = txDtls.Count == 1 ? txDtls[0] : ntry;
+        var amountElement = ReferenceEquals(transaction, ntry) ? ntryAmountElement : AmountOf(transaction);
+        if (!decimal.TryParse(amountElement?.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount))
+        {
+            context.Errors.Add(
+                new ImportError(file, amountElement is null ? "Es fehlt der Betrag (Amt)." : $"Ungültiger Betrag: {amountElement.Value}")
+            );
+            return;
+        }
+
+        ParseTransaction(ntry, transaction, amount, direction, date, file, context);
+    }
+
+    /// <summary>
+    /// One Bewegung for one transaction: for a simple entry the entry itself, for a batch entry one of its
+    /// TxDtls. The transaction's own amount, Ustrd text and TxDtls/Refs/AcctSvcrRef are used; the sign comes
+    /// from the entry's CdtDbtInd.
+    /// </summary>
+    private static void ParseTransaction(
+        XElement ntry,
+        XElement transaction,
+        decimal amount,
+        string direction,
+        DateOnly date,
+        string file,
+        ImportContext context
+    )
+    {
+        if (ReversalIndicated(transaction))
+        {
+            context.Errors.Add(new ImportError(file, "Der Eintrag ist eine Stornierung (RvslInd) und wird nicht importiert."));
             return;
         }
 
@@ -283,8 +343,8 @@ public static class BankImport
     }
 
     /// <summary>A reversal can be marked on the entry or on the transaction details.</summary>
-    private static bool ReversalIndicated(XElement ntry, XElement transaction) =>
-        (Local(ntry, "RvslInd")?.Value?.Trim() ?? Local(transaction, "RvslInd")?.Value?.Trim()) is "true" or "1";
+    private static bool ReversalIndicated(XElement element) =>
+        Local(element, "RvslInd")?.Value?.Trim() is "true" or "1";
 
     /// <summary>The amount element per CAMT version: a direct <c>Amt</c> (.08), or the .02 shape <c>AmtDtls/TxAmt/Amt</c>.</summary>
     private static XElement? AmountOf(XElement? parent) =>
