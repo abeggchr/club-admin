@@ -32,6 +32,30 @@ public static class AccountingCalculator
     }
 
     /// <summary>
+    /// The bank's balance on <paramref name="date"/>: the Anfangssaldo plus all Bewegungen up to and including
+    /// that date. Returns null before the Anfangssaldo start date, where no balance is defined.
+    /// </summary>
+    public static decimal? TransactionBalance(Settings opening, IEnumerable<Transaction> transactions, DateOnly date)
+    {
+        if (ExpectedBalance(opening, date) is not { } start)
+        {
+            return null;
+        }
+
+        return start + transactions.Where(t => t.Date <= date).Sum(t => t.Amount);
+    }
+
+    /// <summary>
+    /// Whether the bank's view of the balance (Bewegungen) and the journal's view (Buchungen) on a date
+    /// disagree, in which case the UI turns "Kontostand heute" red. Two undefined balances (before the
+    /// Anfangssaldo) do not disagree.
+    /// </summary>
+    public static bool BalancesDiffer(decimal? expected, decimal? transactions)
+    {
+        return expected != transactions;
+    }
+
+    /// <summary>
     /// The whole journal, newest first, each row carrying the running Erwarteter Kontostand up to and including
     /// that row. Ordered by Bewegung date, then Bewegung Id, then Buchung Id (creation order). Always takes the
     /// unfiltered journal; the entries need their Bewegung loaded.

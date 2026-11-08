@@ -204,7 +204,19 @@ api.MapGet(
             .Include(e => e.Transaction)
             .Where(e => e.Transaction.Date <= date)
             .ToListAsync();
-        return Results.Ok(new { date, balance = AccountingCalculator.ExpectedBalance(opening, entries, date) });
+        var transactions = await db.Transactions.Where(t => t.Date <= date).ToListAsync();
+
+        var journalBalance = AccountingCalculator.ExpectedBalance(opening, entries, date);
+        var transactionBalance = AccountingCalculator.TransactionBalance(opening, transactions, date);
+        return Results.Ok(
+            new
+            {
+                date,
+                balance = journalBalance,
+                transactionBalance,
+                differs = AccountingCalculator.BalancesDiffer(journalBalance, transactionBalance),
+            }
+        );
     }
 );
 
