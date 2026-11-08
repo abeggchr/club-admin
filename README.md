@@ -6,11 +6,13 @@ Backoffice for the club: persons, bookkeeping and invoices. ASP.NET Core backend
 
 Prerequisites: .NET 10 SDK, Node.js, Docker.
 
+Command using Apple's container engine. Login with `container registry login --username xxx dhi.io`
+
 ### 1. Postgres
 
 ```sh
-docker run --name scw-postgres -d -p 5432:5432 \
-  -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=railway postgres:17
+container run --name scw-postgres -d -p 5432:5432 \
+  -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=railway postgres:18
 ```
 
 This matches the connection string in `backend/appsettings.Development.json`. Migrations are applied on backend startup.
@@ -18,7 +20,7 @@ This matches the connection string in `backend/appsettings.Development.json`. Mi
 ### 2. MinIO (object storage)
 
 ```sh
-docker run --name scw-minio -d -p 9000:9000 -p 9001:9001 \
+container run --name scw-minio -d -p 9000:9000 -p 9001:9001 \
   -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
   dhi.io/minio server /data --console-address ":9001"
 ```
