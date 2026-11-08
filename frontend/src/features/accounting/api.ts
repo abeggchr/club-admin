@@ -75,13 +75,6 @@ export const entriesQueryOptions = queryOptions({
   queryFn: () => fetchEntries(noFilters),
 })
 
-export function filteredEntriesQueryOptions(filters: JournalFilters) {
-  return queryOptions({
-    queryKey: [...entriesQueryOptions.queryKey, filters],
-    queryFn: () => fetchEntries(filters),
-  })
-}
-
 export const transactionsQueryOptions = queryOptions({
   queryKey: ['transactions'],
   queryFn: () => getJson<Transaction[]>('/api/transactions'),

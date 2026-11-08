@@ -22,7 +22,7 @@ export type DraftErrors = {
   date?: string
   amount?: string
   entries: { text?: string; account?: string; amount?: string }[]
-  differenz?: string
+  remainder?: string
 }
 
 export function emptyDraft(date: string): TransactionDraft {
@@ -79,7 +79,7 @@ function signedEntryAmount(draft: TransactionDraft, index: number, accounts: Acc
  * Bewegung Betrag minus the signed sum of the Buchungen; 0 means the Bewegung is fully booked.
  * Rows that are not valid yet count as 0. Null while the Bewegung Betrag is not a valid amount.
  */
-export function differenz(draft: TransactionDraft, accounts: Account[]): number | null {
+export function remainder(draft: TransactionDraft, accounts: Account[]): number | null {
   const total = parseAmount(draft.amount)
   if (!total.ok) return null
   const booked = draft.entries.reduce((sum, _row, i) => sum + toCents(signedEntryAmount(draft, i, accounts) ?? 0), 0)
@@ -126,12 +126,12 @@ export function validateDraft(
   })
 
   if (draft.entries.length === 0) {
-    errors.differenz = 'Eine Bewegung braucht mindestens eine Buchung.'
+    errors.remainder = 'Eine Bewegung braucht mindestens eine Buchung.'
     any = true
   } else if (total.ok && !errors.entries.some((e) => e.account || e.amount)) {
-    const rest = differenz(draft, accounts)
+    const rest = remainder(draft, accounts)
     if (rest !== 0 && rest !== null) {
-      errors.differenz = `Die Differenz von ${formatChf(rest)} muss 0 sein.`
+      errors.remainder = `Die Differenz von ${formatChf(rest)} muss 0 sein.`
       any = true
     }
   }

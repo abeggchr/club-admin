@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  differenz,
+  remainder,
   draftFromTransaction,
   emptyDraft,
   entryAmount,
@@ -56,23 +56,23 @@ describe('entryAmount (first-row pre-fill)', () => {
   })
 })
 
-describe('differenz', () => {
+describe('remainder', () => {
   it('is zero when the Buchung matches the Bewegung', () => {
-    expect(differenz(filled(), accounts)).toBe(0)
+    expect(remainder(filled(), accounts)).toBe(0)
   })
 
   it('signs typed amounts per Kategorie', () => {
     const draft = filled({ amount: '-100' })
     draft.entries[0].amount = '30' // Ausgabe 30 => -30
-    expect(differenz(draft, accounts)).toBe(-70)
+    expect(remainder(draft, accounts)).toBe(-70)
     draft.entries.push({ id: null, text: 'Spende', accountNumber: 3400, amount: '20' }) // Einnahme 20 => +20
-    expect(differenz(draft, accounts)).toBe(-90)
+    expect(remainder(draft, accounts)).toBe(-90)
   })
 
   it('treats a negative typed amount as a reversal', () => {
     const draft = filled({ amount: '100' })
     draft.entries[0].amount = '-100' // Ausgabe -100 => +100
-    expect(differenz(draft, accounts)).toBe(0)
+    expect(remainder(draft, accounts)).toBe(0)
   })
 
   it('is cents-exact', () => {
@@ -81,11 +81,11 @@ describe('differenz', () => {
       { id: null, text: 'a', accountNumber: 3400, amount: '0.10' },
       { id: null, text: 'b', accountNumber: 3400, amount: '0.20' },
     ]
-    expect(differenz(draft, accounts)).toBe(0)
+    expect(remainder(draft, accounts)).toBe(0)
   })
 
   it('is null while the Bewegung Betrag is not a valid amount', () => {
-    expect(differenz(filled({ amount: '' }), accounts)).toBeNull()
+    expect(remainder(filled({ amount: '' }), accounts)).toBeNull()
   })
 })
 
@@ -139,11 +139,11 @@ describe('validateDraft / can-save', () => {
   it('rejects a Differenz other than zero', () => {
     const draft = filled()
     draft.entries[0].amount = '100'
-    expect(validateDraft(draft, accounts, '2026-01-01')?.differenz).toBe('Die Differenz von -20.00 muss 0 sein.')
+    expect(validateDraft(draft, accounts, '2026-01-01')?.remainder).toBe('Die Differenz von -20.00 muss 0 sein.')
   })
 
   it('needs at least one Buchung', () => {
-    expect(validateDraft(filled({ entries: [] }), accounts, '2026-01-01')?.differenz).toBeDefined()
+    expect(validateDraft(filled({ entries: [] }), accounts, '2026-01-01')?.remainder).toBeDefined()
   })
 })
 

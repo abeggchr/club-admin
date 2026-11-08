@@ -26,7 +26,6 @@ export type Transaction = {
   /** Signed from the bank's point of view: Einzahlung positive, Auszahlung negative. */
   amount: number
   balance: number
-  entryIds: number[]
 }
 
 export type TransactionInput = {

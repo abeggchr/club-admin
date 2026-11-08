@@ -4,7 +4,7 @@ import { accountsQueryOptions, invalidateJournalQueries, openingBalanceQueryOpti
 import { formatChf } from './amount'
 import { KontoPicker } from './KontoPicker'
 import {
-  differenz,
+  remainder,
   draftFromTransaction,
   emptyDraft,
   entryAmount,
@@ -45,7 +45,7 @@ export function EditPanel({ transaction, entries = [], onDone, onDirtyChange }: 
   const [errors, setErrors] = useState<DraftErrors | null>(null)
   const [serverError, setServerError] = useState<string>()
   const dirty = isDraftDirty(baseline, draft, accounts)
-  const rest = differenz(draft, accounts)
+  const rest = remainder(draft, accounts)
 
   useEffect(() => {
     onDirtyChange?.(dirty)
@@ -133,7 +133,7 @@ export function EditPanel({ transaction, entries = [], onDone, onDirtyChange }: 
         </fieldset>
       ))}
       {rest !== null && rest !== 0 && <p className="text-sm text-slate-600">Differenz: {formatChf(rest)}</p>}
-      {errors?.differenz && <p className="text-red-600">{errors.differenz}</p>}
+      {errors?.remainder && <p className="text-red-600">{errors.remainder}</p>}
 
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onDone} className="rounded border border-slate-300 hover:bg-sky-100 px-4 py-2">
