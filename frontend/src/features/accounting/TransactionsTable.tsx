@@ -48,7 +48,12 @@ export function TransactionsTable({ transactions, selectedId, highlightedIds, on
                   className={`cursor-pointer border-b border-slate-100 last:border-0 ${rowTint(selected, highlighted)}`}
                 >
                   <td className="px-3 py-2">{new Date(t.date).toLocaleDateString('de-CH')}</td>
-                  <td className="px-3 py-2">{person ? personLabel(person) : (t.text ?? '')}</td>
+                  <td className="px-3 py-2">
+                    {person ? personLabel(person) : (t.text ?? '')}
+                    {t.entryIds.length === 0 && (
+                      <span className="ml-2 whitespace-nowrap rounded bg-amber-100 px-1.5 text-xs text-amber-800">Keine Buchung</span>
+                    )}
+                  </td>
                   <td className={`px-3 py-2 text-right tabular-nums ${t.amount < 0 ? 'text-red-700' : ''}`}>
                     {formatChf(t.amount)}
                   </td>
