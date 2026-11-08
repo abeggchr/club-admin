@@ -1,4 +1,4 @@
-import { MdAccountBalance, MdPeople } from 'react-icons/md'
+import { navItems } from '../nav'
 import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools'
@@ -12,11 +12,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   component: RootComponent,
 })
 
-const navItems = [
-  { to: '/persons', label: 'Persons', Icon: MdPeople },
-  { to: '/accounting', label: 'Buchhaltung', Icon: MdAccountBalance },
-] as const
-
 function RootComponent() {
   return (
     <>
@@ -29,7 +24,9 @@ function RootComponent() {
               to={item.to}
               title={item.label}
               aria-label={item.label}
-              className="rounded-md p-2 text-sky-100 transition-colors hover:bg-sky-400 hover:text-white"
+              className={`rounded-md p-2 text-sky-100 transition-colors hover:bg-sky-400 hover:text-white ${
+                item.align === 'end' ? 'ml-auto' : ''
+              }`}
               activeProps={{ className: 'bg-sky-700 text-white' }}
             >
               <item.Icon className="size-6" />

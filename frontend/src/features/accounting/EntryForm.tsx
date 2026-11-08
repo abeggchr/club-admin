@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import {
   accountsQueryOptions,
@@ -9,6 +9,7 @@ import {
 } from './api'
 import { entryDateError } from './date'
 import { formatChf, parseAmount, toSignedAmount, toTypedAmount } from './amount'
+import { isEntryDraftDirty, type EntryDraft } from './entryDraft'
 import { KontoPicker } from './KontoPicker'
 import type { Entry } from './types'
 
@@ -30,10 +31,13 @@ type Errors = {
 type Props = {
   /** When set, the form edits this Buchung instead of creating a new one. */
   entry?: Entry
+  /** Closes the form. Offered as "Abbrechen"; after saving an edit it is called automatically. */
   onDone?: () => void
+  /** Reports whether the form holds unsaved changes. */
+  onDirtyChange?: (dirty: boolean) => void
 }
 
-export function EntryForm({ entry, onDone }: Props = {}) {
+export function EntryForm({ entry, onDone, onDirtyChange }: Props = {}) {
   const queryClient = useQueryClient()
   const { data: accounts } = useSuspenseQuery(accountsQueryOptions)
   const { data: openingBalance } = useSuspenseQuery(openingBalanceQueryOptions)
@@ -45,6 +49,13 @@ export function EntryForm({ entry, onDone }: Props = {}) {
     entry && existing ? formatChf(toTypedAmount(entry.amount, existing.category)) : '',
   )
   const [errors, setErrors] = useState<Errors>({})
+  const [baseline, setBaseline] = useState<EntryDraft>({ date, text, accountNumber, amount })
+  const dirty = isEntryDraftDirty(baseline, { date, text, accountNumber, amount })
+
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+    return () => onDirtyChange?.(false)
+  }, [dirty, onDirtyChange])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -74,6 +85,7 @@ export function EntryForm({ entry, onDone }: Props = {}) {
       } else {
         setText('')
         setAmount('')
+        setBaseline({ date, text: '', accountNumber, amount: '' })
       }
     } catch (err) {
       setErrors({
@@ -83,7 +95,8 @@ export function EntryForm({ entry, onDone }: Props = {}) {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="mt-4 flex flex-wrap items-start gap-3">
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3">
+      <h3 className="font-medium">{entry ? 'Buchung bearbeiten' : 'Neue Buchung'}</h3>
       <label className="flex flex-col text-sm">
         Datum
         <input
@@ -114,15 +127,17 @@ export function EntryForm({ entry, onDone }: Props = {}) {
         />
         {errors.amount && <span className="text-red-600">{errors.amount}</span>}
       </label>
-      <button type="submit" className="mt-5 rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700">
-        {entry ? 'Speichern' : 'Buchen'}
-      </button>
-      {entry && (
-        <button type="button" onClick={onDone} className="mt-5 rounded border border-slate-300 px-4 py-2">
-          Abbrechen
+      <div className="flex gap-2">
+        <button type="submit" className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700">
+          {entry ? 'Speichern' : 'Buchen'}
         </button>
-      )}
-      {errors.server && <p className="w-full text-red-600">{errors.server}</p>}
+        {onDone && (
+          <button type="button" onClick={onDone} className="rounded border border-slate-300 px-4 py-2">
+            Abbrechen
+          </button>
+        )}
+      </div>
+      {errors.server && <p className="text-red-600">{errors.server}</p>}
     </form>
   )
 }
