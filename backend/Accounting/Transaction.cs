@@ -16,5 +16,10 @@ public class Transaction
     public string? Text { get; set; }
     /// <summary>The optional Person this Bewegung is linked to.</summary>
     public int? PersonId { get; set; }
+    /// <summary>
+    /// The bank's account server reference (AcctSvcrRef) of an imported booking; set only for imported
+    /// Bewegungen, unique. It is how a re-import recognizes a transaction that is already stored.
+    /// </summary>
+    public string? BankReference { get; set; }
     public List<Entry> Entries { get; set; } = [];
 }

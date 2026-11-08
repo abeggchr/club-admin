@@ -22,6 +22,12 @@ A Bewegung where money comes in.
 **Auszahlung** (code: a _Transaction_ with a negative amount):
 A Bewegung where money goes out.
 
+**Importierte Bewegung** (code: a _Transaction_ with a BankReference):
+A Bewegung imported from the eBanking zip (CAMT.053 statements): the bank's booking date, the signed amount, the text and the BankReference. It has no Buchungen until the Kassier books it ("Keine Buchung"); a re-import skips a transaction whose BankReference is already stored.
+
+**BankReference** (code: _BankReference_):
+The bank's account server reference (AcctSvcrRef) of an imported booking. Unique per Bewegung and set only for imported ones, it is how the import recognizes a transaction that is already stored.
+
 **Keine Buchung** (code: a _Transaction_ without Entries):
 The state of a Bewegung without Buchungen: it is not booked yet. The Bewegungen table marks it with a "Keine Buchung" badge; it counts in the running Kontostand and adds nothing to the Buchungsjournal until Buchungen are added.
 

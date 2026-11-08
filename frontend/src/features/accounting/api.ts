@@ -91,6 +91,34 @@ export async function deleteTransaction(id: number): Promise<void> {
   await ensureOk(await fetch(`/api/transactions/${id}`, { method: 'DELETE' }))
 }
 
+export type TransactionImportResult = {
+  imported: number
+  skippedDuplicates: number
+}
+
+export type TransactionImportError = {
+  file: string | null
+  message: string
+}
+
+/** Thrown when the backend rejects the eBanking zip; the errors name their file. */
+export class TransactionImportFailed extends Error {
+  constructor(public readonly errors: TransactionImportError[]) {
+    super(errors.map((e) => (e.file ? `${e.file}: ${e.message}` : e.message)).join('\n'))
+  }
+}
+
+/** Uploads the eBanking zip as-is; the backend creates one Bewegung per simple CAMT entry. */
+export async function importTransactions(file: File): Promise<TransactionImportResult> {
+  const body = new FormData()
+  body.append('file', file)
+  const res = await fetch('/api/transactions/import', { method: 'POST', body })
+  if (res.ok) return res.json()
+  const data = await res.json().catch(() => null)
+  if (Array.isArray(data?.errors)) throw new TransactionImportFailed(data.errors)
+  throw new Error(data?.error ?? `Backend returned ${res.status}`)
+}
+
 /** Refreshes everything derived from the journal after a Bewegung or the settings changed. */
 export async function invalidateJournalQueries(queryClient: QueryClient): Promise<void> {
   await queryClient.invalidateQueries({ queryKey: entriesQueryOptions.queryKey })
