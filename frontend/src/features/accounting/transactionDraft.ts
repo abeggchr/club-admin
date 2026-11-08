@@ -9,6 +9,11 @@ export type EntryRow = {
   accountNumber: number | null
   /** Typed in the Konto's natural direction (Ausgaben positive for an expense). */
   amount: string | null
+  /**
+   * Bank-signed amount a row added with "+ Buchung" starts with (the remaining difference then), shown until
+   * the user edits the Betrag. Without it, only the first row follows the Bewegung Betrag.
+   */
+  prefill?: number
 }
 
 /** The Bewegung form's field values as the user sees them. `amount` is the typed, bank-signed Bewegung Betrag. */
@@ -57,9 +62,12 @@ function categoryOf(accountNumber: number | null, accounts: Account[]) {
 export function entryAmount(draft: TransactionDraft, index: number, accounts: Account[]): string {
   const row = draft.entries[index]
   if (row.amount !== null) return row.amount
+  const category = categoryOf(row.accountNumber, accounts)
+  if (row.prefill !== undefined) {
+    return formatChf(category ? toTypedAmount(row.prefill, category) : row.prefill)
+  }
   if (index !== 0) return ''
   const parsed = parseAmount(draft.amount)
-  const category = categoryOf(row.accountNumber, accounts)
   if (!parsed.ok || !category) return draft.amount
   return formatChf(toTypedAmount(parsed.value, category))
 }
@@ -84,6 +92,33 @@ export function remainder(draft: TransactionDraft, accounts: Account[]): number 
   if (!total.ok) return null
   const booked = draft.entries.reduce((sum, _row, i) => sum + toCents(signedEntryAmount(draft, i, accounts) ?? 0), 0)
   return (toCents(total.value) - booked) / 100
+}
+
+/** Appends an empty Buchung row pre-filled with the remaining difference (nothing while it is unknown or 0). */
+export function addEntry(draft: TransactionDraft, accounts: Account[]): TransactionDraft {
+  const rest = remainder(draft, accounts)
+  const row: EntryRow = { id: null, text: '', accountNumber: null, amount: null }
+  if (rest !== null && rest !== 0) row.prefill = rest
+  return { ...draft, entries: [...draft.entries, row] }
+}
+
+/** Drops a Buchung row; a row that followed the Bewegung Betrag as first row keeps its shown value. */
+export function removeEntry(draft: TransactionDraft, index: number): TransactionDraft {
+  const entries = draft.entries.filter((_, i) => i !== index)
+  if (index === 0 && entries.length > 0 && entries[0].amount === null && entries[0].prefill === undefined) {
+    entries[0] = { ...entries[0], amount: '' }
+  }
+  return { ...draft, entries }
+}
+
+/** True when the draft passes validation, i.e. the Differenz is 0 and every field is valid. */
+export function canSave(draft: TransactionDraft, accounts: Account[], openingStartDate: string | undefined): boolean {
+  return validateDraft(draft, accounts, openingStartDate) === null
+}
+
+/** A Bewegung can only be deleted once all its Buchung rows were removed. */
+export function canDelete(draft: TransactionDraft): boolean {
+  return draft.entries.length === 0
 }
 
 /** True when the user has changed anything away from where the form started. */

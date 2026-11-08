@@ -5,23 +5,42 @@ import { entriesQueryOptions, transactionsQueryOptions } from './api'
 import { BalanceAtDate } from './BalanceAtDate'
 import { EditPanel } from './EditPanel'
 import { JournalList } from './JournalList'
+import { highlightOf, toggleSelection, type Selection } from './selection'
 import { TransactionsTable } from './TransactionsTable'
 
 /** What the panel beside the Bewegungen is doing: nothing, adding a new Bewegung, or editing one. */
-type PanelMode = { kind: 'closed' } | { kind: 'add' } | { kind: 'edit'; id: number }
+type PanelMode =
+  | { kind: 'closed' }
+  | { kind: 'add' }
+  | { kind: 'edit'; id: number; focusEntryId: number | null }
 
 /** The Buchhaltung page: Bewegungen | edit panel (only while open) | Buchungsjournal. */
 export function TransactionsView() {
   const [mode, setMode] = useState<PanelMode>({ kind: 'closed' })
+  const [selection, setSelection] = useState<Selection | null>(null)
   const [dirty, setDirty] = useState(false)
   const { data: transactions = [], isError: transactionsFailed } = useQuery(transactionsQueryOptions)
   const { data: entries = [], isError: entriesFailed } = useQuery(entriesQueryOptions)
   const editing = mode.kind === 'edit' ? transactions.find((t) => t.id === mode.id) : undefined
+  const highlight = highlightOf(selection, entries)
 
-  function onSelect(id: number) {
-    if (mode.kind === 'edit' && mode.id === id) return
-    if (dirty && !window.confirm('Ungespeicherte Änderungen verwerfen?')) return
-    setMode({ kind: 'edit', id })
+  /** Selects a row (or deselects it when clicked again) and opens/closes the panel for its Bewegung. */
+  function onSelect(clicked: Selection) {
+    const next = toggleSelection(selection, clicked)
+    // Moving within the open Bewegung keeps the draft; deselecting or switching to another one drops it.
+    const keepsDraft =
+      next !== null &&
+      mode.kind === 'edit' &&
+      mode.id === (clicked.kind === 'transaction' ? clicked.id : clicked.transactionId)
+    if (dirty && !keepsDraft && !window.confirm('Ungespeicherte Änderungen verwerfen?')) return
+    setSelection(next)
+    if (!next) {
+      setMode({ kind: 'closed' })
+    } else if (next.kind === 'transaction') {
+      setMode({ kind: 'edit', id: next.id, focusEntryId: null })
+    } else {
+      setMode({ kind: 'edit', id: next.transactionId, focusEntryId: next.id })
+    }
   }
 
   return (
@@ -29,7 +48,10 @@ export function TransactionsView() {
       <div className="mt-4 flex items-center justify-between gap-4">
         <button
           type="button"
-          onClick={() => setMode({ kind: 'add' })}
+          onClick={() => {
+            setSelection(null)
+            setMode({ kind: 'add' })
+          }}
           disabled={dirty}
           aria-label="Neue Bewegung"
           title={dirty ? 'Zuerst die ungespeicherten Änderungen speichern oder verwerfen' : 'Neue Bewegung'}
@@ -48,8 +70,9 @@ export function TransactionsView() {
         <div className="flex min-w-0 flex-1">
           <TransactionsTable
             transactions={transactions}
-            selectedId={mode.kind === 'edit' ? mode.id : null}
-            onSelect={onSelect}
+            selectedId={selection?.kind === 'transaction' ? selection.id : null}
+            highlightedIds={highlight.transactionIds}
+            onSelect={(t) => onSelect({ kind: 'transaction', id: t })}
           />
         </div>
         {(mode.kind === 'add' || editing) && (
@@ -58,13 +81,20 @@ export function TransactionsView() {
               key={editing ? editing.id : 'new'}
               transaction={editing}
               entries={editing ? entries.filter((e) => e.transactionId === editing.id) : []}
+              focusEntryId={mode.kind === 'edit' ? mode.focusEntryId : null}
               onDone={() => setMode({ kind: 'closed' })}
+              onDeleted={() => setSelection(null)}
               onDirtyChange={setDirty}
             />
           </aside>
         )}
         <div className="flex min-w-0 flex-[2]">
-          <JournalList entries={entries} />
+          <JournalList
+            entries={entries}
+            selectedId={selection?.kind === 'entry' ? selection.id : null}
+            highlightedIds={highlight.entryIds}
+            onSelect={(e) => onSelect({ kind: 'entry', id: e.id, transactionId: e.transactionId })}
+          />
         </div>
       </div>
     </>

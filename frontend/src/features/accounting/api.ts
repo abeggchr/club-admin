@@ -85,6 +85,11 @@ export function saveTransaction(id: number | null, input: TransactionInput): Pro
   return requestJson(id === null ? '/api/transactions' : `/api/transactions/${id}`, id === null ? 'POST' : 'PUT', input)
 }
 
+/** Deletes a Bewegung together with any Buchungen still stored for it. */
+export async function deleteTransaction(id: number): Promise<void> {
+  await ensureOk(await fetch(`/api/transactions/${id}`, { method: 'DELETE' }))
+}
+
 /** Refreshes everything derived from the journal after a Bewegung or the Anfangssaldo changed. */
 export async function invalidateJournalQueries(queryClient: QueryClient): Promise<void> {
   await queryClient.invalidateQueries({ queryKey: entriesQueryOptions.queryKey })

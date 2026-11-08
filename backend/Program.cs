@@ -298,6 +298,24 @@ api.MapPut(
     }
 );
 
+// Deletes the Bewegung together with any Buchungen still stored for it (cascade), syncing AccountUsage.
+api.MapDelete(
+    "/transactions/{id:int}",
+    async (int id, AppDbContext db, ChartOfAccounts chart) =>
+    {
+        var transaction = await db.Transactions.Include(t => t.Entries).FirstOrDefaultAsync(t => t.Id == id);
+        if (transaction is null)
+        {
+            return Results.NotFound();
+        }
+
+        db.JournalEntries.RemoveRange(transaction.Entries);
+        db.Transactions.Remove(transaction);
+        await SaveEntryChangeAsync(db, chart);
+        return Results.NoContent();
+    }
+);
+
 // SPA fallback for client-side routes (not for unknown /api paths or files).
 app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
