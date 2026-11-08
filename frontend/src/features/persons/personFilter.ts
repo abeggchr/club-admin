@@ -1,4 +1,4 @@
-import type { Person } from '../persons/types'
+import type { Person } from './types'
 
 export function personLabel(person: Person): string {
   return `${person.lastName} ${person.firstName}`
