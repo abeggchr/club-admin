@@ -37,6 +37,7 @@ public class InvoiceCreator(AppDbContext db, IInvoiceStorage storage, ILogger<In
                     InvoiceRules.FormatNumber(invoice.Id),
                     DateOnly.FromDateTime(now),
                     $"{person.FirstName} {person.LastName}",
+                    InvoiceDocument.AddressLines(person.Address, person.PostalCode, person.City, person.Country),
                     template.Title,
                     template.Text,
                     template.Greetings,
