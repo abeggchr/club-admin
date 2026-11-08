@@ -13,6 +13,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
 );
 
+builder.Services.AddObjectStorage(builder.Configuration);
+
 // A malformed Kontoplan file fails startup (see ADR 0001).
 builder.Services.AddSingleton(
     ChartOfAccounts.Load(Path.Combine(AppContext.BaseDirectory, "Accounting", "chart-of-accounts.json"))
@@ -39,6 +41,8 @@ using (var scope = app.Services.CreateScope())
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    // Local MinIO starts empty; production buckets are provisioned by Railway.
+    await app.Services.EnsureBucketAsync();
     app.MapOpenApi();
 }
 

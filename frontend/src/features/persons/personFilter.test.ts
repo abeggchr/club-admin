@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Person } from '../persons/types'
+import type { Person } from './types'
 import { filterPersons } from './personFilter'
 
 function person(id: number, firstName: string, lastName: string, leftOn: string | null = null): Person {
