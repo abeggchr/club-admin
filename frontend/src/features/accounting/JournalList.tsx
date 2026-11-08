@@ -52,7 +52,8 @@ export function JournalList() {
         ),
       }),
       helper.accessor('balance', {
-        header: () => <span className="block text-right">Erwarteter Kontostand</span>,
+        // Erwarteter Kontostand
+        header: () => <span className="block text-right">Kontostand</span>,
         cell: (info) => <span className="block text-right tabular-nums">{formatChf(info.getValue())}</span>,
       }),
     ])
@@ -81,7 +82,7 @@ export function JournalList() {
 
       <div className="mt-4 flex items-start gap-4">
         {(mode.kind === 'add' || editing) && (
-          <aside className="w-80 shrink-0 rounded border border-slate-200 p-4">
+          <aside className="w-1/3 shrink-0 rounded border border-slate-200 p-4">
             <EntryForm
               key={editing ? editing.id : 'new'}
               entry={editing}
