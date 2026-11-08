@@ -14,7 +14,13 @@ One account in the Kontoplan, identified by a number and a name (e.g. 3400 Jahre
 The grouping of Konten in the Kontoplan: Einnahmen (_Income_) or Ausgaben (_Expense_). The Kategorie of a Buchung's Konto decides whether it is revenue or expense.
 
 **Bewegung** (code: _Transaction_):
-One money movement on the bank account: the bank's booking date and a signed amount, split into one or more Buchungen. It is an **Einzahlung** (money in, positive amount) or an **Auszahlung** (money out, negative amount); the direction follows from the sign and is not stored. The signed amounts of its Buchungen sum to its amount.
+One money movement on the bank account: the bank's booking date and a signed amount, split into one or more Buchungen. The signed amounts of its Buchungen sum to its amount. Its direction follows from the sign of the amount and is not stored: it is an Einzahlung or an Auszahlung.
+
+**Einzahlung** (code: a _Transaction_ with a positive amount):
+A Bewegung where money comes in.
+
+**Auszahlung** (code: a _Transaction_ with a negative amount):
+A Bewegung where money goes out.
 
 **Buchung** (code: _Entry_):
 One line of a Bewegung: a text, a Konto and a signed amount (money in is positive, money out is negative). It belongs to exactly one Bewegung and has no date of its own; it takes the date of its Bewegung. Whether it is revenue or expense follows from the Kategorie of its Konto.

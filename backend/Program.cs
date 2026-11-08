@@ -220,12 +220,7 @@ api.MapPost(
             return Results.BadRequest(new { error });
         }
 
-        var entry = new Entry
-        {
-            Text = input.Text.Trim(),
-            AccountNumber = input.AccountNumber,
-            Amount = input.Amount,
-        };
+        var entry = Line(new Entry(), input.Text, input.AccountNumber, input.Amount);
         var transaction = new Transaction
         {
             Date = input.Date,
@@ -266,9 +261,7 @@ api.MapPut(
         // The Bewegung keeps the amounts of its other Buchungen (none for a Bewegung made by this path).
         entry.Transaction.Amount += input.Amount - entry.Amount;
         entry.Transaction.Date = input.Date;
-        entry.Text = input.Text.Trim();
-        entry.AccountNumber = input.AccountNumber;
-        entry.Amount = input.Amount;
+        Line(entry, input.Text, input.AccountNumber, input.Amount);
         await SaveEntryChangeAsync(db, chart);
         return Results.Ok(ToDto(entry, entry.Transaction));
     }
@@ -327,12 +320,14 @@ api.MapPost(
         {
             Date = input.Date,
             Amount = input.Amount,
-            Entries = lines.Select(NewEntry).ToList(),
+            Entries = lines.Select(l => Line(new Entry(), l.Text, l.AccountNumber, l.Amount)).ToList(),
         };
         db.Transactions.Add(transaction);
         await SaveEntryChangeAsync(db, chart);
-        var created = (await LoadTransactionDtosAsync(db, opening!)).Single(t => t.Id == transaction.Id);
-        return Results.Created($"/api/transactions/{transaction.Id}", created);
+        return Results.Created(
+            $"/api/transactions/{transaction.Id}",
+            await LoadTransactionDtoAsync(db, opening!, transaction.Id)
+        );
     }
 );
 
@@ -373,19 +368,16 @@ api.MapPut(
         {
             if (line.Id is { } entryId)
             {
-                var entry = stored[entryId];
-                entry.Text = line.Text!.Trim();
-                entry.AccountNumber = line.AccountNumber;
-                entry.Amount = line.Amount;
+                Line(stored[entryId], line.Text, line.AccountNumber, line.Amount);
             }
             else
             {
-                transaction.Entries.Add(NewEntry(line));
+                transaction.Entries.Add(Line(new Entry(), line.Text, line.AccountNumber, line.Amount));
             }
         }
         db.JournalEntries.RemoveRange(stored.Values.Where(e => !givenIds.Contains(e.Id)));
         await SaveEntryChangeAsync(db, chart);
-        return Results.Ok((await LoadTransactionDtosAsync(db, opening!)).Single(t => t.Id == id));
+        return Results.Ok(await LoadTransactionDtoAsync(db, opening!, id));
     }
 );
 
@@ -435,16 +427,20 @@ static async Task SaveEntryChangeAsync(AppDbContext db, ChartOfAccounts chart)
     await tx.CommitAsync();
 }
 
-static Entry NewEntry(TransactionEntryInput line) =>
-    new()
-    {
-        Text = line.Text!.Trim(),
-        AccountNumber = line.AccountNumber,
-        Amount = line.Amount,
-    };
+// Sets the fields a client supplies for a Buchung (already validated, so the text is not blank).
+static Entry Line(Entry entry, string? text, int accountNumber, decimal amount)
+{
+    entry.Text = text!.Trim();
+    entry.AccountNumber = accountNumber;
+    entry.Amount = amount;
+    return entry;
+}
 
 static EntryDto ToDto(Entry entry, Transaction transaction) =>
     new(entry.Id, transaction.Id, transaction.Date, entry.Text, entry.AccountNumber, entry.Amount);
+
+static async Task<TransactionDto> LoadTransactionDtoAsync(AppDbContext db, Settings opening, int id) =>
+    (await LoadTransactionDtosAsync(db, opening)).Single(t => t.Id == id);
 
 // All Bewegungen, newest first, each with the Kontostand after it.
 static async Task<List<TransactionDto>> LoadTransactionDtosAsync(AppDbContext db, Settings opening)
