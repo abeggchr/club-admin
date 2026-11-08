@@ -208,89 +208,6 @@ api.MapGet(
     }
 );
 
-// Temporary (expand step): the Buchung endpoints below keep the existing UI working by maintaining a
-// Bewegung with that single Buchung behind the scenes. They are removed together with the old UI.
-api.MapPost(
-    "/entries",
-    async (EntryInput input, AppDbContext db, ChartOfAccounts chart) =>
-    {
-        var opening = await db.Settings.FindAsync(Settings.SingletonId);
-        if (EntryRules.Validate(opening, chart, input.Date, input.Text, input.AccountNumber, input.Amount) is { } error)
-        {
-            return Results.BadRequest(new { error });
-        }
-
-        var entry = Line(new Entry(), input.Text, input.AccountNumber, input.Amount);
-        var transaction = new Transaction
-        {
-            Date = input.Date,
-            Amount = input.Amount,
-            Entries = [entry],
-        };
-        db.Transactions.Add(transaction);
-        await SaveEntryChangeAsync(db, chart);
-        return Results.Created($"/api/entries/{entry.Id}", ToDto(entry, transaction));
-    }
-);
-
-api.MapPut(
-    "/entries/{id:int}",
-    async (int id, EntryInput input, AppDbContext db, ChartOfAccounts chart) =>
-    {
-        var entry = await db.JournalEntries.Include(e => e.Transaction).FirstOrDefaultAsync(e => e.Id == id);
-        if (entry is null)
-        {
-            return Results.NotFound();
-        }
-        var opening = await db.Settings.FindAsync(Settings.SingletonId);
-        if (
-            EntryRules.Validate(
-                opening,
-                chart,
-                input.Date,
-                input.Text,
-                input.AccountNumber,
-                input.Amount,
-                entry.AccountNumber
-            ) is { } error
-        )
-        {
-            return Results.BadRequest(new { error });
-        }
-
-        // The Bewegung keeps the amounts of its other Buchungen (none for a Bewegung made by this path).
-        entry.Transaction.Amount += input.Amount - entry.Amount;
-        entry.Transaction.Date = input.Date;
-        Line(entry, input.Text, input.AccountNumber, input.Amount);
-        await SaveEntryChangeAsync(db, chart);
-        return Results.Ok(ToDto(entry, entry.Transaction));
-    }
-);
-
-api.MapDelete(
-    "/entries/{id:int}",
-    async (int id, AppDbContext db, ChartOfAccounts chart) =>
-    {
-        var entry = await db.JournalEntries.Include(e => e.Transaction).FirstOrDefaultAsync(e => e.Id == id);
-        if (entry is null)
-        {
-            return Results.NotFound();
-        }
-        var hasSiblings = await db.JournalEntries.AnyAsync(e => e.TransactionId == entry.TransactionId && e.Id != id);
-        if (hasSiblings)
-        {
-            entry.Transaction.Amount -= entry.Amount;
-            db.JournalEntries.Remove(entry);
-        }
-        else
-        {
-            db.Transactions.Remove(entry.Transaction);
-        }
-        await SaveEntryChangeAsync(db, chart);
-        return Results.NoContent();
-    }
-);
-
 api.MapGet(
     "/transactions",
     async (AppDbContext db) =>
@@ -436,9 +353,6 @@ static Entry Line(Entry entry, string? text, int accountNumber, decimal amount)
     return entry;
 }
 
-static EntryDto ToDto(Entry entry, Transaction transaction) =>
-    new(entry.Id, transaction.Id, transaction.Date, entry.Text, entry.AccountNumber, entry.Amount);
-
 static async Task<TransactionDto> LoadTransactionDtoAsync(AppDbContext db, Settings opening, int id) =>
     (await LoadTransactionDtosAsync(db, opening)).Single(t => t.Id == id);
 
@@ -457,10 +371,6 @@ static async Task<List<TransactionDto>> LoadTransactionDtosAsync(AppDbContext db
         ))
         .ToList();
 }
-
-record EntryInput(DateOnly Date, string Text, int AccountNumber, decimal Amount);
-
-record EntryDto(int Id, int TransactionId, DateOnly Date, string Text, int AccountNumber, decimal Amount);
 
 record JournalEntryDto(
     int Id,

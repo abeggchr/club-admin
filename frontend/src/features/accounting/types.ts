@@ -17,6 +17,20 @@ export type Entry = {
 }
 
 /** A journal row: the Buchung plus the running Erwarteter Kontostand up to and including it. */
-export type JournalEntry = Entry & { balance: number }
+export type JournalEntry = Entry & { transactionId: number; balance: number }
 
-export type EntryInput = Omit<Entry, 'id'>
+/** A Bewegung with the Kontostand after it; its Buchungen are the journal rows with the same transactionId. */
+export type Transaction = {
+  id: number
+  date: string
+  /** Signed from the bank's point of view: Einzahlung positive, Auszahlung negative. */
+  amount: number
+  balance: number
+  entryIds: number[]
+}
+
+export type TransactionInput = {
+  date: string
+  amount: number
+  entries: { id: number | null; text: string; accountNumber: number; amount: number }[]
+}

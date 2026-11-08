@@ -1,5 +1,5 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query'
-import type { Account, Entry, EntryInput, JournalEntry } from './types'
+import type { Account, JournalEntry, Transaction, TransactionInput } from './types'
 
 export type OpeningBalance = {
   openingBalance: number
@@ -82,21 +82,20 @@ export function filteredEntriesQueryOptions(filters: JournalFilters) {
   })
 }
 
-export function createEntry(input: EntryInput): Promise<Entry> {
-  return requestJson('/api/entries', 'POST', input)
+export const transactionsQueryOptions = queryOptions({
+  queryKey: ['transactions'],
+  queryFn: () => getJson<Transaction[]>('/api/transactions'),
+})
+
+/** Creates a Bewegung (id null) or replaces an existing one, with all its Buchungen in one request. */
+export function saveTransaction(id: number | null, input: TransactionInput): Promise<Transaction> {
+  return requestJson(id === null ? '/api/transactions' : `/api/transactions/${id}`, id === null ? 'POST' : 'PUT', input)
 }
 
-export function updateEntry(id: number, input: EntryInput): Promise<Entry> {
-  return requestJson(`/api/entries/${id}`, 'PUT', input)
-}
-
-export async function deleteEntry(id: number): Promise<void> {
-  await ensureOk(await fetch(`/api/entries/${id}`, { method: 'DELETE' }))
-}
-
-/** Refreshes everything derived from the journal after a Buchung or the Anfangssaldo changed. */
+/** Refreshes everything derived from the journal after a Bewegung or the Anfangssaldo changed. */
 export async function invalidateJournalQueries(queryClient: QueryClient): Promise<void> {
   await queryClient.invalidateQueries({ queryKey: entriesQueryOptions.queryKey })
+  await queryClient.invalidateQueries({ queryKey: transactionsQueryOptions.queryKey })
   await queryClient.invalidateQueries({ queryKey: ['expected-balance'] })
 }
 

@@ -1,18 +1,21 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import {
-  accountsQueryOptions,
-  createEntry,
-  deleteEntry,
-  invalidateJournalQueries,
-  openingBalanceQueryOptions,
-  updateEntry,
-} from './api'
-import { entryDateError } from './date'
-import { formatChf, parseAmount, toSignedAmount, toTypedAmount } from './amount'
-import { isEntryDraftDirty, type EntryDraft } from './entryDraft'
+import { accountsQueryOptions, invalidateJournalQueries, openingBalanceQueryOptions, saveTransaction } from './api'
+import { formatChf } from './amount'
 import { KontoPicker } from './KontoPicker'
-import type { Entry } from './types'
+import {
+  differenz,
+  draftFromTransaction,
+  emptyDraft,
+  entryAmount,
+  isDraftDirty,
+  toTransactionInput,
+  validateDraft,
+  type DraftErrors,
+  type EntryRow,
+  type TransactionDraft,
+} from './transactionDraft'
+import type { JournalEntry, Transaction } from './types'
 
 function today(): string {
   const d = new Date()
@@ -21,140 +24,126 @@ function today(): string {
 
 const input = 'rounded border border-slate-300 p-2'
 
-type Errors = {
-  date?: string
-  text?: string
-  account?: string
-  amount?: string
-  server?: string
-}
-
 type Props = {
-  /** When set, the form edits this Buchung instead of creating a new one. */
-  entry?: Entry
-  /** Closes the form. Offered as "Abbrechen"; after saving an edit it is called automatically. */
-  onDone?: () => void
+  /** When set, the form edits this saved Bewegung (with its Buchungen) instead of creating a new one. */
+  transaction?: Transaction
+  entries?: JournalEntry[]
+  /** Closes the form: "Abbrechen", and automatically after saving. */
+  onDone: () => void
   /** Reports whether the form holds unsaved changes. */
   onDirtyChange?: (dirty: boolean) => void
 }
 
-export function EditPanel({ entry, onDone, onDirtyChange }: Props = {}) {
+export function EditPanel({ transaction, entries = [], onDone, onDirtyChange }: Props) {
   const queryClient = useQueryClient()
   const { data: accounts } = useSuspenseQuery(accountsQueryOptions)
   const { data: openingBalance } = useSuspenseQuery(openingBalanceQueryOptions)
-  const existing = entry ? accounts.find((a) => a.number === entry.accountNumber) : undefined
-  const [date, setDate] = useState(entry?.date ?? today())
-  const [text, setText] = useState(entry?.text ?? '')
-  const [accountNumber, setAccountNumber] = useState<number | null>(entry?.accountNumber ?? null)
-  const [amount, setAmount] = useState(
-    entry && existing ? formatChf(toTypedAmount(entry.amount, existing.category)) : '',
+  const [baseline] = useState<TransactionDraft>(() =>
+    transaction ? draftFromTransaction(transaction, entries, accounts) : emptyDraft(today()),
   )
-  const [errors, setErrors] = useState<Errors>({})
-  const [baseline, setBaseline] = useState<EntryDraft>({ date, text, accountNumber, amount })
-  const dirty = isEntryDraftDirty(baseline, { date, text, accountNumber, amount })
+  const [draft, setDraft] = useState(baseline)
+  const [errors, setErrors] = useState<DraftErrors | null>(null)
+  const [serverError, setServerError] = useState<string>()
+  const dirty = isDraftDirty(baseline, draft, accounts)
+  const rest = differenz(draft, accounts)
 
   useEffect(() => {
     onDirtyChange?.(dirty)
     return () => onDirtyChange?.(false)
   }, [dirty, onDirtyChange])
 
-  async function onDelete() {
-    if (!entry || !window.confirm('Diese Buchung wirklich löschen?')) return
-    try {
-      await deleteEntry(entry.id)
-      await invalidateJournalQueries(queryClient)
-      onDone?.()
-    } catch (err) {
-      setErrors({ server: err instanceof Error ? err.message : 'Löschen fehlgeschlagen.' })
-    }
+  function patchRow(index: number, patch: Partial<EntryRow>) {
+    setDraft((d) => ({ ...d, entries: d.entries.map((row, i) => (i === index ? { ...row, ...patch } : row)) }))
   }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    const next: Errors = {}
-    const account = accounts.find((a) => a.number === accountNumber)
-    const parsed = parseAmount(amount)
-    const dateError = entryDateError(date, openingBalance?.startDate)
-    if (dateError) next.date = dateError
-    if (text.trim() === '') next.text = 'Text ist erforderlich.'
-    if (!account) next.account = 'Konto ist erforderlich.'
-    if (!parsed.ok) next.amount = parsed.error
-    setErrors(next)
-    if (next.date || next.text || next.account || next.amount || !account || !parsed.ok) return
-
+    const found = validateDraft(draft, accounts, openingBalance?.startDate)
+    setErrors(found)
+    setServerError(undefined)
+    const body = found ? null : toTransactionInput(draft, accounts)
+    if (!body) return
     try {
-      const body = {
-        date,
-        text: text.trim(),
-        accountNumber: account.number,
-        amount: toSignedAmount(parsed.value, account.category),
-      }
-      if (entry) await updateEntry(entry.id, body)
-      else await createEntry(body)
+      await saveTransaction(transaction?.id ?? null, body)
       await invalidateJournalQueries(queryClient)
-      if (entry) {
-        onDone?.()
-      } else {
-        setText('')
-        setAmount('')
-        setBaseline({ date, text: '', accountNumber, amount: '' })
-      }
+      onDone()
     } catch (err) {
-      setErrors({
-        server: err instanceof Error ? err.message : 'Speichern fehlgeschlagen.',
-      })
+      setServerError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')
     }
   }
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3">
-      <h3 className="font-medium">{entry ? 'Buchung bearbeiten' : 'Neue Buchung'}</h3>
-      <label className="flex flex-col text-sm">
-        Datum
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className={input}
-        />
-        {errors.date && <span className="text-red-600">{errors.date}</span>}
-      </label>
-      <label className="flex flex-col text-sm">
-        Text
-        <input value={text} onChange={(e) => setText(e.target.value)} className={input} />
-        {errors.text && <span className="text-red-600">{errors.text}</span>}
-      </label>
-      <label className="flex flex-col text-sm">
-        Konto
-        <KontoPicker value={accountNumber} onChange={setAccountNumber} className={input} />
-        {errors.account && <span className="text-red-600">{errors.account}</span>}
-      </label>
-      <label className="flex flex-col text-sm">
-        Betrag (CHF)
-        <input
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className={`${input} text-right`}
-        />
-        {errors.amount && <span className="text-red-600">{errors.amount}</span>}
-      </label>
+      <h3 className="font-medium">{transaction ? 'Bewegung bearbeiten' : 'Neue Bewegung'}</h3>
+      <div className="flex gap-3">
+        <label className="flex flex-1 flex-col text-sm">
+          Datum
+          <input
+            type="date"
+            value={draft.date}
+            onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+            className={input}
+          />
+          {errors?.date && <span className="text-red-600">{errors.date}</span>}
+        </label>
+        <label className="flex flex-1 flex-col text-sm">
+          Betrag (CHF)
+          <input
+            inputMode="decimal"
+            value={draft.amount}
+            onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
+            placeholder="Auszahlung mit -"
+            className={`${input} text-right`}
+          />
+          {errors?.amount && <span className="text-red-600">{errors.amount}</span>}
+        </label>
+      </div>
+
+      {draft.entries.map((row, i) => (
+        <fieldset key={i} className="flex flex-col gap-2 rounded border border-slate-200 p-3">
+          <legend className="px-1 text-sm text-slate-500">Buchung</legend>
+          <label className="flex flex-col text-sm">
+            Text
+            <input
+              value={row.text}
+              onChange={(e) => patchRow(i, { text: e.target.value })}
+              className={input}
+            />
+            {errors?.entries[i]?.text && <span className="text-red-600">{errors.entries[i].text}</span>}
+          </label>
+          <label className="flex flex-col text-sm">
+            Konto
+            <KontoPicker
+              value={row.accountNumber}
+              onChange={(accountNumber) => patchRow(i, { accountNumber })}
+              className={input}
+            />
+            {errors?.entries[i]?.account && <span className="text-red-600">{errors.entries[i].account}</span>}
+          </label>
+          <label className="flex flex-col text-sm">
+            Betrag (CHF)
+            <input
+              inputMode="decimal"
+              value={entryAmount(draft, i, accounts)}
+              onChange={(e) => patchRow(i, { amount: e.target.value })}
+              className={`${input} text-right`}
+            />
+            {errors?.entries[i]?.amount && <span className="text-red-600">{errors.entries[i].amount}</span>}
+          </label>
+        </fieldset>
+      ))}
+      {rest !== null && rest !== 0 && <p className="text-sm text-slate-600">Differenz: {formatChf(rest)}</p>}
+      {errors?.differenz && <p className="text-red-600">{errors.differenz}</p>}
+
       <div className="flex justify-end gap-2">
-        {entry && (
-          <button type="button" onClick={onDelete} className="rounded border border-slate-300 text-red-700 hover:bg-red-100 px-4 py-2">
-            Löschen
-          </button>
-        )}
-        {onDone && (
-          <button type="button" onClick={onDone} className="rounded border border-slate-300 hover:bg-sky-100 px-4 py-2">
-            Abbrechen
-          </button>
-        )}
+        <button type="button" onClick={onDone} className="rounded border border-slate-300 hover:bg-sky-100 px-4 py-2">
+          Abbrechen
+        </button>
         <button type="submit" className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700">
-          {entry ? 'Speichern' : 'Buchen'}
+          {transaction ? 'Speichern' : 'Buchen'}
         </button>
       </div>
-      {errors.server && <p className="text-red-600">{errors.server}</p>}
+      {serverError && <p className="text-red-600">{serverError}</p>}
     </form>
   )
 }

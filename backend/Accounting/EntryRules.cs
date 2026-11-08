@@ -28,17 +28,4 @@ public static class EntryRules
         }
         return TransactionRules.ValidateAmount(amount);
     }
-
-    /// <summary>A Buchung on its own (the temporary one-Buchung-per-Bewegung write path).</summary>
-    public static string? Validate(
-        Settings? opening,
-        ChartOfAccounts chart,
-        DateOnly date,
-        string? text,
-        int accountNumber,
-        decimal amount,
-        int? existingAccountNumber = null
-    ) =>
-        TransactionRules.ValidateDate(opening, date)
-        ?? ValidateLine(chart, text, accountNumber, amount, existingAccountNumber);
 }
