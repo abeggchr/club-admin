@@ -1,11 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
-import { keepPreviousData, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import { keepPreviousData, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createColumnHelper, flexRender, tableFeatures, useTable } from '@tanstack/react-table'
 import { MdAdd } from 'react-icons/md'
 import {
   accountsQueryOptions,
-  deleteEntry,
-  invalidateJournalQueries,
   filteredEntriesQueryOptions,
   noFilters,
   type JournalFilters,
@@ -23,10 +21,8 @@ const helper = createColumnHelper<typeof features, JournalEntry>()
 type FormMode = { kind: 'closed' } | { kind: 'add' } | { kind: 'edit'; id: number }
 
 export function JournalList() {
-  const queryClient = useQueryClient()
   const [mode, setMode] = useState<FormMode>({ kind: 'closed' })
   const [dirty, setDirty] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<JournalFilters>(noFilters)
   const { data: entries = [], isError } = useQuery({
     ...filteredEntriesQueryOptions(filters),
@@ -38,22 +34,6 @@ export function JournalList() {
   const hasActiveFilters = Object.values(filters).some((v) => v.trim() !== '')
   const updateFilters = (patch: Partial<JournalFilters>) => setFilters({ ...filters, ...patch })
   const input = 'rounded border border-slate-300 p-1'
-
-  async function onDelete(id: number) {
-    if (!window.confirm('Diese Buchung wirklich löschen?')) return
-    try {
-      await deleteEntry(id)
-      setError(null)
-      if (mode.kind === 'edit' && mode.id === id) setMode({ kind: 'closed' })
-      await invalidateJournalQueries(queryClient)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen.')
-    }
-  }
-
-  // The columns are memoized; they call the latest onDelete through this ref.
-  const onDeleteRef = useRef(onDelete)
-  onDeleteRef.current = onDelete
 
   function onSelect(id: number) {
     if (mode.kind === 'edit' && mode.id === id) return
@@ -87,21 +67,6 @@ export function JournalList() {
       helper.accessor('balance', {
         header: () => <span className="block text-right">Erwarteter Kontostand</span>,
         cell: (info) => <span className="block text-right tabular-nums">{formatChf(info.getValue())}</span>,
-      }),
-      helper.display({
-        id: 'actions',
-        cell: (info) => (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDeleteRef.current(info.row.original.id)
-            }}
-            className="text-red-700 hover:underline"
-          >
-            Löschen
-          </button>
-        ),
       }),
     ])
   }, [accounts])
@@ -169,7 +134,6 @@ export function JournalList() {
         </button>
       </div>
       {isError && <p className="mt-4 text-red-600">Buchungen konnten nicht geladen werden.</p>}
-      {error && <p className="mt-4 text-red-600">{error}</p>}
 
       <div className="mt-4 flex items-start gap-4">
         {(mode.kind === 'add' || editing) && (

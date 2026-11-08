@@ -3,6 +3,7 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import {
   accountsQueryOptions,
   createEntry,
+  deleteEntry,
   invalidateJournalQueries,
   openingBalanceQueryOptions,
   updateEntry,
@@ -56,6 +57,17 @@ export function EntryForm({ entry, onDone, onDirtyChange }: Props = {}) {
     onDirtyChange?.(dirty)
     return () => onDirtyChange?.(false)
   }, [dirty, onDirtyChange])
+
+  async function onDelete() {
+    if (!entry || !window.confirm('Diese Buchung wirklich löschen?')) return
+    try {
+      await deleteEntry(entry.id)
+      await invalidateJournalQueries(queryClient)
+      onDone?.()
+    } catch (err) {
+      setErrors({ server: err instanceof Error ? err.message : 'Löschen fehlgeschlagen.' })
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -127,15 +139,20 @@ export function EntryForm({ entry, onDone, onDirtyChange }: Props = {}) {
         />
         {errors.amount && <span className="text-red-600">{errors.amount}</span>}
       </label>
-      <div className="flex gap-2">
-        <button type="submit" className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700">
-          {entry ? 'Speichern' : 'Buchen'}
-        </button>
+      <div className="flex justify-end gap-2">
+        {entry && (
+          <button type="button" onClick={onDelete} className="rounded border border-slate-300 text-red-700 hover:bg-red-100 px-4 py-2">
+            Löschen
+          </button>
+        )}
         {onDone && (
-          <button type="button" onClick={onDone} className="rounded border border-slate-300 px-4 py-2">
+          <button type="button" onClick={onDone} className="rounded border border-slate-300 hover:bg-sky-100 px-4 py-2">
             Abbrechen
           </button>
         )}
+        <button type="submit" className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700">
+          {entry ? 'Speichern' : 'Buchen'}
+        </button>
       </div>
       {errors.server && <p className="text-red-600">{errors.server}</p>}
     </form>
