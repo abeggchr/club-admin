@@ -274,15 +274,7 @@ api.MapPut(
         }
 
         // The date and amount of an imported Bewegung are bank facts and cannot change.
-        if (
-            TransactionRules.ValidateUnchangedBankFacts(
-                transaction.BankReference,
-                transaction.Date,
-                transaction.Amount,
-                input.Date,
-                input.Amount
-            ) is { } bankFactError
-        )
+        if (TransactionRules.ValidateUnchangedBankFacts(transaction, input.Date, input.Amount) is { } bankFactError)
         {
             return Results.BadRequest(new { error = bankFactError });
         }

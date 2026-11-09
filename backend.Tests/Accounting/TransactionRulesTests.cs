@@ -36,9 +36,7 @@ public class TransactionRulesTests
 
     private static string? BankFacts(string? bankReference, string newDate = "2026-03-01", decimal newAmount = -120m) =>
         TransactionRules.ValidateUnchangedBankFacts(
-            bankReference,
-            DateOnly.Parse("2026-03-01"),
-            -120m,
+            new Transaction { BankReference = bankReference, Date = DateOnly.Parse("2026-03-01"), Amount = -120m },
             DateOnly.Parse(newDate),
             newAmount
         );

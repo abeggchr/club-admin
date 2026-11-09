@@ -165,7 +165,7 @@ public static class BankImport
         var ntries = LocalAll(stmt, "Ntry");
         if (ntries.Count == 0)
         {
-            context.Errors.Add(new ImportError(file, "Die Datei enthält keine Buchungseinträge (Ntry)."));
+            context.Errors.Add(new ImportError(file, "Die Datei enthält keine Bewegungen (Ntry)."));
             return;
         }
         foreach (var ntry in ntries)
@@ -187,7 +187,7 @@ public static class BankImport
         if (status != "BOOK")
         {
             context.Errors.Add(
-                new ImportError(file, $"Der Eintrag hat den Status {status}, aber nur abschließende Buchungen (BOOK) werden importiert.")
+                new ImportError(file, $"Der Eintrag hat den Status {status}, aber nur abschließende Bewegungen (BOOK) werden importiert.")
             );
             return;
         }
@@ -252,7 +252,7 @@ public static class BankImport
                 context.Errors.Add(
                     new ImportError(
                         file,
-                        $"Die Transaktionsbeträge addieren sich nicht auf den Eintragsbetrag: {txAmounts.Sum().ToString("0.00", CultureInfo.InvariantCulture)} statt {ntryAmount.ToString("0.00", CultureInfo.InvariantCulture)}."
+                        $"Die Beträge der einzelnen Bewegungen addieren sich nicht auf den Bewegungsbetrag der Gruppe (Ntry/Amt): {txAmounts.Sum().ToString("0.00", CultureInfo.InvariantCulture)} statt {ntryAmount.ToString("0.00", CultureInfo.InvariantCulture)}."
                     )
                 );
                 return;
@@ -308,8 +308,8 @@ public static class BankImport
         }
 
         var signedAmount = direction == "CRDT" ? amount : -amount;
-        // An imported Bewegung has no Buchungen, so the Kontoplan is not needed for the date and amount rules.
-        if (TransactionRules.Validate(context.Snapshot.Settings, chart: null!, date, signedAmount, []) is { } error)
+        // An imported Bewegung has no Buchungen, so only the date and amount rules apply.
+        if (TransactionRules.Validate(context.Snapshot.Settings, date, signedAmount) is { } error)
         {
             context.Errors.Add(new ImportError(file, error));
             return;
@@ -333,9 +333,10 @@ public static class BankImport
         // A matched counterparty is linked to its Person and the text is kept as-is; otherwise the name goes in front.
         if (person is null && text is not null && counterparty is not null)
         {
-            var prefixed = $"{counterparty} – {text}";
-            text = prefixed.Length > MaxTextLength ? prefixed[..MaxTextLength] : prefixed;
+            text = $"{counterparty} – {text}";
         }
+        // The Text column is varchar(500), so the final text must fit it, prefixed or not.
+        text = text is null ? null : (text.Length > MaxTextLength ? text[..MaxTextLength] : text);
         context.Transactions.Add(new ImportedTransaction(date, signedAmount, text, bankReference, person?.Id));
     }
 
@@ -348,9 +349,13 @@ public static class BankImport
     /// </summary>
     private static string? CounterpartyNameOf(XElement? party)
     {
-        var name = (Local(party, "Nm")?.Value ?? Local(Local(party, "Pty"), "Nm")?.Value)?.Trim();
+        var name = PartyLocal(party, "Nm")?.Value?.Trim();
         return string.IsNullOrEmpty(name) ? null : name;
     }
+
+    /// <summary>The party's child element in both known shapes: directly (.02) or under <c>Pty</c> (.08).</summary>
+    private static XElement? PartyLocal(XElement? party, string localName) =>
+        Local(party, localName) ?? Local(Local(party, "Pty"), localName);
 
     /// <summary>The normalised PLZ, street and house number of a bank counterparty's postal address.</summary>
     private sealed record BankAddress(string PostalCode, string Street, string HouseNumber);
@@ -364,7 +369,7 @@ public static class BankImport
     /// </summary>
     private static BankAddress? BankAddressOf(XElement? party)
     {
-        var address = party is null ? null : Local(party, "PstA") ?? Local(Local(party, "Pty"), "PstA");
+        var address = PartyLocal(party, "PstA");
         if (address is null)
         {
             return null;

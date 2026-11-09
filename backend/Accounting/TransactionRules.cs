@@ -41,6 +41,10 @@ public static class TransactionRules
         return null;
     }
 
+    /// <summary>The date and amount rules only, for a Bewegung without Buchungen (e.g. an imported one) where the Kontoplan is not needed.</summary>
+    public static string? Validate(Settings? opening, DateOnly date, decimal amount) =>
+        ValidateDate(opening, date) ?? ValidateAmount(amount);
+
     private static string? ValidateDate(Settings? opening, DateOnly date)
     {
         if (opening is null)
@@ -71,18 +75,12 @@ public static class TransactionRules
     /// The date and amount of an imported Bewegung (one with a BankReference) are bank facts; a change is rejected.
     /// Manual Bewegungen have no BankReference and are unchanged.
     /// </summary>
-    public static string? ValidateUnchangedBankFacts(
-        string? bankReference,
-        DateOnly existingDate,
-        decimal existingAmount,
-        DateOnly newDate,
-        decimal newAmount
-    ) =>
-        bankReference is null
+    public static string? ValidateUnchangedBankFacts(Transaction existing, DateOnly newDate, decimal newAmount) =>
+        existing.BankReference is null
             ? null
-            : newDate != existingDate
+            : newDate != existing.Date
                 ? "Das Datum einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
-                : newAmount != existingAmount
+                : newAmount != existing.Amount
                     ? "Der Betrag einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
                     : null;
 
