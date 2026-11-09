@@ -1,4 +1,3 @@
-using System.IO.Compression;
 using backend.Accounting;
 
 namespace backend.Tests.Accounting;
@@ -21,7 +20,7 @@ public class BankImportReimportTests
     [Fact]
     public void A_deleted_imported_transaction_is_recreated_by_reimporting_the_same_file()
     {
-        var zip = Zip(("20260210.xml", CamtFile()));
+        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile()));
 
         var imported = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], [])).Transactions);
         // The Bewegung was deleted, so its BankReference is no longer stored and the same file imports it again.
@@ -31,21 +30,6 @@ public class BankImportReimportTests
         Assert.Equal(imported.Amount, reimported.Amount);
         Assert.Equal(imported.Text, reimported.Text);
         Assert.Equal(imported.BankReference, reimported.BankReference);
-    }
-
-    private static byte[] Zip(params (string Name, string Content)[] files)
-    {
-        using var stream = new MemoryStream();
-        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
-        {
-            foreach (var (name, content) in files)
-            {
-                var entry = archive.CreateEntry(name);
-                using var writer = new StreamWriter(entry.Open());
-                writer.Write(content);
-            }
-        }
-        return stream.ToArray();
     }
 
     private static string CamtFile() => $"""
