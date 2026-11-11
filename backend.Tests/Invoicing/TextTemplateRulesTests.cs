@@ -26,4 +26,28 @@ public class TextTemplateRulesTests
     [InlineData(" ")]
     public void Missing_greetings_are_rejected(string? greetings) =>
         Assert.Equal("Die Grüsse sind erforderlich.", TextTemplateRules.Validate("Betreff", "Text", greetings));
+
+    [Fact]
+    public void Known_placeholders_are_accepted() =>
+        Assert.Null(
+            TextTemplateRules.Validate(
+                "Rechnung {{invoiceNumber}}",
+                "Guten Tag {{name}}, {{address}}: {{amount}} vom {{invoiceDate}}",
+                "Grüsse"
+            )
+        );
+
+    [Fact]
+    public void An_unknown_placeholder_is_rejected_and_the_valid_keys_are_listed()
+    {
+        var error = TextTemplateRules.Validate("Betreff", "Hallo {{nmae}}", "Grüsse");
+        Assert.Equal(
+            "Unbekannter Platzhalter {{nmae}}. Gültig sind: {{name}}, {{address}}, {{amount}}, {{invoiceNumber}}, {{invoiceDate}}.",
+            error
+        );
+    }
+
+    [Fact]
+    public void An_unknown_placeholder_in_the_greetings_is_rejected() =>
+        Assert.Contains("{{foo}}", TextTemplateRules.Validate("Betreff", "Text", "Grüsse {{foo}}"));
 }

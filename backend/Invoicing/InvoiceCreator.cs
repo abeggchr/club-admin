@@ -48,21 +48,32 @@ public class InvoiceCreator(
             db.Invoices.Add(invoice);
             await db.SaveChangesAsync(ct);
 
+            var addressLines = InvoiceDocument.AddressLines(
+                person.Street,
+                person.Number,
+                person.PostalCode,
+                person.City,
+                person.Country
+            );
+            var date = InvoiceTime.ZurichDate(now);
+            var number = InvoiceRules.FormatNumber(invoice.Id);
+            var values = new PlaceholderValues(
+                $"{person.FirstName} {person.LastName}",
+                string.Join(", ", addressLines),
+                InvoiceDocument.FormatAmount(invoice.Lines.Sum(l => l.Amount)),
+                number,
+                date.ToString("dd.MM.yyyy")
+            );
+
             var pdf = InvoiceDocument.Render(
                 new InvoiceDocumentData(
-                    InvoiceRules.FormatNumber(invoice.Id),
-                    InvoiceTime.ZurichDate(now),
+                    number,
+                    date,
                     $"{person.FirstName} {person.LastName}",
-                    InvoiceDocument.AddressLines(
-                        person.Street,
-                        person.Number,
-                        person.PostalCode,
-                        person.City,
-                        person.Country
-                    ),
-                    template.Subject,
-                    template.Text,
-                    template.Greetings,
+                    addressLines,
+                    TextTemplatePlaceholders.Resolve(template.Subject, values),
+                    TextTemplatePlaceholders.Resolve(template.Text, values),
+                    TextTemplatePlaceholders.Resolve(template.Greetings, values),
                     invoice.Lines.Select(l => new InvoiceLineDraft(l.Text, l.Amount, l.AccountNumber)).ToList(),
                     creditor,
                     QrBillSlip.DebtorFor(

@@ -9,6 +9,7 @@ import {
 import {
 	emptyTextTemplateDraft,
 	type TextTemplateDraft,
+	textTemplatePlaceholders,
 	validateTextTemplate,
 } from "./textTemplateDraft";
 
@@ -95,6 +96,16 @@ export function TextTemplatesSection() {
 					+
 				</button>
 			</div>
+			<details className="text-sm text-slate-600">
+				<summary className="cursor-pointer">Verfügbare Platzhalter</summary>
+				<ul className="mt-1 flex flex-col gap-0.5">
+					{textTemplatePlaceholders.map((p) => (
+						<li key={p.key}>
+							<code>{`{{${p.key}}}`}</code> – {p.description}
+						</li>
+					))}
+				</ul>
+			</details>
 			{templates.length === 0 && (
 				<p className="text-sm text-slate-500">Keine Textvorlagen vorhanden.</p>
 			)}
