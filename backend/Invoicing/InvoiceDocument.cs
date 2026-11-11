@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using QuestPDF.Elements;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -9,6 +10,7 @@ namespace backend.Invoicing;
 /// <summary>
 /// Everything the PDF shows. The template texts are not persisted anywhere else.
 /// <paramref name="RecipientAddressLines"/> is empty when the Person has no address (only the name is printed).
+/// <paramref name="Debtor"/> is null when the Person's address is incomplete (the QR-bill then has no debtor).
 /// </summary>
 public record InvoiceDocumentData(
     string Number,
@@ -18,7 +20,9 @@ public record InvoiceDocumentData(
     string TemplateTitle,
     string TemplateText,
     string TemplateGreetings,
-    IReadOnlyList<InvoiceLineDraft> Lines
+    IReadOnlyList<InvoiceLineDraft> Lines,
+    QrBillCreditor Creditor,
+    QrBillDebtor? Debtor
 );
 
 /// <summary>Renders a Rechnung to PDF bytes: A4, German, logo top left, address for a right-window envelope.</summary>
@@ -40,15 +44,21 @@ public static class InvoiceDocument
     public static byte[] Render(InvoiceDocumentData data)
     {
         var total = InvoiceRules.Total(data.Lines);
+        var slip = QrBillSlip.RenderPng(QrBillSlip.Build(data.Creditor, data.Number, total, data.Debtor));
         return Document
             .Create(doc =>
                 doc.Page(page =>
                 {
                     page.Size(PageSizes.A4);
-                    page.Margin(PageMarginMm, Unit.Millimetre);
+                    // No page margin: the payment part spans the full page width. The content is padded instead.
                     page.DefaultTextStyle(t => t.FontSize(11).FontFamily(Fonts.Arial));
                     page.Content()
-                        .Column(col =>
+                        .Column(outer =>
+                        {
+                            outer.Item()
+                                .PaddingHorizontal(PageMarginMm, Unit.Millimetre)
+                                .PaddingTop(PageMarginMm, Unit.Millimetre)
+                                .Column(col =>
                         {
                             col.Item()
                                 .Height(LogoHeightMm, Unit.Millimetre)
@@ -118,6 +128,8 @@ public static class InvoiceDocument
                                 });
                             col.Item().PaddingTop(10, Unit.Millimetre).Text(data.TemplateGreetings);
                         });
+                            outer.Item().Dynamic(new PaymentPartComponent(slip));
+                        });
                 })
             )
             .GeneratePdf();
@@ -158,6 +170,39 @@ public static class InvoiceDocument
         c.BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten1).PaddingVertical(2, Unit.Millimetre);
 
     private static IContainer TotalCell(IContainer c) => c.PaddingVertical(2, Unit.Millimetre);
+
+    /// <summary>
+    /// The payment part, pinned to the bottom of the page it lands on. When less than 105 mm is left on the
+    /// current page it is deferred to the next page.
+    /// </summary>
+    private sealed class PaymentPartComponent(byte[] png) : IDynamicComponent<int>
+    {
+        public int State { get; set; }
+
+        public DynamicComponentComposeResult Compose(DynamicContext context)
+        {
+            var height = QrBillSlip.HeightMm * (72f / 25.4f);            if (context.AvailableSize.Height < height - 0.5f)
+                return new DynamicComponentComposeResult
+                {
+                    // Fill the rest of this page so that the payment part starts on the next one.
+                    Content = context.CreateElement(e => e.Height(Math.Max(0, context.AvailableSize.Height - 0.1f))),
+                    HasMoreContent = true,
+                };
+
+            return new DynamicComponentComposeResult
+            {
+                Content = context.CreateElement(e =>
+                    e.Column(c =>
+                    {
+                        // A spacer pushes the image to the bottom; the tiny reserve avoids float rounding overflow.
+                        c.Item().Height(Math.Max(0, context.AvailableSize.Height - height - 0.1f));
+                        c.Item().Height(QrBillSlip.HeightMm, Unit.Millimetre).Image(png).FitArea();
+                    })
+                ),
+                HasMoreContent = false,
+            };
+        }
+    }
 
     private static byte[] LoadLogo()
     {

@@ -16,6 +16,7 @@ public class InvoiceCreator(
         backend.Person.Person person,
         TextTemplate template,
         IReadOnlyList<InvoiceLineDraft> lines,
+        QrBillCreditor creditor,
         CancellationToken ct = default
     )
     {
@@ -61,7 +62,17 @@ public class InvoiceCreator(
                     template.Subject,
                     template.Text,
                     template.Greetings,
-                    invoice.Lines.Select(l => new InvoiceLineDraft(l.Text, l.Amount, l.AccountNumber)).ToList()
+                    invoice.Lines.Select(l => new InvoiceLineDraft(l.Text, l.Amount, l.AccountNumber)).ToList(),
+                    creditor,
+                    QrBillSlip.DebtorFor(
+                        person.FirstName,
+                        person.LastName,
+                        person.Street,
+                        person.Number,
+                        person.PostalCode,
+                        person.City,
+                        person.Country
+                    )
                 )
             );
             await storage.PutAsync(invoice.Id, pdf, ct);
