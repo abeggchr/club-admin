@@ -32,6 +32,21 @@ jobs:
 
   backend:
     runs-on: ubuntu-latest
+    services:
+      # A few tests need a real database (LocalPostgresFixture: localhost:5432, postgres/secret);
+      # without one they skip with a clear message.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4

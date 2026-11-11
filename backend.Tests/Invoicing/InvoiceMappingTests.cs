@@ -93,9 +93,17 @@ public class InvoiceMappingTests
     public void The_migration_backfills_existing_Rechnungen_with_an_empty_Reference()
     {
         // Covers the backfill criterion without a database: the migration (not the model) is what the
-        // running server executes, so assert the shipped migration file.
+        // running server executes, so assert the shipped migration file. The search walks up from the
+        // test binary to the repository root (marker: .git/HEAD), which works on a developer machine,
+        // in a sandbox, and in CI.
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, ".git", "HEAD")))
+            dir = dir.Parent;
+
+        Assert.True(dir is not null, "repository root (marker: .git) not found above the test binary.");
+
         var migrationFiles = Directory
-            .EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "backend", "Migrations"))
+            .EnumerateFiles(Path.Combine(dir!.FullName, "backend", "Migrations"))
             .Where(p => p.Contains("AddInvoiceReference") && !p.Contains("Designer") && p.EndsWith(".cs"));
 
         Assert.Single(migrationFiles);

@@ -57,8 +57,10 @@ public class InvoiceCreator(
             db.Invoices.Add(invoice);
             await db.SaveChangesAsync(ct);
 
-            // The QR-bill Gläubigerreferenz is the reference of the PDF rendered below; both derive from
-            // the same Rechnungsnummer, so it can be set once the ID is known, in the same transaction as the PDF upload.
+            // The Gläubigerreferenz derives from the Rechnungsnummer, so it is known as soon as the ID
+            // is. It is persisted in its own save, before the PDF rendering: a rendering failure (e.g.
+            // missing native graphics in a headless environment) must never leave a Rechnung without its
+            // reference.
             var bill = QrBillSlip.Build(
                 creditor,
                 InvoiceRules.FormatNumber(invoice.Id),
@@ -66,6 +68,10 @@ public class InvoiceCreator(
                 debtor
             );
             invoice.Reference = bill.Reference;
+            // Persist the Gläubigerreferenz in its own save, before the PDF rendering: the reference is
+            // known as soon as the Rechnungsnummer is, and a rendering failure (e.g. missing native
+            // graphics in a headless environment) must never leave a Rechnung without its reference.
+            await db.SaveChangesAsync(ct);
 
             var addressLines = InvoiceDocument.AddressLines(
                 person.Street,

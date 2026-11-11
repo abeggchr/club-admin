@@ -12,6 +12,7 @@ namespace backend.Tests.Invoicing;
 /// </summary>
 public sealed class LocalPostgresFixture : IAsyncLifetime
 {
+
     private const string DefaultServer = "Host=localhost;Port=5432;Username=postgres;Password=secret";
 
     private NpgsqlConnection? _connection;
@@ -24,7 +25,8 @@ public sealed class LocalPostgresFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        // In sandboxes localhost is the sandbox itself; the developer Postgres runs on the host.
+        // In sandboxes localhost is the sandbox itself; the developer Postgres runs on the host; in
+        // CI the GitHub service container answers on localhost:5432 (see .github/workflows/ci.yml).
         foreach (var server in new[]
         {
             DefaultServer,
