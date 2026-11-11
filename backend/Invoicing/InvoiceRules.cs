@@ -21,7 +21,7 @@ public static class InvoiceRules
         foreach (var line in lines)
         {
             if (string.IsNullOrWhiteSpace(line.Text)) return "Jede Rechnungsposition braucht einen Text.";
-            if (line.Amount <= 0) return "Der Betrag einer Rechnungsposition muss grösser als 0 sein.";
+            if (line.Amount == 0) return "Der Betrag einer Rechnungsposition darf nicht 0 sein.";
             if (line.Amount != decimal.Round(line.Amount, 2))
                 return "Der Betrag darf höchstens zwei Dezimalstellen haben.";
             var account = chart.Find(line.AccountNumber);
@@ -34,6 +34,7 @@ public static class InvoiceRules
                 return $"Das Konto {account.Number} {account.Name} ist inaktiv.";
             }
         }
+        if (Total(lines) <= 0) return "Die Summe der Rechnungspositionen muss grösser als 0 sein.";
         return null;
     }
 

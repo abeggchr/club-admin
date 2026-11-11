@@ -48,11 +48,19 @@ public class InvoiceRulesTests
     public void A_line_without_text_is_refused(string? text) =>
         Assert.NotNull(Validate(lines: [Line(), Line(text)]));
 
+    [Fact]
+    public void A_line_with_an_amount_of_zero_is_refused() =>
+        Assert.NotNull(Validate(lines: [Line(), Line(amount: 0)]));
+
+    [Fact]
+    public void A_negative_line_is_accepted_while_the_total_stays_positive() =>
+        Assert.Null(Validate(lines: [Line(amount: 100m), Line(amount: -30m)]));
+
     [Theory]
-    [InlineData(0)]
     [InlineData(-5)]
-    public void A_line_with_an_amount_of_zero_or_less_is_refused(decimal amount) =>
-        Assert.NotNull(Validate(lines: [Line(amount: amount)]));
+    [InlineData(0)]
+    public void A_total_of_zero_or_less_is_refused(decimal negative) =>
+        Assert.NotNull(Validate(lines: [Line(amount: 50m), Line(amount: -50m + negative)]));
 
     [Fact]
     public void A_line_with_more_than_two_decimals_is_refused() =>

@@ -43,7 +43,7 @@ export function removeLine(draft: InvoiceDraft, index: number): InvoiceDraft {
 export function totalOf(lines: InvoiceLineRow[]): number {
   const cents = lines.reduce((sum, line) => {
     const parsed = parseAmount(line.amount)
-    return parsed.ok && parsed.value > 0 ? sum + Math.round(parsed.value * 100) : sum
+    return parsed.ok ? sum + Math.round(parsed.value * 100) : sum
   }, 0)
   return cents / 100
 }
@@ -69,10 +69,14 @@ export function validateInvoiceDraft(draft: InvoiceDraft): InvoiceDraftErrors | 
     if (!line.text.trim()) row.text = 'Text ist erforderlich.'
     const parsed = parseAmount(line.amount, { allowZero: true })
     if (!parsed.ok) row.amount = parsed.error
-    else if (parsed.value <= 0) row.amount = 'Betrag muss grösser als 0 sein.'
+    else if (parsed.value === 0) row.amount = 'Betrag darf nicht 0 sein.'
     if (line.account === null) row.account = 'Konto ist erforderlich.'
     if (row.text || row.amount || row.account) any = true
     errors.rows.push(row)
+  }
+  if (!any && totalOf(draft.lines) <= 0) {
+    errors.lines = 'Die Summe der Positionen muss grösser als 0 sein.'
+    any = true
   }
   return any ? errors : null
 }
