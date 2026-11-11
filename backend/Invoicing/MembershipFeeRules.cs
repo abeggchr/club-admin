@@ -111,11 +111,15 @@ public static class MembershipFeeRules
         return groups;
     }
 
-    /// <summary>The longest-standing Familie member of an address, who pays the Familie fee once.</summary>
+    /// <summary>
+    /// The Familie member of an address who pays the Familie fee once: a flagged main payer first,
+    /// then the longest-standing member.
+    /// </summary>
     private static backend.Person.Person? SelectFamilyPayer(List<backend.Person.Person> group) =>
         group
             .Where(p => p.Membership == MembershipType.Family)
-            .OrderBy(Seniority, SeniorityComparer)
+            .OrderByDescending(p => p.IsMainPayer)
+            .ThenBy(Seniority, SeniorityComparer)
             .FirstOrDefault();
 
     /// <summary>The fee a Person pays: a Familie member other than the payer pays nothing.</summary>

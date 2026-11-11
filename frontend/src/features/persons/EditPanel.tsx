@@ -131,7 +131,23 @@ export function EditPanel({
 					</div>
 					{textFields.slice(2).flatMap((f) =>
 						f.key === "email"
-							? [renderField(f), <div key="email-spacer" />]
+							? [
+									renderField(f),
+									<label
+										key="main-payer"
+										className="flex items-end gap-2 pb-1 text-sm font-medium"
+									>
+										<input
+											type="checkbox"
+											checked={draft.isMainPayer}
+											onChange={(e) => {
+												setDraft({ ...draft, isMainPayer: e.target.checked });
+												setSaved(false);
+											}}
+										/>
+										Hauptzahler
+									</label>,
+								]
 							: [renderField(f)],
 					)}
 				</div>

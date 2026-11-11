@@ -288,6 +288,9 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsMainPayer")
+                        .HasColumnType("boolean");
+
                     b.Property<DateOnly?>("JoinedOn")
                         .HasColumnType("date");
 

@@ -9,6 +9,7 @@ export type Person = {
 	joinedOn: string | null;
 	leftOn: string | null;
 	email: string | null;
+	isMainPayer: boolean;
 	mobilePhone: string | null;
 	landlinePhone: string | null;
 	street: string | null;

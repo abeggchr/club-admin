@@ -97,6 +97,7 @@ api.MapPut(
         person.JoinedOn = update.JoinedOn;
         person.LeftOn = update.LeftOn;
         person.Email = update.Email;
+        person.IsMainPayer = update.IsMainPayer;
         person.MobilePhone = update.MobilePhone;
         person.LandlinePhone = update.LandlinePhone;
         person.Street = update.Street;
@@ -907,6 +908,7 @@ record PersonUpdate(
     DateOnly? JoinedOn,
     DateOnly? LeftOn,
     string? Email,
+    bool IsMainPayer,
     string? MobilePhone,
     string? LandlinePhone,
     string? Street,
