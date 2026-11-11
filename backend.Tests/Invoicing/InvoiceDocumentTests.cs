@@ -16,7 +16,11 @@ public class InvoiceDocumentTests
         "Wettingen"
     );
 
-    private static InvoiceDocumentData Data(IReadOnlyList<string>? address = null, int extraLines = 0) =>
+    private static InvoiceDocumentData Data(
+        IReadOnlyList<string>? address = null,
+        int extraLines = 0,
+        bool openAmount = false
+    ) =>
         new(
             Number: "0042",
             Date: new DateOnly(2026, 11, 8),
@@ -32,13 +36,24 @@ public class InvoiceDocumentTests
                 .. Enumerable.Range(1, extraLines).Select(i => new InvoiceLineDraft($"Position {i}", 1m, 3400)),
             ],
             Creditor: Club,
-            Debtor: null
+            Debtor: null,
+            OpenAmount: openAmount
         );
 
     private static string Text(byte[] pdf)
     {
         using var doc = PdfDocument.Open(pdf);
         return string.Join("\n", doc.GetPages().Select(p => p.Text));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Total_is_printed_in_the_table_whether_or_not_the_amount_is_left_open(bool openAmount)
+    {
+        var text = Text(InvoiceDocument.Render(Data(openAmount: openAmount)));
+
+        Assert.Contains("CHF 1'334.50", text);
     }
 
     [Fact]

@@ -17,6 +17,7 @@ public class InvoiceCreator(
         TextTemplate template,
         IReadOnlyList<InvoiceLineDraft> lines,
         QrBillCreditor creditor,
+        bool openAmount = false,
         CancellationToken ct = default
     )
     {
@@ -72,7 +73,8 @@ public class InvoiceCreator(
                         person.PostalCode,
                         person.City,
                         person.Country
-                    )
+                    ),
+                    openAmount
                 )
             );
             await storage.PutAsync(invoice.Id, pdf, ct);

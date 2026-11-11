@@ -62,7 +62,8 @@ public static class QrBillSlip
         ["Italy"] = "IT",
     };
 
-    public static Bill Build(QrBillCreditor creditor, string invoiceNumber, decimal amount, QrBillDebtor? debtor)
+    /// <summary>A null amount leaves the amount out of the QR code: the payer enters it.</summary>
+    public static Bill Build(QrBillCreditor creditor, string invoiceNumber, decimal? amount, QrBillDebtor? debtor)
     {
         var (street, houseNo) = SplitAddressLine(creditor.Address.Trim());
         var bill = new Bill

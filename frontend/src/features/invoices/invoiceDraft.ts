@@ -7,6 +7,8 @@ export type InvoiceDraft = {
   personId: number | null
   templateId: number | null
   lines: InvoiceLineRow[]
+  /** "Betrag offen lassen": the QR code carries no amount. */
+  openAmount: boolean
 }
 
 export type InvoiceDraftErrors = {
@@ -20,12 +22,13 @@ export type InvoiceInput = {
   personId: number
   templateId: number
   lines: { text: string; amount: number; accountNumber: number }[]
+  openAmount: boolean
 }
 
 const emptyLine = (): InvoiceLineRow => ({ text: '', amount: '', account: null })
 
 export function emptyInvoiceDraft(): InvoiceDraft {
-  return { personId: null, templateId: null, lines: [emptyLine()] }
+  return { personId: null, templateId: null, lines: [emptyLine()], openAmount: false }
 }
 
 export function addLine(draft: InvoiceDraft): InvoiceDraft {
@@ -87,5 +90,6 @@ export function toInvoiceInput(draft: InvoiceDraft): InvoiceInput | null {
     personId: draft.personId,
     templateId: draft.templateId,
     lines,
+    openAmount: draft.openAmount,
   }
 }

@@ -130,6 +130,15 @@ export function CreatePanel({ onDone }: { onDone: () => void }) {
       </button>
       <p className="text-right font-medium">Total {formatChf(totalOf(draft.lines))}</p>
 
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={draft.openAmount}
+          onChange={(e) => setDraft((d) => ({ ...d, openAmount: e.target.checked }))}
+        />
+        Betrag offen lassen
+      </label>
+
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onDone} className="rounded border border-slate-300 px-4 py-2 hover:bg-sky-100">
           Abbrechen

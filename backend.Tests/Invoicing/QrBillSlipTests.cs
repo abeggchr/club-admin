@@ -122,4 +122,20 @@ public class QrBillSlipTests
 
         Assert.Equal("Rechnung #0042", bill.UnstructuredMessage);
     }
+
+    [Fact]
+    public void Amount_is_carried_into_the_QR_code()
+    {
+        var bill = QrBillSlip.Build(Club, "0042", 1334.50m, null);
+
+        Assert.Equal(1334.50m, bill.Amount);
+    }
+
+    [Fact]
+    public void Open_amount_leaves_the_amount_out_of_the_QR_code()
+    {
+        var bill = QrBillSlip.Build(Club, "0042", null, null);
+
+        Assert.Null(bill.Amount);
+    }
 }

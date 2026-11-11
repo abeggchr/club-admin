@@ -581,7 +581,7 @@ api.MapPost(
             return Results.BadRequest(new { error = QrBillCreditor.MissingAddressError });
         }
 
-        var result = await creator.CreateAsync(person, template, lines, creditor, ct);
+        var result = await creator.CreateAsync(person, template, lines, creditor, input.OpenAmount, ct);
         if (result.Invoice is not { } invoice)
         {
             return Results.Json(
@@ -769,7 +769,7 @@ record TextTemplateInput(string? Subject, string? Text, string? Greetings);
 
 record InvoiceLineInput(string? Text, decimal Amount, int AccountNumber);
 
-record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines);
+record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines, bool OpenAmount = false);
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
 

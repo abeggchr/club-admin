@@ -22,7 +22,8 @@ public record InvoiceDocumentData(
     string TemplateGreetings,
     IReadOnlyList<InvoiceLineDraft> Lines,
     QrBillCreditor Creditor,
-    QrBillDebtor? Debtor
+    QrBillDebtor? Debtor,
+    bool OpenAmount = false
 );
 
 /// <summary>Renders a Rechnung to PDF bytes: A4, German, logo top left, address for a right-window envelope.</summary>
@@ -44,7 +45,7 @@ public static class InvoiceDocument
     public static byte[] Render(InvoiceDocumentData data)
     {
         var total = InvoiceRules.Total(data.Lines);
-        var slip = QrBillSlip.RenderPng(QrBillSlip.Build(data.Creditor, data.Number, total, data.Debtor));
+        var slip = QrBillSlip.RenderPng(QrBillSlip.Build(data.Creditor, data.Number, data.OpenAmount ? null : total, data.Debtor));
         return Document
             .Create(doc =>
                 doc.Page(page =>
