@@ -45,7 +45,14 @@ public static class InvoiceDocument
     public static byte[] Render(InvoiceDocumentData data)
     {
         var total = InvoiceRules.Total(data.Lines);
-        var slip = QrBillSlip.RenderPng(QrBillSlip.Build(data.Creditor, data.Number, data.OpenAmount ? null : total, data.Debtor));
+        var slip = QrBillSlip.RenderPng(
+            QrBillSlip.Build(
+                data.Creditor,
+                data.Number,
+                data.OpenAmount ? null : total,
+                data.Debtor
+            )
+        );
         return Document
             .Create(doc =>
                 doc.Page(page =>
@@ -56,79 +63,81 @@ public static class InvoiceDocument
                     page.Content()
                         .Column(outer =>
                         {
-                            outer.Item()
+                            outer
+                                .Item()
                                 .PaddingHorizontal(PageMarginMm, Unit.Millimetre)
                                 .PaddingTop(PageMarginMm, Unit.Millimetre)
                                 .Column(col =>
-                        {
-                            col.Item()
-                                .Height(LogoHeightMm, Unit.Millimetre)
-                                .Width(LogoWidthMm, Unit.Millimetre)
-                                .Image(Logo);
-
-                            col.Item()
-                                .PaddingTop(
-                                    AddressTopMm - PageMarginMm - LogoHeightMm,
-                                    Unit.Millimetre
-                                )
-                                .PaddingLeft(AddressLeftMm - PageMarginMm, Unit.Millimetre)
-                                .Width(AddressWidthMm, Unit.Millimetre)
-                                .Column(addr =>
                                 {
-                                    addr.Item().Text(data.RecipientName);
-                                    foreach (var line in data.RecipientAddressLines)
-                                        addr.Item().Text(line);
-                                });
+                                    col.Item()
+                                        .Height(LogoHeightMm, Unit.Millimetre)
+                                        .Width(LogoWidthMm, Unit.Millimetre)
+                                        .Image(Logo);
 
-                            col.Item()
-                                .PaddingTop(25, Unit.Millimetre)
-                                .Text($"Rechnungsdatum: {data.Date:dd.MM.yyyy}");
-                            col.Item()
-                                .PaddingTop(2, Unit.Millimetre)
-                                .Text($"Rechnung Nr. {data.Number}");
-                            col.Item()
-                                .PaddingTop(10, Unit.Millimetre)
-                                .Text(data.TemplateTitle)
-                                .Bold()
-                                .FontSize(13);
-                            col.Item().PaddingTop(4, Unit.Millimetre).Text(data.TemplateText);
-                            col.Item()
-                                .PaddingTop(8, Unit.Millimetre)
-                                .Table(table =>
-                                {
-                                    table.ColumnsDefinition(c =>
-                                    {
-                                        c.RelativeColumn();
-                                        c.ConstantColumn(35, Unit.Millimetre);
-                                    });
-                                    table.Header(h =>
-                                    {
-                                        h.Cell().Element(HeaderCell).Text("Text").Bold();
-                                        h.Cell()
-                                            .Element(HeaderCell)
-                                            .AlignRight()
-                                            .Text("Betrag")
-                                            .Bold();
-                                    });
-                                    foreach (var line in data.Lines)
-                                    {
-                                        table.Cell().Element(BodyCell).Text(line.Text);
-                                        table
-                                            .Cell()
-                                            .Element(BodyCell)
-                                            .AlignRight()
-                                            .Text(FormatAmount(line.Amount));
-                                    }
-                                    table.Cell().Element(TotalCell).Text("Total").Bold();
-                                    table
-                                        .Cell()
-                                        .Element(TotalCell)
-                                        .AlignRight()
-                                        .Text(FormatAmount(total))
-                                        .Bold();
+                                    col.Item()
+                                        .PaddingTop(
+                                            AddressTopMm - PageMarginMm - LogoHeightMm,
+                                            Unit.Millimetre
+                                        )
+                                        .PaddingLeft(AddressLeftMm - PageMarginMm, Unit.Millimetre)
+                                        .Width(AddressWidthMm, Unit.Millimetre)
+                                        .Column(addr =>
+                                        {
+                                            addr.Item().Text(data.RecipientName);
+                                            foreach (var line in data.RecipientAddressLines)
+                                                addr.Item().Text(line);
+                                        });
+
+                                    col.Item()
+                                        .PaddingTop(10, Unit.Millimetre)
+                                        .Text($"Rechnung: #{data.Number} / {data.Date:dd.MM.yyyy}");
+                                    col.Item()
+                                        .PaddingTop(10, Unit.Millimetre)
+                                        .Text(data.TemplateTitle)
+                                        .Bold()
+                                        .FontSize(13);
+                                    col.Item()
+                                        .PaddingTop(4, Unit.Millimetre)
+                                        .Text(data.TemplateText);
+                                    col.Item()
+                                        .PaddingTop(8, Unit.Millimetre)
+                                        .Table(table =>
+                                        {
+                                            table.ColumnsDefinition(c =>
+                                            {
+                                                c.RelativeColumn();
+                                                c.ConstantColumn(35, Unit.Millimetre);
+                                            });
+                                            table.Header(h =>
+                                            {
+                                                h.Cell().Element(HeaderCell).Text("Text").Bold();
+                                                h.Cell()
+                                                    .Element(HeaderCell)
+                                                    .AlignRight()
+                                                    .Text("Betrag")
+                                                    .Bold();
+                                            });
+                                            foreach (var line in data.Lines)
+                                            {
+                                                table.Cell().Element(BodyCell).Text(line.Text);
+                                                table
+                                                    .Cell()
+                                                    .Element(BodyCell)
+                                                    .AlignRight()
+                                                    .Text(FormatAmount(line.Amount));
+                                            }
+                                            table.Cell().Element(TotalCell).Text("Total").Bold();
+                                            table
+                                                .Cell()
+                                                .Element(TotalCell)
+                                                .AlignRight()
+                                                .Text(FormatAmount(total))
+                                                .Bold();
+                                        });
+                                    col.Item()
+                                        .PaddingTop(10, Unit.Millimetre)
+                                        .Text(data.TemplateGreetings);
                                 });
-                            col.Item().PaddingTop(10, Unit.Millimetre).Text(data.TemplateGreetings);
-                        });
                             outer.Item().Dynamic(new PaymentPartComponent(slip));
                         });
                 })
@@ -205,7 +214,10 @@ public static class InvoiceDocument
                     e.Column(c =>
                     {
                         // A spacer pushes the image to the bottom; the reserve avoids float rounding overflow.
-                        c.Item().Height(Math.Max(0, context.AvailableSize.Height - height - RoundingReserve));
+                        c.Item()
+                            .Height(
+                                Math.Max(0, context.AvailableSize.Height - height - RoundingReserve)
+                            );
                         c.Item().Height(QrBillSlip.HeightMm, Unit.Millimetre).Image(png).FitArea();
                     })
                 ),
