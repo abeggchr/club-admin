@@ -119,6 +119,10 @@ export async function deleteTransaction(id: number): Promise<void> {
 export type TransactionImportResult = {
 	imported: number;
 	skippedDuplicates: number;
+	/** The Rechnungsnummern of the movements that were auto-booked, in import order. */
+	bookedInvoices: number[];
+	/** The count of imported movements that came in without Buchungen. */
+	unmatched: number;
 };
 
 export type TransactionImportError = {

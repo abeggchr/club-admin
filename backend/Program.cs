@@ -557,11 +557,21 @@ api.MapPost(
             }
             await db.SaveChangesAsync();
             await SaveEntryChangeAsync(db, chart);
+
+            // Ticket #62: the response reports which Rechnungen were auto-booked (in import order) and how
+            // many of the imported movements still have no Buchungen (credits and debits alike).
+            var bookedInvoices = result.Transactions
+                .Where(t => t.AutoEntries.Count > 0)
+                .Select(t => t.MatchedInvoiceId!.Value)
+                .ToList();
+            var unmatched = result.Transactions.Count(t => t.AutoEntries.Count == 0);
             return Results.Ok(
                 new
                 {
                     imported = result.Transactions.Count,
                     skippedDuplicates = result.SkippedDuplicates,
+                    bookedInvoices,
+                    unmatched,
                 }
             );
         }
