@@ -3,9 +3,15 @@ using backend.Person;
 namespace backend.Invoicing;
 
 /// <summary>One Rechnung the Jahresbeiträge run will create: one per address, one line per paying Person.</summary>
-public record PlannedInvoice(backend.Person.Person Recipient, IReadOnlyList<InvoiceLineDraft> Lines);
+public record PlannedInvoice(
+    backend.Person.Person Recipient,
+    IReadOnlyList<InvoiceLineDraft> Lines
+);
 
-public record BulkInvoicePlan(IReadOnlyList<PlannedInvoice> Invoices, IReadOnlyList<string> Warnings);
+public record BulkInvoicePlan(
+    IReadOnlyList<PlannedInvoice> Invoices,
+    IReadOnlyList<string> Warnings
+);
 
 /// <summary>Pure rules deciding who pays which Jahresbeitrag and on which Rechnung.</summary>
 public static class MembershipFeeRules
@@ -42,16 +48,12 @@ public static class MembershipFeeRules
         foreach (var group in GroupByAddress(members, warnings))
         {
             var payerFamily = SelectFamilyPayer(group);
-            var payers = SelectPayers(group, payerFamily);
-            foreach (var p in group.Except(payers).Where(p => discounts.ContainsKey(p.Id)))
+            var ordered = group.OrderBy(Seniority, SeniorityComparer).ToList();
+            foreach (var p in ordered.Where(p => FeeOf(p, payerFamily) == 0 && discounts.ContainsKey(p.Id)))
                 warnings.Add($"{p.FullName} zahlt nichts; die Ermässigung wird ignoriert.");
-            if (payers.Count == 0) continue;
-            var lines = payers
-                .Select(p => BuildLine(p, discounts.GetValueOrDefault(p.Id)))
-                .Where(l => l.Amount > 0)
-                .ToList();
-            if (lines.Count == 0) continue;
-            invoices.Add(new PlannedInvoice(payerFamily is not null ? payerFamily : payers[0], lines));
+            var lines = ordered.Select(p => BuildLine(p, FeeOf(p, payerFamily), discounts.GetValueOrDefault(p.Id))).ToList();
+            if (lines.Sum(l => l.Amount) <= 0) continue;
+            invoices.Add(new PlannedInvoice(payerFamily ?? ordered[0], lines));
         }
         return new BulkInvoicePlan(invoices, warnings);
     }
@@ -67,7 +69,9 @@ public static class MembershipFeeRules
         {
             if (FeeFor(p.Membership) is null)
             {
-                warnings.Add($"{p.FullName} hat die Mitgliedschaft Unbekannt und wird nicht verrechnet.");
+                warnings.Add(
+                    $"{p.FullName} hat die Mitgliedschaft Unbekannt und wird nicht verrechnet."
+                );
                 continue;
             }
             members.Add(p);
@@ -88,7 +92,9 @@ public static class MembershipFeeRules
             var key = AddressKey(p);
             if (key is null)
             {
-                warnings.Add($"{p.FullName} hat eine unvollständige Adresse und wird einzeln verrechnet.");
+                warnings.Add(
+                    $"{p.FullName} hat eine unvollständige Adresse und wird einzeln verrechnet."
+                );
                 groups.Add([p]);
             }
             else if (byAddress.TryGetValue(key, out var group))
@@ -107,23 +113,20 @@ public static class MembershipFeeRules
 
     /// <summary>The longest-standing Familie member of an address, who pays the Familie fee once.</summary>
     private static backend.Person.Person? SelectFamilyPayer(List<backend.Person.Person> group) =>
-        group.Where(p => p.Membership == MembershipType.Family).OrderBy(Seniority, SeniorityComparer).FirstOrDefault();
-
-    private static List<backend.Person.Person> SelectPayers(
-        List<backend.Person.Person> group,
-        backend.Person.Person? payerFamily
-    ) =>
         group
-            .Where(p => p.Membership != MembershipType.Family || p == payerFamily)
-            .Where(p => FeeFor(p.Membership) > 0)
+            .Where(p => p.Membership == MembershipType.Family)
             .OrderBy(Seniority, SeniorityComparer)
-            .ToList();
+            .FirstOrDefault();
 
-    private static InvoiceLineDraft BuildLine(backend.Person.Person p, MembershipDiscount? discount)
+    /// <summary>The fee a Person pays: a Familie member other than the payer pays nothing.</summary>
+    private static decimal FeeOf(backend.Person.Person p, backend.Person.Person? payerFamily) =>
+        p.Membership == MembershipType.Family && p != payerFamily ? 0m : FeeFor(p.Membership)!.Value;
+
+    private static InvoiceLineDraft BuildLine(backend.Person.Person p, decimal fee, MembershipDiscount? discount)
     {
         var text = $"Jahresbeitrag – {p.FullName} ({p.Membership.Label()})";
-        var amount = FeeFor(p.Membership)!.Value;
-        if (discount is not null)
+        var amount = fee;
+        if (discount is not null && fee > 0)
         {
             amount = Math.Round(amount * (100 - discount.Percent) / 100m * 20m, MidpointRounding.AwayFromZero) / 20m;
             text += $" – {discount.Percent} % Ermässigung: {discount.Text}";
@@ -131,14 +134,19 @@ public static class MembershipFeeRules
         return new InvoiceLineDraft(text, amount, AccountNumber);
     }
 
-    private static (DateOnly, int) Seniority(backend.Person.Person p) => (p.JoinedOn ?? DateOnly.MaxValue, p.Id);
+    private static (DateOnly, int) Seniority(backend.Person.Person p) =>
+        (p.JoinedOn ?? DateOnly.MaxValue, p.Id);
 
-    private static readonly Comparer<(DateOnly, int)> SeniorityComparer = Comparer<(DateOnly, int)>.Default;
+    private static readonly Comparer<(DateOnly, int)> SeniorityComparer = Comparer<(
+        DateOnly,
+        int
+    )>.Default;
 
     private static string? AddressKey(backend.Person.Person p)
     {
         string?[] parts = [p.Street, p.Number, p.PostalCode, p.City, p.Country];
-        if (parts.Any(string.IsNullOrWhiteSpace)) return null;
+        if (parts.Any(string.IsNullOrWhiteSpace))
+            return null;
         return string.Join('|', parts.Select(s => s!.Trim().ToLowerInvariant()));
     }
 }

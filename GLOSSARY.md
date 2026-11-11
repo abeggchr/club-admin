@@ -77,7 +77,7 @@ A marker such as {{name}} in a Textvorlage's Betreff, Text or Grüsse. Valid are
 The kind of membership of a Person (Familie, Einzel, Junior, Ehren, Frei, Gönner, or Unbekannt), which decides the Jahresbeitrag. Unbekannt is never invoiced.
 
 **Jahresbeitrag** (code: _MembershipFeeRules_), plural **Jahresbeiträge**:
-The yearly membership fee of a Person, set per Mitgliedschaft (a constant in the code) and booked to Konto 3400. "Jahresbeiträge" is also the run that creates the Rechnungen for all active Personen at once: one Rechnung per address with one Rechnungsposition per paying Person, where a Familie pays once per address (ADR 0005).
+The yearly membership fee of a Person, set per Mitgliedschaft (a constant in the code) and booked to Konto 3400. "Jahresbeiträge" is also the run that creates the Rechnungen for all active Personen at once: one Rechnung per address with one Rechnungsposition per Person, where a Familie pays once per address (ADR 0005). A Rechnungsposition of 0 (an Ehren member, a further Familie member of the address, or a 100 % Ermässigung) is kept, but no Rechnung is created when its total is 0.
 
 **Ermässigung** (code: _MembershipDiscount_):
 A percentage (1-100) with a text that reduces one Person's Jahresbeitrag in the Jahresbeiträge run. It is stored per Person until removed, and its text is printed on the Rechnungsposition.

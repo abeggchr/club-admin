@@ -64,14 +64,14 @@ public class MembershipDiscountTests
             Discounts(new MembershipDiscount { PersonId = 2, Percent = 50, Text = "x" })
         );
 
-        var line = Assert.Single(Assert.Single(plan.Invoices).Lines);
-        Assert.Equal(135m, line.Amount);
-        Assert.DoesNotContain("Ermässigung", line.Text);
+        var lines = Assert.Single(plan.Invoices).Lines;
+        Assert.Equal([135m, 0m], lines.Select(l => l.Amount));
+        Assert.DoesNotContain(lines, l => l.Text!.Contains("Ermässigung"));
         Assert.Contains(plan.Warnings, w => w.Contains("Ben Muster") && w.Contains("Ermässigung"));
     }
 
     [Fact]
-    public void A_100_percent_discount_leaves_the_line_out()
+    public void A_100_percent_discount_creates_no_Rechnung_when_the_total_is_0()
     {
         var plan = MembershipFeeRules.Plan(
             [P(1, "Anna", MembershipType.Single)],

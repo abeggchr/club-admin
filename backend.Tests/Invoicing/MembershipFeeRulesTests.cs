@@ -53,11 +53,23 @@ public class MembershipFeeRulesTests
     }
 
     [Fact]
-    public void Ehrenmitglieder_pay_nothing_so_no_Rechnung_is_created()
+    public void Ehrenmitglieder_pay_nothing_so_no_Rechnung_is_created_when_the_total_is_0()
     {
         var plan = MembershipFeeRules.Plan([P("Anna", MembershipType.Honorary)], Start);
 
         Assert.Empty(plan.Invoices);
+    }
+
+    [Fact]
+    public void A_line_of_0_is_kept_when_the_Rechnung_has_a_total_above_0()
+    {
+        var plan = MembershipFeeRules.Plan(
+            [P("Anna", MembershipType.Single, joined: "2020-01-01"), P("Ehren", MembershipType.Honorary, joined: "2021-01-01")],
+            Start
+        );
+
+        var invoice = Assert.Single(plan.Invoices);
+        Assert.Equal([90m, 0m], invoice.Lines.Select(l => l.Amount));
     }
 
     [Fact]
@@ -119,7 +131,7 @@ public class MembershipFeeRulesTests
     }
 
     [Fact]
-    public void At_one_address_only_the_earliest_Familienmitglied_pays_and_is_the_recipient()
+    public void At_one_address_only_the_earliest_Familienmitglied_pays_and_is_the_recipient_the_others_get_a_line_of_0()
     {
         var plan = MembershipFeeRules.Plan(
             [
@@ -133,14 +145,15 @@ public class MembershipFeeRulesTests
 
         var invoice = Assert.Single(plan.Invoices);
         Assert.Equal("First", invoice.Recipient.FirstName);
-        Assert.Equal(2, invoice.Lines.Count);
+        Assert.Equal(4, invoice.Lines.Count);
         Assert.Equal(170m, invoice.Lines.Sum(l => l.Amount));
+        Assert.Equal(2, invoice.Lines.Count(l => l.Amount == 0m));
         Assert.Contains(invoice.Lines, l => l.Text!.Contains("First Muster"));
         Assert.Contains(invoice.Lines, l => l.Text!.Contains("Junior Muster"));
     }
 
     [Fact]
-    public void Without_a_Familienmitglied_the_recipient_is_the_earliest_paying_person()
+    public void Without_a_Familienmitglied_the_recipient_is_the_earliest_person_with_a_line()
     {
         var plan = MembershipFeeRules.Plan(
             [
@@ -152,8 +165,19 @@ public class MembershipFeeRulesTests
         );
 
         var invoice = Assert.Single(plan.Invoices);
-        Assert.Equal("Early", invoice.Recipient.FirstName);
-        Assert.Equal(2, invoice.Lines.Count);
+        Assert.Equal("Honorary", invoice.Recipient.FirstName);
+        Assert.Equal(3, invoice.Lines.Count);
+    }
+
+    [Fact]
+    public void Two_Familienmitglieder_at_one_address_get_a_line_of_135_and_a_line_of_0()
+    {
+        var plan = MembershipFeeRules.Plan(
+            [P("Anna", MembershipType.Family, joined: "2018-01-01"), P("Ben", MembershipType.Family, joined: "2019-01-01")],
+            Start
+        );
+
+        Assert.Equal([135m, 0m], Assert.Single(plan.Invoices).Lines.Select(l => l.Amount));
     }
 
     [Fact]
