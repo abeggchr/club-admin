@@ -3,9 +3,11 @@ using System.IO.Compression;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
+using System.Xml.Serialization;
 
 namespace backend.Accounting;
 
+using Camt = Iso20022.Contracts.Camt05300110;
 using Person = backend.Person.Person;
 
 /// <summary>
@@ -39,14 +41,20 @@ public record BankImportResult(
 
 /// <summary>
 /// The pure bank import: reads every CAMT.053 file of an eBanking zip entirely in memory and creates one
-/// Bewegung per transaction: an entry without TxDtls, or one of its TxDtls for a batch entry. It does no
-/// database access, uses only the .NET standard library's zip and XML support, and never uses entry names
-/// as file paths. The counterparty of each transaction is linked to the matching Person when the bank
+/// Bewegung per transaction: an entry without TxDtls, or one of its TxDtls for a batch entry.
+/// It does no database access, parses the CAMT.053 files with the Iso20022 library's contracts, and never uses
+/// entry names as file paths. The counterparty of each transaction is linked to the matching Person when the bank
 /// address matches; the parser and the matcher are internal details of this module.
 /// </summary>
 public static class BankImport
 {
     public static readonly XNamespace Namespace = "urn:iso:std:iso:20022:tech:xsd:camt.053.001.08";
+
+    /// <summary>The namespace of the contracts the Iso20022 library provides.</summary>
+    private static readonly XNamespace LibraryNamespace =
+        "urn:iso:std:iso:20022:tech:xsd:camt.053.001.10";
+
+    private static readonly XmlSerializer Serializer = new(typeof(Camt.Document));
 
     /// <summary>Safety limits for the eBanking zip: at most this many XML files...</summary>
     private const int MaxXmlFiles = 100;
@@ -158,41 +166,87 @@ public static class BankImport
             : new BankImportResult(context.Transactions, context.SkippedDuplicates, []);
     }
 
-    private static void ParseStatement(XDocument document, string file, ImportContext context)
+
+    /// <summary>
+    /// Reads one CAMT.053 file into the library's contracts. The library has no camt.053.001.08 contracts, only
+    /// camt.053.001.10, which has the same shape for everything read here; so a .08 file is renamed to the .10
+    /// namespace in memory and then deserialized.
+    /// </summary>
+    private static Camt.Document? ReadDocument(XDocument xml, string file, ImportContext context)
     {
-        var root = document.Root;
+        var root = xml.Root;
         if (root == null)
         {
             context.Errors.Add(new ImportError(file, "Hat keine root Dokument"));
-            return;
+            return null;
         }
 
-        var ns = root.Name.NamespaceName;
+        var ns = root.Name.Namespace;
+        if (ns != Namespace && ns != LibraryNamespace)
+        {
+            context.Errors.Add(
+                new ImportError(
+                    file,
+                    string.IsNullOrEmpty(ns.NamespaceName)
+                        ? "Die Datei ist keine CAMT.053-Datei (Namespace fehlt)."
+                        : $"Die Datei ist keine CAMT.053-Datei (Namespace {ns.NamespaceName} ist kein CAMT.053-Namespace)."
+                )
+            );
+            return null;
+        }
+        foreach (var element in root.DescendantsAndSelf().Where(e => e.Name.Namespace == Namespace))
+        {
+            element.Name = LibraryNamespace + element.Name.LocalName;
+        }
+
+        // CdtDbtInd is a plain enum in the contracts, so an absent one would silently read as CRDT.
         if (
-            string.IsNullOrEmpty(ns)
-            || !ns.Equals(Namespace.NamespaceName, StringComparison.Ordinal)
+            root.Descendants(LibraryNamespace + "Ntry")
+                .Any(ntry => ntry.Element(LibraryNamespace + "CdtDbtInd") is null)
         )
         {
             context.Errors.Add(
                 new ImportError(
                     file,
-                    string.IsNullOrEmpty(ns)
-                        ? "Die Datei ist keine CAMT.053-Datei (Namespace fehlt)."
-                        : $"Die Datei ist keine CAMT.053-Datei (Namespace {ns} ist kein CAMT.053-Namespace)."
+                    "Es fehlt die Gutschrift-/Lastschriftkennzeichnung (CdtDbtInd)."
                 )
             );
-            return;
+            return null;
         }
 
-        var stmts = root.Descendants(Namespace + "Stmt").ToList();
-        if (stmts.Count != 1)
+        try
         {
-            context.Errors.Add(new ImportError(file, "Erwartet 1 Stmt, but was " + stmts.Count));
+            return (Camt.Document?)Serializer.Deserialize(xml.CreateReader());
+        }
+        catch (InvalidOperationException e)
+        {
+            context.Errors.Add(
+                new ImportError(
+                    file,
+                    $"Die Datei ist keine gültige CAMT.053-Datei: {e.InnerException?.Message ?? e.Message}"
+                )
+            );
+            return null;
+        }
+    }
+
+    private static void ParseStatement(XDocument xml, string file, ImportContext context)
+    {
+        var document = ReadDocument(xml, file, context);
+        if (document is null)
+        {
             return;
         }
-        var stmt = stmts.First();
 
-        var fileIban = Iban.Normalize(Local(Local(Local(stmt, "Acct"), "Id"), "IBAN")?.Value);
+        var stmts = document.BkToCstmrStmt?.Stmt ?? [];
+        if (stmts.Length != 1)
+        {
+            context.Errors.Add(new ImportError(file, "Erwartet 1 Stmt, but was " + stmts.Length));
+            return;
+        }
+        var stmt = stmts[0];
+
+        var fileIban = Iban.Normalize(stmt.Acct?.Id?.Item as string);
         if (string.IsNullOrEmpty(fileIban))
         {
             context.Errors.Add(
@@ -212,8 +266,8 @@ public static class BankImport
             return;
         }
 
-        var ntries = LocalAll(stmt, "Ntry");
-        if (ntries.Count == 0)
+        var ntries = stmt.Ntry ?? [];
+        if (ntries.Length == 0)
         {
             context.Errors.Add(new ImportError(file, "Die Datei enthält keine Bewegungen (Ntry)."));
             return;
@@ -224,11 +278,11 @@ public static class BankImport
         }
     }
 
-    private static void ParseEntry(XElement ntry, string file, ImportContext context)
+    private static void ParseEntry(Camt.ReportEntry12 ntry, string file, ImportContext context)
     {
-        var txDtls = LocalAll(ntry, "TxDtls");
+        var txDtls = (ntry.NtryDtls ?? []).SelectMany(d => d.TxDtls ?? []).ToList();
 
-        var status = StatusOf(ntry);
+        var status = ntry.Sts?.Item?.Trim();
         if (string.IsNullOrWhiteSpace(status))
         {
             context.Errors.Add(new ImportError(file, "Es fehlt der Status (Sts)."));
@@ -244,7 +298,7 @@ public static class BankImport
             );
             return;
         }
-        if (ReversalIndicated(ntry))
+        if (ntry.RvslInd)
         {
             context.Errors.Add(
                 new ImportError(
@@ -255,48 +309,20 @@ public static class BankImport
             return;
         }
 
-        var direction = Local(ntry, "CdtDbtInd")?.Value?.Trim();
-        if (direction is null)
-        {
-            context.Errors.Add(
-                new ImportError(
-                    file,
-                    "Es fehlt die Gutschrift-/Lastschriftkennzeichnung (CdtDbtInd)."
-                )
-            );
-            return;
-        }
-        if (direction is not ("CRDT" or "DBIT"))
-        {
-            context.Errors.Add(
-                new ImportError(
-                    file,
-                    $"Ungültige Gutschrift-/Lastschriftkennzeichnung: {direction}"
-                )
-            );
-            return;
-        }
+        var direction = ntry.CdtDbtInd;
 
-        var ntryAmountElement = AmountOf(ntry);
-        if (ntryAmountElement is null)
+        if (ntry.Amt is null)
         {
             context.Errors.Add(new ImportError(file, "Es fehlt der Betrag (Amt)."));
             return;
         }
 
-        var dateElement = Local(Local(ntry, "BookgDt"), "Dt");
-        if (!DateOnly.TryParse(dateElement?.Value, CultureInfo.InvariantCulture, out var date))
+        if (ntry.BookgDt is null)
         {
-            context.Errors.Add(
-                new ImportError(
-                    file,
-                    dateElement is null
-                        ? "Es fehlt das Buchungsdatum (BookgDt/Dt)."
-                        : $"Ungültiges Buchungsdatum: {dateElement.Value}"
-                )
-            );
+            context.Errors.Add(new ImportError(file, "Es fehlt das Buchungsdatum (BookgDt/Dt)."));
             return;
         }
+        var date = DateOnly.FromDateTime(ntry.BookgDt.Item);
 
         if (txDtls.Count > 1)
         {
@@ -304,49 +330,21 @@ public static class BankImport
             var txAmounts = new decimal[txDtls.Count];
             for (var i = 0; i < txDtls.Count; i++)
             {
-                var txAmountElement = AmountOf(txDtls[i]);
-                if (
-                    !decimal.TryParse(
-                        txAmountElement?.Value,
-                        NumberStyles.Number,
-                        CultureInfo.InvariantCulture,
-                        out var txAmount
-                    )
-                )
+                var txAmount = AmountOf(txDtls[i]);
+                if (txAmount is null)
                 {
-                    context.Errors.Add(
-                        new ImportError(
-                            file,
-                            txAmountElement is null
-                                ? "Es fehlt der Betrag (Amt)."
-                                : $"Ungültiger Betrag: {txAmountElement.Value}"
-                        )
-                    );
+                    context.Errors.Add(new ImportError(file, "Es fehlt der Betrag (Amt)."));
                     return;
                 }
-                txAmounts[i] = txAmount;
+                txAmounts[i] = txAmount.Value;
             }
 
-            if (
-                !decimal.TryParse(
-                    ntryAmountElement.Value,
-                    NumberStyles.Number,
-                    CultureInfo.InvariantCulture,
-                    out var ntryAmount
-                )
-            )
-            {
-                context.Errors.Add(
-                    new ImportError(file, $"Ungültiger Betrag: {ntryAmountElement.Value}")
-                );
-                return;
-            }
-            if (txAmounts.Sum() != ntryAmount)
+            if (txAmounts.Sum() != ntry.Amt.Value)
             {
                 context.Errors.Add(
                     new ImportError(
                         file,
-                        $"Die Beträge der einzelnen Bewegungen addieren sich nicht auf den Bewegungsbetrag der Gruppe (Ntry/Amt): {txAmounts.Sum().ToString("0.00", CultureInfo.InvariantCulture)} statt {ntryAmount.ToString("0.00", CultureInfo.InvariantCulture)}."
+                        $"Die Beträge der einzelnen Bewegungen addieren sich nicht auf den Bewegungsbetrag der Gruppe (Ntry/Amt): {txAmounts.Sum().ToString("0.00", CultureInfo.InvariantCulture)} statt {ntry.Amt.Value.ToString("0.00", CultureInfo.InvariantCulture)}."
                     )
                 );
                 return;
@@ -360,70 +358,41 @@ public static class BankImport
         }
 
         // The simple entry: exactly one TxDtls, or none (then the entry itself is the transaction).
-        var transaction = txDtls.Count == 1 ? txDtls[0] : ntry;
-        var amountElement = ReferenceEquals(transaction, ntry)
-            ? ntryAmountElement
-            : AmountOf(transaction);
-        if (
-            !decimal.TryParse(
-                amountElement?.Value,
-                NumberStyles.Number,
-                CultureInfo.InvariantCulture,
-                out var amount
-            )
-        )
+        var transaction = txDtls.Count == 1 ? txDtls[0] : null;
+        var amount = transaction is null ? ntry.Amt.Value : AmountOf(transaction);
+        if (amount is null)
         {
-            context.Errors.Add(
-                new ImportError(
-                    file,
-                    amountElement is null
-                        ? "Es fehlt der Betrag (Amt)."
-                        : $"Ungültiger Betrag: {amountElement.Value}"
-                )
-            );
+            context.Errors.Add(new ImportError(file, "Es fehlt der Betrag (Amt)."));
             return;
         }
 
-        ParseTransaction(ntry, transaction, amount, direction, date, file, context);
+        ParseTransaction(ntry, transaction, amount.Value, direction, date, file, context);
     }
 
     /// <summary>
-    /// One Bewegung for one transaction: for a simple entry the entry itself, for a batch entry one of its
-    /// TxDtls. The transaction's own amount, Ustrd text and TxDtls/Refs/AcctSvcrRef are used; the sign comes
-    /// from the entry's CdtDbtInd.
+    /// One Bewegung for one transaction: for a simple entry the entry itself (transaction is null when it has
+    /// no TxDtls), for a batch entry one of its TxDtls. The transaction's own amount, Ustrd text and
+    /// TxDtls/Refs/AcctSvcrRef are used; the sign comes from the entry's CdtDbtInd.
     /// </summary>
     private static void ParseTransaction(
-        XElement ntry,
-        XElement transaction,
+        Camt.ReportEntry12 ntry,
+        Camt.EntryTransaction12? transaction,
         decimal amount,
-        string direction,
+        Camt.CreditDebitCode direction,
         DateOnly date,
         string file,
         ImportContext context
     )
     {
-        if (ReversalIndicated(transaction))
-        {
-            context.Errors.Add(
-                new ImportError(
-                    file,
-                    "Der Eintrag ist eine Stornierung (RvslInd) und wird nicht importiert."
-                )
-            );
-            return;
-        }
-
-        var bankReference = (
-            Local(Local(transaction, "Refs"), "AcctSvcrRef")?.Value
-            ?? Local(ntry, "AcctSvcrRef")?.Value
-        )?.Trim();
+        var bankReference = (transaction?.Refs?.AcctSvcrRef ?? ntry.AcctSvcrRef)?.Trim();
         if (string.IsNullOrEmpty(bankReference))
         {
             context.Errors.Add(new ImportError(file, "Es fehlt die Bankreferenz (AcctSvcrRef)."));
             return;
         }
 
-        var signedAmount = direction == "CRDT" ? amount : -amount;
+        var credit = direction == Camt.CreditDebitCode.CRDT;
+        var signedAmount = credit ? amount : -amount;
         // An imported Bewegung has no Buchungen, so only the date and amount rules apply.
         if (TransactionRules.Validate(context.Snapshot.Settings, date, signedAmount) is { } error)
         {
@@ -437,16 +406,16 @@ public static class BankImport
             return;
         }
 
-        var ustrd = LocalAll(transaction, "Ustrd")
-            .Select(e => e.Value.Trim())
+        var ustrd = (transaction?.RmtInf?.Ustrd ?? [])
+            .Select(v => v.Trim())
             .Where(v => v.Length > 0)
             .ToList();
-        var addtlNtryInf = Local(ntry, "AddtlNtryInf")?.Value?.Trim();
+        var addtlNtryInf = ntry.AddtlNtryInf?.Trim();
         var text =
             ustrd.Count > 0
                 ? string.Join(' ', ustrd)
                 : (string.IsNullOrEmpty(addtlNtryInf) ? null : addtlNtryInf);
-        var counterpartyParty = CounterpartyPartyOf(transaction, direction);
+        var counterpartyParty = CounterpartyPartyOf(transaction, credit);
         var counterparty = CounterpartyNameOf(counterpartyParty);
         var person = MatchPerson(
             counterparty,
@@ -465,45 +434,44 @@ public static class BankImport
         );
     }
 
-    /// <summary>The counterparty party of a transaction: the Dbtr (payer) for a credit, the Cdtr (payee) for a debit.</summary>
-    private static XElement? CounterpartyPartyOf(XElement transaction, string direction) =>
-        direction == "CRDT" ? Local(transaction, "Dbtr") : Local(transaction, "Cdtr");
+    /// <summary>The amount of a transaction: its own Amt, or else AmtDtls/TxAmt/Amt.</summary>
+    private static decimal? AmountOf(Camt.EntryTransaction12 transaction) =>
+        (transaction.Amt ?? transaction.AmtDtls?.TxAmt?.Amt)?.Value;
 
-    /// <summary>
-    /// The counterparty name of a party, read in both known shapes (<c>Nm</c> in .02, <c>Pty/Nm</c> in .08).
-    /// </summary>
-    private static string? CounterpartyNameOf(XElement? party)
+    /// <summary>The counterparty party of a transaction: the Dbtr (payer) for a credit, the Cdtr (payee) for a debit.</summary>
+    private static Camt.PartyIdentification135? CounterpartyPartyOf(
+        Camt.EntryTransaction12? transaction,
+        bool credit
+    ) => (credit ? transaction?.RltdPties?.Dbtr : transaction?.RltdPties?.Cdtr)?.Item as Camt.PartyIdentification135;
+
+    private static string? CounterpartyNameOf(Camt.PartyIdentification135? party)
     {
-        var name = PartyLocal(party, "Nm")?.Value?.Trim();
+        var name = party?.Nm?.Trim();
         return string.IsNullOrEmpty(name) ? null : name;
     }
-
-    /// <summary>The party's child element in both known shapes: directly (.02) or under <c>Pty</c> (.08).</summary>
-    private static XElement? PartyLocal(XElement? party, string localName) =>
-        Local(party, localName) ?? Local(Local(party, "Pty"), localName);
 
     /// <summary>The normalised PLZ, street and house number of a bank counterparty's postal address.</summary>
     private sealed record BankAddress(string PostalCode, string Street, string Number);
 
     /// <summary>
-    /// The postal address (PstA, directly or under Pty) of a party, reduced to what matching needs: the PLZ,
+    /// The postal address (PstlAdr) of a party, reduced to what matching needs: the PLZ,
     /// the street and the house number, all normalised. Street and number come from StrtNm plus BldgNb; without
     /// a BldgNb, StrtNm is split at the last token that starts with a digit; otherwise the first AdrLine that
     /// looks like street plus number is used. The PLZ comes from PstCd, or else from an AdrLine of the form
     /// "&lt;PLZ&gt; &lt;Ort&gt;". Null when any of the three is missing on the bank side.
     /// </summary>
-    private static BankAddress? BankAddressOf(XElement? party)
+    private static BankAddress? BankAddressOf(Camt.PartyIdentification135? party)
     {
-        var address = PartyLocal(party, "PstA");
+        var address = party?.PstlAdr;
         if (address is null)
         {
             return null;
         }
 
-        var streetName = Local(address, "StrtNm")?.Value?.Trim();
-        var buildingNumber = Local(address, "BldgNb")?.Value?.Trim();
-        var addressLines = LocalAll(address, "AdrLine")
-            .Select(l => l.Value.Trim())
+        var streetName = address.StrtNm?.Trim();
+        var buildingNumber = address.BldgNb?.Trim();
+        var addressLines = (address.AdrLine ?? [])
+            .Select(l => l.Trim())
             .Where(l => l.Length > 0)
             .ToList();
 
@@ -542,7 +510,7 @@ public static class BankImport
             }
         }
 
-        var postalCode = Local(address, "PstCd")?.Value?.Trim();
+        var postalCode = address.PstCd?.Trim();
         if (string.IsNullOrEmpty(postalCode))
         {
             postalCode = PostalCodeFromAddressLines(addressLines);
@@ -776,26 +744,4 @@ public static class BankImport
         public List<ImportError> Errors { get; } = [];
         public int SkippedDuplicates { get; set; }
     }
-
-    /// <summary>The entry status per CAMT version: <c>Sts</c> as text (.02), or as <c>Sts/Cd</c> (.08).</summary>
-    private static string? StatusOf(XElement ntry)
-    {
-        var sts = Local(ntry, "Sts");
-        return (Local(sts, "Cd")?.Value ?? sts?.Value)?.Trim();
-    }
-
-    /// <summary>A reversal can be marked on the entry or on the transaction details.</summary>
-    private static bool ReversalIndicated(XElement element) =>
-        Local(element, "RvslInd")?.Value?.Trim() is "true" or "1";
-
-    /// <summary>The amount element per CAMT version: a direct <c>Amt</c> (.08), or the .02 shape <c>AmtDtls/TxAmt/Amt</c>.</summary>
-    private static XElement? AmountOf(XElement? parent) =>
-        Local(parent, "Amt") ?? Local(Local(Local(parent, "AmtDtls"), "TxAmt"), "Amt");
-
-    /// <summary>Finds the first child by local name; the namespace is ignored, as CAMT versions differ in it.</summary>
-    private static XElement? Local(XElement? parent, string localName) =>
-        parent?.Elements().FirstOrDefault(e => e.Name.LocalName == localName);
-
-    private static List<XElement> LocalAll(XElement? parent, string localName) =>
-        parent?.Elements().Where(e => e.Name.LocalName == localName).ToList() ?? [];
 }

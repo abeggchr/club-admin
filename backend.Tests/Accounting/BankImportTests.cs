@@ -86,14 +86,16 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">50.00</Amt>
               <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-              <TxDtls>
+              <NtryDtls><TxDtls>
                 <Refs><AcctSvcrRef>TXT</AcctSvcrRef></Refs>
                 <Amt Ccy="CHF">50.00</Amt>
+                <RmtInf>
                 <Ustrd>Einschreibung</Ustrd>
                 <Ustrd>2026</Ustrd>
-              </TxDtls>
+                </RmtInf>
+              </TxDtls></NtryDtls>
             </Ntry>
             """;
         var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
@@ -131,15 +133,19 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">100.00</Amt>
               <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-              <TxDtls>
+              <NtryDtls><TxDtls>
                 <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
                 <Amt Ccy="CHF">100.00</Amt>
+                <RltdPties>
                 <Dbtr><Pty><Nm>M. Muster</Nm></Pty></Dbtr>
                 <Cdtr><Pty><Nm>SCW Zug</Nm></Pty></Cdtr>
+                </RltdPties>
+                <RmtInf>
                 <Ustrd>Jahresbeitrag</Ustrd>
-              </TxDtls>
+                </RmtInf>
+              </TxDtls></NtryDtls>
             </Ntry>
             """;
         var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
@@ -154,15 +160,19 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">45.20</Amt>
               <CdtDbtInd>DBIT</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-              <TxDtls>
+              <NtryDtls><TxDtls>
                 <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
                 <Amt Ccy="CHF">45.20</Amt>
+                <RltdPties>
                 <Dbtr><Pty><Nm>SCW Zug</Nm></Pty></Dbtr>
                 <Cdtr><Pty><Nm>Bäckerei Beispiel</Nm></Pty></Cdtr>
+                </RltdPties>
+                <RmtInf>
                 <Ustrd>Miete Februar</Ustrd>
-              </TxDtls>
+                </RmtInf>
+              </TxDtls></NtryDtls>
             </Ntry>
             """;
         var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
@@ -197,14 +207,18 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">100.00</Amt>
               <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-              <TxDtls>
+              <NtryDtls><TxDtls>
                 <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
                 <Amt Ccy="CHF">100.00</Amt>
+                <RltdPties>
                 <Dbtr><Pty><Nm>Langer Name</Nm></Pty></Dbtr>
+                </RltdPties>
+                <RmtInf>
                 <Ustrd>{new string('a', 490)}</Ustrd>
-              </TxDtls>
+                </RmtInf>
+              </TxDtls></NtryDtls>
             </Ntry>
             """;
         var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
@@ -221,13 +235,15 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">100.00</Amt>
               <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-              <TxDtls>
+              <NtryDtls><TxDtls>
                 <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
                 <Amt Ccy="CHF">100.00</Amt>
+                <RmtInf>
                 <Ustrd>{new string('a', 501)}</Ustrd>
-              </TxDtls>
+                </RmtInf>
+              </TxDtls></NtryDtls>
             </Ntry>
             """;
         var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
@@ -311,7 +327,7 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">100.00</Amt>
               <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>{status}</Sts>
+              <Sts><Cd>{status}</Cd></Sts>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
@@ -352,7 +368,7 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">100.00</Amt>
               <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <RvslInd>true</RvslInd>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
               <AcctSvcrRef>TX1</AcctSvcrRef>
@@ -368,35 +384,13 @@ public class BankImportTests
     }
 
     [Fact]
-    public void A_reversal_marked_inside_the_transaction_details_is_an_error()
-    {
-        var ntry = """
-            <Ntry>
-              <Amt Ccy="CHF">100.00</Amt>
-              <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
-              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-              <TxDtls>
-                <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
-                <Amt Ccy="CHF">100.00</Amt>
-                <RvslInd>true</RvslInd>
-              </TxDtls>
-            </Ntry>
-            """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
-
-        var error = Assert.Single(Import(zip).Errors);
-        Assert.Contains("Storn", error.Message);
-    }
-
-    [Fact]
     public void A_file_without_the_account_IBAN_is_an_error_naming_the_file()
     {
         var ntry = """
             <Ntry>
               <Amt Ccy="CHF">100.00</Amt>
               <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
@@ -427,7 +421,7 @@ public class BankImportTests
         var ntry = """
             <Ntry>
               <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
@@ -447,7 +441,7 @@ public class BankImportTests
         var ntry = """
             <Ntry>
               <Amt Ccy="CHF">100.00</Amt>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
@@ -468,7 +462,7 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">100.00</Amt>
               <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
             """;
@@ -488,7 +482,7 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">100.00</Amt>
               <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
             </Ntry>
             """;
@@ -781,7 +775,7 @@ public class BankImportTests
               <Ntry>
                 <Amt Ccy="CHF">100.00</Amt>
                 <CdtDbtInd>CRDT</CdtDbtInd>
-                <Sts>&status;</Sts>
+                <Sts><Cd>&status;</Cd></Sts>
                 <BookgDt><Dt>2026-02-10</Dt></BookgDt>
                 <AcctSvcrRef>TX1</AcctSvcrRef>
               </Ntry>
@@ -1107,7 +1101,7 @@ public class BankImportTests
                 CamtFile(
                     "20260210",
                     ClubIban,
-                    PlainNtry("5.00", "DBIT", "2026-02-10", "E1", "Zahlungsverkehrspreise")
+                    PlainNtry("5.00", "DBIT", "2026-02-10", "E1", addtl: "Zahlungsverkehrspreise")
                 )
             )
         );
@@ -1181,13 +1175,13 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">{amount}</Amt>
               <CdtDbtInd>{direction}</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>{date}</Dt></BookgDt>
-              <TxDtls>
+              <NtryDtls><TxDtls>
                 <Refs><AcctSvcrRef>{txRef}</AcctSvcrRef></Refs>
                 <Amt Ccy="CHF">{amount}</Amt>
-                {(ustrd is null ? "" : $"<Ustrd>{ustrd}</Ustrd>")}
-              </TxDtls>
+                {(ustrd is null ? "" : $"<RmtInf><Ustrd>{ustrd}</Ustrd></RmtInf>")}
+              </TxDtls></NtryDtls>
               {(addtl is null ? "" : $"<AddtlNtryInf>{addtl}</AddtlNtryInf>")}
             </Ntry>
             """;
@@ -1204,12 +1198,12 @@ public class BankImportTests
             "\n",
             details.Select(d =>
                 $"""
-                    <TxDtls>
+                    <NtryDtls><TxDtls>
                       <Refs><AcctSvcrRef>{d.Ref}</AcctSvcrRef></Refs>
                       <Amt Ccy="CHF">{d.Amount}</Amt>
-                      {(d.Ustrd is null ? "" : $"<Ustrd>{d.Ustrd}</Ustrd>")}
-                      {(d.Cdtr is null ? "" : $"<Cdtr><Pty><Nm>{d.Cdtr}</Nm></Pty></Cdtr>")}
-                    </TxDtls>
+                      {(d.Cdtr is null ? "" : $"<RltdPties><Cdtr><Pty><Nm>{d.Cdtr}</Nm></Pty></Cdtr></RltdPties>")}
+                      {(d.Ustrd is null ? "" : $"<RmtInf><Ustrd>{d.Ustrd}</Ustrd></RmtInf>")}
+                    </TxDtls></NtryDtls>
                     """
             )
         );
@@ -1217,7 +1211,7 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">{ntryAmount}</Amt>
               <CdtDbtInd>{direction}</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>{date}</Dt></BookgDt>
               {txDtls}
             </Ntry>
@@ -1230,17 +1224,15 @@ public class BankImportTests
         string direction,
         string date,
         string entryRef,
-        string? ustrd = null,
         string? addtl = null
     ) =>
         $"""
             <Ntry>
               <Amt Ccy="CHF">{amount}</Amt>
               <CdtDbtInd>{direction}</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>{date}</Dt></BookgDt>
               <AcctSvcrRef>{entryRef}</AcctSvcrRef>
-              {(ustrd is null ? "" : $"<Ustrd>{ustrd}</Ustrd>")}
               {(addtl is null ? "" : $"<AddtlNtryInf>{addtl}</AddtlNtryInf>")}
             </Ntry>
             """;
@@ -1258,24 +1250,28 @@ public class BankImportTests
             <Ntry>
               <Amt Ccy="CHF">100.00</Amt>
               <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
+              <Sts><Cd>BOOK</Cd></Sts>
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-              <TxDtls>
+              <NtryDtls><TxDtls>
                 <Refs><AcctSvcrRef>{txRef}</AcctSvcrRef></Refs>
                 <Amt Ccy="CHF">100.00</Amt>
+                <RltdPties>
                 <Dbtr>
                   <Pty>
                     <Nm>{name}</Nm>
-                    <PstA>
+                    <PstlAdr>
                       {(street is null ? "" : $"<StrtNm>{street}</StrtNm>")}
                       {(building is null ? "" : $"<BldgNb>{building}</BldgNb>")}
                       {(postalCode is null ? "" : $"<PstCd>{postalCode}</PstCd>")}
                       {string.Join("\n", addressLines.Select(line => $"<AdrLine>{line}</AdrLine>"))}
-                    </PstA>
+                    </PstlAdr>
                   </Pty>
                 </Dbtr>
+                </RltdPties>
+                <RmtInf>
                 <Ustrd>Jahresbeitrag</Ustrd>
-              </TxDtls>
+                </RmtInf>
+              </TxDtls></NtryDtls>
             </Ntry>
             """;
 

@@ -47,13 +47,15 @@ public class BankImportReimportTests
                   <Ntry>
                     <Amt Ccy="CHF">100.00</Amt>
                     <CdtDbtInd>CRDT</CdtDbtInd>
-                    <Sts>BOOK</Sts>
+                    <Sts><Cd>BOOK</Cd></Sts>
                     <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-                    <TxDtls>
+                    <NtryDtls><TxDtls>
                       <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
                       <Amt Ccy="CHF">100.00</Amt>
+                      <RmtInf>
                       <Ustrd>Jahresbeitrag</Ustrd>
-                    </TxDtls>
+                      </RmtInf>
+                    </TxDtls></NtryDtls>
                   </Ntry>
                 </Stmt>
             </BkToCstmrStmt>

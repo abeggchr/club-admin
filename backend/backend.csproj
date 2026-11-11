@@ -6,11 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content
-      Update="Accounting\chart-of-accounts.json"
-      CopyToOutputDirectory="PreserveNewest"
-      CopyToPublishDirectory="PreserveNewest"
-    />
+    <Content Update="Accounting\chart-of-accounts.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +15,7 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="4.0.104.11" />
+    <PackageReference Include="Iso20022" Version="1.2.2" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
