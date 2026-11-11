@@ -1,5 +1,5 @@
-import { flexRender } from "@tanstack/react-table";
 import type { ReactTable } from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
 import type { Features } from "./columns";
 import type { Person } from "./types";
 

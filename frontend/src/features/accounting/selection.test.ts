@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { highlightOf, toggleSelection, type Selection } from "./selection";
+import { highlightOf, type Selection, toggleSelection } from "./selection";
 
 const entries = [
 	{ id: 1, transactionId: 10 },

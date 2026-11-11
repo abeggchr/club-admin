@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import {
 	createColumnHelper,
@@ -6,8 +5,9 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
-import { accountsQueryOptions } from "./api";
+import { useMemo } from "react";
 import { formatChf } from "./amount";
+import { accountsQueryOptions } from "./api";
 import { rowTint, useScrollHighlightIntoView } from "./highlight";
 import { accountLabel } from "./KontoPicker";
 import type { JournalEntry } from "./types";

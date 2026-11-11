@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { type FormEvent, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { formatChf } from "../accounting/amount";
 import { KontoPicker } from "../accounting/KontoPicker";
@@ -9,12 +9,12 @@ import { createInvoice, invalidateInvoices } from "./api";
 import {
 	addLine,
 	emptyInvoiceDraft,
+	type InvoiceDraft,
+	type InvoiceDraftErrors,
 	removeLine,
 	toInvoiceInput,
 	totalOf,
 	validateInvoiceDraft,
-	type InvoiceDraft,
-	type InvoiceDraftErrors,
 } from "./invoiceDraft";
 
 const input = "rounded border border-slate-300 p-2";

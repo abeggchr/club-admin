@@ -1,5 +1,5 @@
-import type { Row } from "@tanstack/react-table";
 import { rankItem, rankings } from "@tanstack/match-sorter-utils";
+import type { Row } from "@tanstack/react-table";
 import type { Features } from "./columns";
 import { membershipLabels } from "./membership";
 import type { Person } from "./types";

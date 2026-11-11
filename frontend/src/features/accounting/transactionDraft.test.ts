@@ -3,15 +3,15 @@ import {
 	addEntry,
 	canDelete,
 	canSave,
-	removeEntry,
-	remainder,
 	draftFromTransaction,
 	emptyDraft,
 	entryAmount,
 	isDraftDirty,
+	remainder,
+	removeEntry,
+	type TransactionDraft,
 	toTransactionInput,
 	validateDraft,
-	type TransactionDraft,
 } from "./transactionDraft";
 import type { Account } from "./types";
 

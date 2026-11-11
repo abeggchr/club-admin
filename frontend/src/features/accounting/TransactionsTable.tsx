@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { personsQueryOptions } from "../persons/api";
-import { formatChf } from "./amount";
 import { personLabel } from "../persons/personFilter";
+import { formatChf } from "./amount";
 import { rowTint, useScrollHighlightIntoView } from "./highlight";
 import type { Transaction } from "./types";
 

@@ -1,12 +1,12 @@
-import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import { MdAdd, MdFileUpload } from "react-icons/md";
 import { entriesQueryOptions, transactionsQueryOptions } from "./api";
 import { BalanceAtDate } from "./BalanceAtDate";
 import { EditPanel } from "./EditPanel";
 import { ImportDialog } from "./ImportDialog";
 import { JournalList } from "./JournalList";
-import { highlightOf, toggleSelection, type Selection } from "./selection";
+import { highlightOf, type Selection, toggleSelection } from "./selection";
 import { TransactionsTable } from "./TransactionsTable";
 
 /** What the panel beside the Bewegungen is doing: nothing, adding a new Bewegung, or editing one. */

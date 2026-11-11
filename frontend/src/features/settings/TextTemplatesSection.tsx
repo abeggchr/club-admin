@@ -1,15 +1,15 @@
-import { useState, type FormEvent } from "react";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { type FormEvent, useState } from "react";
 import {
 	deleteTextTemplate,
 	saveTextTemplate,
-	textTemplatesQueryOptions,
 	type TextTemplate,
+	textTemplatesQueryOptions,
 } from "./textTemplateApi";
 import {
 	emptyTextTemplateDraft,
-	validateTextTemplate,
 	type TextTemplateDraft,
+	validateTextTemplate,
 } from "./textTemplateDraft";
 
 type Editing = { id: number | null; draft: TextTemplateDraft };

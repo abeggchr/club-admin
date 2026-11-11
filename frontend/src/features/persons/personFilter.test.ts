@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Person } from "./types";
 import { filterPersons } from "./personFilter";
+import type { Person } from "./types";
 
 function person(
 	id: number,

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
-import { useTable } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { useTable } from "@tanstack/react-table";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { personsQueryOptions } from "./api";
 import { features } from "./columns";
 import { downloadPersonCsv } from "./csv";
@@ -11,7 +11,7 @@ import { ImportDialog } from "./ImportDialog";
 import { PersonsTable } from "./PersonsTable";
 import { PersonsToolbar } from "./PersonsToolbar";
 import { globalSearchFilter } from "./search";
-import { views, type ViewKey } from "./views";
+import { type ViewKey, views } from "./views";
 
 const route = getRouteApi("/persons");
 

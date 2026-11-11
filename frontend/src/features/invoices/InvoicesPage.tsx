@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { MdAdd } from "react-icons/md";
 import { formatChf } from "../accounting/amount";
 import { textTemplatesQueryOptions } from "../settings/textTemplateApi";

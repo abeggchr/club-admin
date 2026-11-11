@@ -2,8 +2,8 @@ import {
 	createFileRoute,
 	type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { InvoicesPage } from "../features/invoices/InvoicesPage";
 import { invoicesQueryOptions } from "../features/invoices/api";
+import { InvoicesPage } from "../features/invoices/InvoicesPage";
 import { personsQueryOptions } from "../features/persons/api";
 import { textTemplatesQueryOptions } from "../features/settings/textTemplateApi";
 

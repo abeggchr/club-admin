@@ -1,5 +1,5 @@
 import { FiDownload, FiUpload } from "react-icons/fi";
-import { views, type ViewKey } from "./views";
+import { type ViewKey, views } from "./views";
 
 type Props = {
 	filter: string;

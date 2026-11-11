@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { expectedBalanceQueryOptions } from "./api";
 import { formatChf } from "./amount";
+import { expectedBalanceQueryOptions } from "./api";
 
 function today(): string {
 	const d = new Date();

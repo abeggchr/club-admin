@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
 	addLine,
 	emptyInvoiceDraft,
+	type InvoiceDraft,
 	removeLine,
 	toInvoiceInput,
 	totalOf,
 	validateInvoiceDraft,
-	type InvoiceDraft,
 } from "./invoiceDraft";
 
 function filled(overrides: Partial<InvoiceDraft> = {}): InvoiceDraft {

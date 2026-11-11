@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { MdClose } from "react-icons/md";
+import { PersonPicker } from "../persons/PersonPicker";
+import { formatChf } from "./amount";
 import {
 	accountsQueryOptions,
 	deleteTransaction,
@@ -7,25 +10,22 @@ import {
 	saveTransaction,
 	settingsQueryOptions,
 } from "./api";
-import { MdClose } from "react-icons/md";
-import { formatChf } from "./amount";
 import { KontoPicker } from "./KontoPicker";
-import { PersonPicker } from "../persons/PersonPicker";
 import {
 	addEntry,
 	canDelete,
 	canSave,
-	removeEntry,
-	remainder,
+	type DraftErrors,
 	draftFromTransaction,
+	type EntryRow,
 	emptyDraft,
 	entryAmount,
 	isDraftDirty,
+	remainder,
+	removeEntry,
+	type TransactionDraft,
 	toTransactionInput,
 	validateDraft,
-	type DraftErrors,
-	type EntryRow,
-	type TransactionDraft,
 } from "./transactionDraft";
 import type { JournalEntry, Transaction } from "./types";
 

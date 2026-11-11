@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sortJubilees, type JubileePerson } from "./api";
+import { type JubileePerson, sortJubilees } from "./api";
 
 function row(
 	years: number,

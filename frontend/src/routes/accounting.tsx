@@ -2,8 +2,8 @@ import {
 	createFileRoute,
 	type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { settingsQueryOptions } from "../features/accounting/api";
 import { AccountingPage } from "../features/accounting/AccountingPage";
+import { settingsQueryOptions } from "../features/accounting/api";
 
 export const Route = createFileRoute("/accounting")({
 	loader: ({ context: { queryClient } }) =>

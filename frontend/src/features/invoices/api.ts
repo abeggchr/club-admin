@@ -1,4 +1,4 @@
-import { queryOptions, type QueryClient } from "@tanstack/react-query";
+import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import { getJson, requestJson } from "../accounting/api";
 import type { InvoiceInput } from "./invoiceDraft";
 

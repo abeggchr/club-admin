@@ -1,12 +1,12 @@
-import { useState, type FormEvent } from "react";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { type FormEvent, useState } from "react";
+import { formatChf, parseAmount } from "../accounting/amount";
 import {
 	invalidateJournalQueries,
 	saveSettings,
 	settingsQueryOptions,
 } from "../accounting/api";
 import { TextTemplatesSection } from "./TextTemplatesSection";
-import { formatChf, parseAmount } from "../accounting/amount";
 
 export function SettingsPage() {
 	const queryClient = useQueryClient();

@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { formatDe } from "../persons/format";
-import { jubileesQueryOptions, sortJubilees, type JubileePerson } from "./api";
+import { type JubileePerson, jubileesQueryOptions, sortJubilees } from "./api";
 
 const emptyMessage = "Keine Jubiläen im laufenden Clubjahr";
 
