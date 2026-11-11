@@ -11,6 +11,7 @@ import {
   tableFeatures,
 } from '@tanstack/react-table'
 import { formatDateDe, orDash } from './format'
+import { membershipLabels } from './membership'
 import type { Person } from './types'
 
 export const features = tableFeatures({
@@ -33,6 +34,10 @@ const helper = createColumnHelper<Features, Person>()
 export const columns = helper.columns([
   helper.accessor('firstName', { header: 'Vorname' }),
   helper.accessor('lastName', { header: 'Nachname' }),
+  helper.accessor('membership', {
+    header: 'Mitgliedschaft',
+    cell: (info) => membershipLabels[info.getValue()],
+  }),
   helper.accessor('dateOfBirth', {
     header: 'Geburtstag',
     cell: (info) => formatDateDe(info.getValue()),

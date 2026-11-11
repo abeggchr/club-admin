@@ -1,4 +1,5 @@
 import { formatDe } from './format'
+import { membershipLabels } from './membership'
 import type { Person } from './types'
 
 // Same headers and date format as the backend's PersonCsvImporter, so an
@@ -6,6 +7,7 @@ import type { Person } from './types'
 const exportColumns: { header: string; value: (p: Person) => string | null }[] = [
   { header: 'Vorname', value: (p) => p.firstName },
   { header: 'Nachname', value: (p) => p.lastName },
+  { header: 'Mitgliedschaft', value: (p) => membershipLabels[p.membership] },
   { header: 'Geburtstag', value: (p) => formatDe(p.dateOfBirth) },
   { header: 'Eintritt', value: (p) => formatDe(p.joinedOn) },
   { header: 'Austritt', value: (p) => formatDe(p.leftOn) },

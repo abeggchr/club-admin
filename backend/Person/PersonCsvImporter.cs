@@ -65,6 +65,7 @@ public static class PersonCsvImporter
                 {
                     FirstName = firstName,
                     LastName = lastName,
+                    Membership = MembershipTypeExtensions.FromCsvValue(Get("Mitgliedschaft")),
                     DateOfBirth = GetDate("Geburtstag"),
                     JoinedOn = GetDate("Eintritt"),
                     LeftOn = GetDate("Austritt"),

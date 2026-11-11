@@ -5,6 +5,7 @@ import { filterPersons } from './personFilter'
 function person(id: number, firstName: string, lastName: string, leftOn: string | null = null): Person {
   return {
     id, firstName, lastName, leftOn,
+    membership: 'single' as const,
     dateOfBirth: null, joinedOn: null, email: null, mobilePhone: null, landlinePhone: null,
     street: null, number: null, postalCode: null, city: null, country: null, notes: null,
   }

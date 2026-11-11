@@ -9,7 +9,7 @@ export function formatDateTime(iso: string): string {
 }
 
 export function addressLines(a: Address): string[] {
-  const place = [a.postalCode, a.city].filter(Boolean).join(' ');
-  const address = `${a.street} ${a.number}`;
+  const place = [a.postalCode, a.city].filter(Boolean).join(' ')
+  const address = [a.street, a.number].filter(Boolean).join(' ')
   return [address, place, a.country].filter((l): l is string => !!l)
 }

@@ -5,6 +5,7 @@ public class Person
     public int Id { get; set; }
     public required string FirstName { get; set; }
     public required string LastName { get; set; }
+    public MembershipType Membership { get; set; } = MembershipType.Unknown;
     public DateOnly? DateOfBirth { get; set; }
     public DateOnly? JoinedOn { get; set; }
     public DateOnly? LeftOn { get; set; }

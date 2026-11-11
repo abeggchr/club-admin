@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { FiX } from 'react-icons/fi'
 import { personsQueryOptions, updatePerson } from './api'
+import { membershipLabels, membershipTypes } from './membership'
 import type { Person } from './types'
 
 const textFields: { key: keyof Person; label: string; type?: string; multiline?: boolean }[] = [
@@ -49,7 +50,7 @@ export function EditPanel({ person, onClose }: { person: Person; onClose: () => 
   }
 
   return (
-    <aside className="w-96 shrink-0 rounded border border-neutral-200 p-4">
+    <aside className="w-[50%] shrink-0 rounded border border-neutral-200 p-4">
       <form onSubmit={submit}>
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Person bearbeiten</h2>
@@ -57,30 +58,52 @@ export function EditPanel({ person, onClose }: { person: Person; onClose: () => 
             <FiX />
           </button>
         </div>
-        {textFields.map((f) => {
-          const common = {
-            id: `person-${f.key}`,
-            value: (draft[f.key] as string | null) ?? '',
-            required: f.key === 'firstName' || f.key === 'lastName',
-            onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-              setDraft({ ...draft, [f.key]: e.target.value })
-              setSaved(false)
-            },
-            className: 'mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm',
-          }
-          return (
-            <div key={f.key} className="mt-3">
-              <label htmlFor={common.id} className="text-sm font-medium">
-                {f.label}
-              </label>
-              {f.multiline ? (
-                <textarea rows={4} {...common} />
-              ) : (
-                <input type={f.type ?? 'text'} {...common} />
-              )}
-            </div>
-          )
-        })}
+        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
+          {textFields.map((f) => {
+            const common = {
+              id: `person-${f.key}`,
+              value: (draft[f.key] as string | null) ?? '',
+              required: f.key === 'firstName' || f.key === 'lastName',
+              onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+                setDraft({ ...draft, [f.key]: e.target.value })
+                setSaved(false)
+              },
+              className: 'mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm',
+            }
+            return (
+              <div key={f.key} className={f.multiline ? 'col-span-2' : undefined}>
+                <label htmlFor={common.id} className="text-sm font-medium">
+                  {f.label}
+                </label>
+                {f.multiline ? (
+                  <textarea rows={4} {...common} />
+                ) : (
+                  <input type={f.type ?? 'text'} {...common} />
+                )}
+              </div>
+            )
+          })}
+          <div>
+            <label htmlFor="person-membership" className="text-sm font-medium">
+              Mitgliedschaft
+            </label>
+            <select
+              id="person-membership"
+              value={draft.membership}
+              onChange={(e) => {
+                setDraft({ ...draft, membership: e.target.value as Person['membership'] })
+                setSaved(false)
+              }}
+              className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+            >
+              {membershipTypes.map((type) => (
+                <option key={type} value={type}>
+                  {membershipLabels[type]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
         {saved && <p className="mt-3 text-sm text-green-700">Gespeichert.</p>}
         <div className="mt-4 flex justify-end gap-2">
