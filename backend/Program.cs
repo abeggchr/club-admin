@@ -533,38 +533,28 @@ api.MapPost(
             );
 
             // The first fully-covering credit Bewegung marks the Rechnung Bezahlt: append the Paid status
-            // change (timestamped with the movement's booking date, shown in Europe/Zurich) and record
-            // the Bewegung's id as PaidBy. Transactions added above resolve their ids during the save below.
-            var paidMovements = result
-                .Transactions.Where(t => t.PaidAt is not null && t.MatchedInvoiceId is not null)
-                .ToList();
-            foreach (var t in paidMovements)
+            // change and record the Bewegung's id as PaidBy before the save, so the Bewegung and its
+            // AutoEntries are created and the Paid status change + PaidBy are all persisted in the same
+            // SaveEntryChangeAsync save. The newly added Bewegungen are still in the context, so their ids
+            // are resolved as part of the save below.
+            foreach (var t in result.Transactions.Where(t => t.PaidAt is not null && t.MatchedInvoiceId is not null))
             {
                 var invoice = db.Invoices.Single(i => i.Id == t.MatchedInvoiceId);
+                var movement = db.Transactions.Single(x => x.BankReference == t.BankReference);
                 invoice.StatusChanges.Add(
                     new InvoiceStatusChange { Status = InvoiceStatus.Paid, Timestamp = t.PaidAt!.Value }
                 );
-            }
-            await SaveEntryChangeAsync(db, chart);
-            // Ids are available after the save; set PaidBy to the first covering Bewegung's id.
-            foreach (var t in paidMovements)
-            {
-                var invoice = db.Invoices.Single(i => i.Id == t.MatchedInvoiceId);
                 if (invoice.PaidBy is null)
                 {
-                    invoice.PaidBy = db.Transactions.Single(x => x.BankReference == t.BankReference).Id;
+                    invoice.PaidBy = movement.Id;
                 }
             }
-            await db.SaveChangesAsync();
             await SaveEntryChangeAsync(db, chart);
 
             // Ticket #62: the response reports which Rechnungen were auto-booked (in import order) and how
             // many of the imported movements still have no Buchungen (credits and debits alike).
-            var bookedInvoices = result.Transactions
-                .Where(t => t.AutoEntries.Count > 0)
-                .Select(t => t.MatchedInvoiceId!.Value)
-                .ToList();
-            var unmatched = result.Transactions.Count(t => t.AutoEntries.Count == 0);
+            var bookedInvoices = BankImport.BookedInvoiceIds(result);
+            var unmatched = BankImport.UnmatchedCount(result);
             return Results.Ok(
                 new
                 {

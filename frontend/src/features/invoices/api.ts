@@ -10,8 +10,6 @@ export type InvoiceListItem = {
 	person: { id: number; name: string };
 	total: number;
 	status: string;
-	/** The id of the Bewegung that first covered the total, or null. */
-	paidBy: number | null;
 };
 
 export const invoicesQueryOptions = queryOptions({

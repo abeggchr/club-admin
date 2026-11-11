@@ -25,7 +25,7 @@ public record ImportInvoice(
 );
 
 /// <summary>A Buchung the import proposes for a matched Bewegung: the position text, the Kontoplan account and the signed amount.</summary>
-public record ImportEntryDraft(string Text, int AccountNumber, decimal Amount);
+public record ImportEntry(string Text, int AccountNumber, decimal Amount);
 
 /// <summary>
 /// The state the bank import validates against: the club settings (Klub-IBAN, Startdatum), the
@@ -41,17 +41,9 @@ public record ImportSnapshot(
     ChartOfAccounts? Chart
 )
 {
-    /// <summary>Convenience constructor without invoices and chart.</summary>
-    public ImportSnapshot(
-        Settings Settings,
-        IReadOnlyCollection<string> ExistingBankReferences,
-        IReadOnlyCollection<Person> Persons
-    ) : this(Settings, ExistingBankReferences, Persons, [], null)
-    {
-    }
 }
 
-/// <summary>One imported Bewegung to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId. A matched Bewegung additionally carries the Rechnung it covers, the Buchungen the import proposes for it, and — when this Bewegung is the first to cover the total — the UTC timestamp of the Paid status change (the movement's booking date in Zurich time).</summary>
+/// <summary>One imported Bewegung to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId. A matched Bewegung additionally carries the Rechnung it covers, the Buchungen the import proposes for it, — when this Bewegung overpays, the excess booked to Konto 3600 (Spenden) — and, when this Bewegung is the first to cover the total, the UTC timestamp of the Paid status change (the movement's booking date in Zurich time).</summary>
 public record ImportedTransaction(
     DateOnly Date,
     decimal Amount,
@@ -59,7 +51,8 @@ public record ImportedTransaction(
     string BankReference,
     int? PersonId,
     int? MatchedInvoiceId,
-    IReadOnlyList<ImportEntryDraft> AutoEntries,
+    IReadOnlyList<ImportEntry> AutoEntries,
+    decimal? OverpaymentAmount,
     DateTime? PaidAt
 );
 
@@ -98,9 +91,6 @@ public static class BankImport
 
     /// <summary>The maximum length of a Bewegung text, the same limit as the Text column.</summary>
     private const int MaxTextLength = 500;
-
-    /// <summary>The Kontoplan account an overpayment is booked to (Spenden).</summary>
-    private const int OverpaymentAccount = 3600;
 
     /// <summary>The minimum similarity for a street or house number to count as nearly identical.</summary>
     private const double MinimumSimilarity = 0.9;
@@ -478,6 +468,7 @@ public static class BankImport
                 person?.Id,
                 match?.InvoiceId,
                 match?.Entries ?? [],
+                match?.OverpaymentAmount,
                 match?.PaidAt
             )
         );
@@ -801,12 +792,17 @@ public static class BankImport
 
     /// <summary>
     /// Tries to match a payment to its open Rechnung and build the auto-entries. Returns null (no match) when:
-    /// there is no QR-bill reference, no matching Rechnung, the Rechnung is already paid, the amount does not
-    /// match the outstanding amount exactly, a line's Konto is missing or inactive, or the overpayment account
-    /// is missing from the chart. A credit that completes the total returns the PaidAt timestamp (the booking
-    /// date as a UTC instant) for the Paid status change; a debit never does.
+    /// there is no QR-bill reference, no matching Rechnung, the Rechnung is already paid, the amount differs
+    /// from the outstanding amount (an underpayment or an overpayment of any size does not match), or a
+    /// line's Konto is missing or inactive. A credit that completes the total returns the PaidAt timestamp
+    /// (the booking date as a UTC instant) for the Paid status change; a debit never does.
     /// </summary>
-    private static (int InvoiceId, IReadOnlyList<ImportEntryDraft> Entries, DateTime? PaidAt)? MatchInvoice(
+    private static (
+        int InvoiceId,
+        IReadOnlyList<ImportEntry> Entries,
+        decimal? OverpaymentAmount,
+        DateTime? PaidAt
+    )? MatchInvoice(
         Camt.EntryTransaction12? transaction,
         decimal signedAmount,
         bool credit,
@@ -841,14 +837,14 @@ public static class BankImport
         }
 
         var outstanding = invoice.Total - invoice.ExistingPaid;
-        // The payment must cover at least the outstanding amount; an underpayment does not match.
-        // For a debit, the signed amount is negative; compare absolute values.
-        if (Math.Abs(signedAmount) < outstanding)
+        // The payment must exactly equal the outstanding amount (spec §5): an underpayment does not
+        // match, and neither does an overpayment — neither for credits nor for debits.
+        if (Math.Abs(signedAmount) != outstanding)
         {
             return null;
         }
 
-        var entries = new List<ImportEntryDraft>();
+        var entries = new List<ImportEntry>();
         foreach (var line in invoice.Lines)
         {
             // A missing or inactive line Konto → no match.
@@ -859,39 +855,28 @@ public static class BankImport
             }
             // The position's amount is multiplied by the movement's sign: credits positive, debits negative.
             var sign = signedAmount >= 0 ? 1m : -1m;
-            entries.Add(new ImportEntryDraft(line.Text, line.AccountNumber, line.Amount * sign));
-        }
-
-        // Overpayment (credit side): one extra Buchung to Konto 3600 for the excess.
-        var excess = Math.Abs(signedAmount) - outstanding;
-        if (excess > 0)
-        {
-            var overpaymentAccount = chart.Find(OverpaymentAccount);
-            if (overpaymentAccount is null || !overpaymentAccount.Active)
-            {
-                return null;
-            }
-            // The overpayment Buchung takes the movement's sign.
-            var overpaymentAmount = signedAmount > 0 ? excess : -excess;
-            entries.Add(new ImportEntryDraft($"Rechnung {invoice.Id:D4}", OverpaymentAccount, overpaymentAmount));
-        }
-
-        // The Buchungen must sum to the movement's amount.
-        if (entries.Sum(e => e.Amount) != signedAmount)
-        {
-            return null;
+            entries.Add(new ImportEntry(line.Text, line.AccountNumber, line.Amount * sign));
         }
 
         // Only a credit that completes the total records the Paid status change, timestamped with the
         // movement's booking date (Zurich midnight as a UTC instant); a debit reduces the covered amount.
         var covered =
-            credit
-            && invoice.ExistingPaid >= 0
-            && signedAmount == invoice.Total - invoice.ExistingPaid;
+            credit && invoice.ExistingPaid >= 0 && signedAmount == invoice.Total - invoice.ExistingPaid;
         DateTime? paidAt = covered ? InvoiceTime.TimestampFor(date) : null;
 
-        return (invoice.Id, entries.AsReadOnly(), paidAt);
+        return (invoice.Id, entries.AsReadOnly(), (decimal?)null, paidAt);
     }
+
+    /// <summary>The Rechnungsnummern of the movements that were auto-booked, in import order (spec #44 §7, the response's bookedInvoices).</summary>
+    public static List<int> BookedInvoiceIds(BankImportResult result) =>
+        result.Transactions
+            .Where(t => t.MatchedInvoiceId is not null)
+            .Select(t => t.MatchedInvoiceId!.Value)
+            .ToList();
+
+    /// <summary>The count of imported movements (credits and debits) without Buchungen (spec #44 §7, the response's unmatched).</summary>
+    public static int UnmatchedCount(BankImportResult result) =>
+        result.Transactions.Count(t => t.AutoEntries.Count == 0);
 
     private sealed class ImportContext(ImportSnapshot snapshot)
     {

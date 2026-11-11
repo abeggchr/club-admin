@@ -70,17 +70,22 @@ public class InvoiceMappingTests
     }
 
     [Fact]
-    public void List_stays_unchanged_and_has_no_reference()
+    public void List_stays_unchanged_and_has_no_reference_or_PaidBy()
     {
         var item = InvoiceMapping.ToInvoiceListItem(Invoice("RF340042"), Person);
 
         Assert.Equal(42, item.Id);
         Assert.Equal("0042", item.Number);
         Assert.Equal("Created", item.Status);
-        // The list view does not show the reference (spec #59: detail view only).
+        // The list view does not show the reference (spec #59: detail view only) or PaidBy
+        // (ticket #61: the status is shown, the paying Bewegung's id is detail-only).
         Assert.False(
             typeof(InvoiceListItemDto).GetProperties().Any(p => p.Name == "Reference"),
             "InvoiceListItemDto must not gain a Reference property in this change."
+        );
+        Assert.False(
+            typeof(InvoiceListItemDto).GetProperties().Any(p => p.Name == "PaidBy"),
+            "InvoiceListItemDto must not gain a PaidBy property in this change."
         );
     }
 

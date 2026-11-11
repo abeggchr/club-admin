@@ -74,7 +74,7 @@ A lifecycle step of a Rechnung, recorded as an append-only status change with a 
 A terminal Rechnungsstatus, recorded as a status change when the first imported Bewegung covers the Rechnung's total exactly. Its timestamp is the movement's booking date (shown in Europe/Zurich); once set, the Rechnung never matches another payment.
 
 **PaidBy** (code: _PaidBy_ on _Invoice_):
-The id of the Bewegung that first covered a Rechnung's total (null while open). Plain column without a foreign key: the Bewegung may be edited or deleted, but the Rechnung stays Bezahlt.
+The id of the Bewegung that first covered a Rechnung's total (null while open).
 
 **Mitgliedschaft** (code: _MembershipType_):
 The kind of membership of a Person (Familie, Einzel, Junior, Ehren, Frei, Gönner, or Unbekannt), which decides the Jahresbeitrag. Unbekannt is never invoiced.

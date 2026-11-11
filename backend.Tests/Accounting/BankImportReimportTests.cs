@@ -22,9 +22,9 @@ public class BankImportReimportTests
     {
         var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile()));
 
-        var imported = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], [])).Transactions);
+        var imported = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], [], [], null)).Transactions);
         // The Bewegung was deleted, so its BankReference is no longer stored and the same file imports it again.
-        var reimported = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], [])).Transactions);
+        var reimported = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], [], [], null)).Transactions);
 
         Assert.Equal(imported.Date, reimported.Date);
         Assert.Equal(imported.Amount, reimported.Amount);
