@@ -37,18 +37,50 @@ public static class MembershipFeeRules
     {
         discounts ??= new Dictionary<int, MembershipDiscount>();
         var warnings = new List<string>();
+        var members = ActiveInvoicedMembers(persons, at, warnings);
+        var invoices = new List<PlannedInvoice>();
+        foreach (var group in GroupByAddress(members, warnings))
+        {
+            var payerFamily = SelectFamilyPayer(group);
+            var payers = SelectPayers(group, payerFamily);
+            foreach (var p in group.Except(payers).Where(p => discounts.ContainsKey(p.Id)))
+                warnings.Add($"{p.FullName} zahlt nichts; die Ermässigung wird ignoriert.");
+            if (payers.Count == 0) continue;
+            var lines = payers
+                .Select(p => BuildLine(p, discounts.GetValueOrDefault(p.Id)))
+                .Where(l => l.Amount > 0)
+                .ToList();
+            if (lines.Count == 0) continue;
+            invoices.Add(new PlannedInvoice(payerFamily is not null ? payerFamily : payers[0], lines));
+        }
+        return new BulkInvoicePlan(invoices, warnings);
+    }
+
+    private static List<backend.Person.Person> ActiveInvoicedMembers(
+        IEnumerable<backend.Person.Person> persons,
+        DateOnly at,
+        List<string> warnings
+    )
+    {
         var members = new List<backend.Person.Person>();
         foreach (var p in persons.Where(p => IsActive(p, at)).OrderBy(p => p.Id))
         {
             if (FeeFor(p.Membership) is null)
             {
-                warnings.Add($"{Name(p)} hat die Mitgliedschaft Unbekannt und wird nicht verrechnet.");
+                warnings.Add($"{p.FullName} hat die Mitgliedschaft Unbekannt und wird nicht verrechnet.");
                 continue;
             }
             members.Add(p);
         }
+        return members;
+    }
 
-        // Groups keep first-seen order; a person with an incomplete address is a group of their own.
+    /// <summary>Groups keep first-seen order; a person with an incomplete address is a group of their own.</summary>
+    private static List<List<backend.Person.Person>> GroupByAddress(
+        List<backend.Person.Person> members,
+        List<string> warnings
+    )
+    {
         var groups = new List<List<backend.Person.Person>>();
         var byAddress = new Dictionary<string, List<backend.Person.Person>>();
         foreach (var p in members)
@@ -56,7 +88,7 @@ public static class MembershipFeeRules
             var key = AddressKey(p);
             if (key is null)
             {
-                warnings.Add($"{Name(p)} hat eine unvollständige Adresse und wird einzeln verrechnet.");
+                warnings.Add($"{p.FullName} hat eine unvollständige Adresse und wird einzeln verrechnet.");
                 groups.Add([p]);
             }
             else if (byAddress.TryGetValue(key, out var group))
@@ -70,35 +102,26 @@ public static class MembershipFeeRules
                 groups.Add(group);
             }
         }
-
-        var invoices = new List<PlannedInvoice>();
-        foreach (var group in groups)
-        {
-            var payerFamily = group
-                .Where(p => p.Membership == MembershipType.Family)
-                .OrderBy(Seniority, SeniorityComparer)
-                .FirstOrDefault();
-            var payers = group
-                .Where(p => p.Membership != MembershipType.Family || p == payerFamily)
-                .Where(p => FeeFor(p.Membership) > 0)
-                .OrderBy(Seniority, SeniorityComparer)
-                .ToList();
-            foreach (var p in group.Except(payers).Where(p => discounts.ContainsKey(p.Id)))
-                warnings.Add($"{Name(p)} zahlt nichts; die Ermässigung wird ignoriert.");
-            if (payers.Count == 0) continue;
-            var lines = payers
-                .Select(p => Line(p, discounts.GetValueOrDefault(p.Id)))
-                .Where(l => l.Amount > 0)
-                .ToList();
-            if (lines.Count == 0) continue;
-            invoices.Add(new PlannedInvoice(payerFamily is not null ? payerFamily : payers[0], lines));
-        }
-        return new BulkInvoicePlan(invoices, warnings);
+        return groups;
     }
 
-    private static InvoiceLineDraft Line(backend.Person.Person p, MembershipDiscount? discount)
+    /// <summary>The longest-standing Familie member of an address, who pays the Familie fee once.</summary>
+    private static backend.Person.Person? SelectFamilyPayer(List<backend.Person.Person> group) =>
+        group.Where(p => p.Membership == MembershipType.Family).OrderBy(Seniority, SeniorityComparer).FirstOrDefault();
+
+    private static List<backend.Person.Person> SelectPayers(
+        List<backend.Person.Person> group,
+        backend.Person.Person? payerFamily
+    ) =>
+        group
+            .Where(p => p.Membership != MembershipType.Family || p == payerFamily)
+            .Where(p => FeeFor(p.Membership) > 0)
+            .OrderBy(Seniority, SeniorityComparer)
+            .ToList();
+
+    private static InvoiceLineDraft BuildLine(backend.Person.Person p, MembershipDiscount? discount)
     {
-        var text = $"Jahresbeitrag – {Name(p)} ({p.Membership.Label()})";
+        var text = $"Jahresbeitrag – {p.FullName} ({p.Membership.Label()})";
         var amount = FeeFor(p.Membership)!.Value;
         if (discount is not null)
         {
@@ -111,8 +134,6 @@ public static class MembershipFeeRules
     private static (DateOnly, int) Seniority(backend.Person.Person p) => (p.JoinedOn ?? DateOnly.MaxValue, p.Id);
 
     private static readonly Comparer<(DateOnly, int)> SeniorityComparer = Comparer<(DateOnly, int)>.Default;
-
-    private static string Name(backend.Person.Person p) => $"{p.FirstName} {p.LastName}";
 
     private static string? AddressKey(backend.Person.Person p)
     {

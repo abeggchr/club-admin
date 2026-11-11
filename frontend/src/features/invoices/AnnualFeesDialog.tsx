@@ -70,28 +70,16 @@ export function AnnualFeesDialog({
 						<p className="text-green-700">
 							{summary.created} Rechnungen erstellt.
 						</p>
-						{summary.failed.length > 0 && (
-							<>
-								<p className="mt-2 font-medium text-red-600">
-									{summary.failed.length} fehlgeschlagen:
-								</p>
-								<ul className="list-disc pl-5 text-red-600">
-									{summary.failed.map((f) => (
-										<li key={f}>{f}</li>
-									))}
-								</ul>
-							</>
-						)}
-						{summary.warnings.length > 0 && (
-							<>
-								<p className="mt-2 font-medium text-amber-700">Warnungen:</p>
-								<ul className="list-disc pl-5 text-amber-700">
-									{summary.warnings.map((w) => (
-										<li key={w}>{w}</li>
-									))}
-								</ul>
-							</>
-						)}
+						<MessageList
+							title={`${summary.failed.length} fehlgeschlagen:`}
+							items={summary.failed}
+							tone="red"
+						/>
+						<MessageList
+							title="Warnungen:"
+							items={summary.warnings}
+							tone="amber"
+						/>
 					</div>
 				)}
 				<div className="mt-6 flex justify-end gap-2 text-sm">
@@ -113,5 +101,32 @@ export function AnnualFeesDialog({
 				</div>
 			</form>
 		</dialog>
+	);
+}
+
+const tones = {
+	red: { title: "text-red-600", list: "text-red-600" },
+	amber: { title: "text-amber-700", list: "text-amber-700" },
+};
+
+function MessageList({
+	title,
+	items,
+	tone,
+}: {
+	title: string;
+	items: string[];
+	tone: keyof typeof tones;
+}) {
+	if (items.length === 0) return null;
+	return (
+		<>
+			<p className={`mt-2 font-medium ${tones[tone].title}`}>{title}</p>
+			<ul className={`list-disc pl-5 ${tones[tone].list}`}>
+				{items.map((i) => (
+					<li key={i}>{i}</li>
+				))}
+			</ul>
+		</>
 	);
 }

@@ -45,7 +45,7 @@ export function DiscountsSection({ disabled }: { disabled: boolean }) {
 		return p ? personLabel(p) : `Person ${id}`;
 	};
 
-	function edit(personId: number) {
+	function loadDiscountIntoForm(personId: number) {
 		const d = discounts.find((x) => x.personId === personId);
 		setPersonId(personId);
 		setPercent(d ? String(d.percent) : "");
@@ -79,7 +79,7 @@ export function DiscountsSection({ disabled }: { disabled: boolean }) {
 							</span>
 							<button
 								type="button"
-								onClick={() => edit(d.personId)}
+								onClick={() => loadDiscountIntoForm(d.personId)}
 								className="text-sky-700 underline"
 							>
 								Ändern
@@ -99,7 +99,7 @@ export function DiscountsSection({ disabled }: { disabled: boolean }) {
 				<PersonPicker
 					value={personId}
 					onChange={(id) => {
-						if (id !== null) edit(id);
+						if (id !== null) loadDiscountIntoForm(id);
 						else setPersonId(null);
 					}}
 					className="w-40 rounded border border-slate-300 p-1"

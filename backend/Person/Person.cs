@@ -18,4 +18,7 @@ public class Person
     public string? City { get; set; }
     public string? Country { get; set; }
     public string? Notes { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string FullName => $"{FirstName} {LastName}";
 }

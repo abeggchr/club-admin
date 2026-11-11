@@ -15,7 +15,7 @@ public static class BulkInvoiceRunner
         var failed = new List<string>();
         foreach (var invoice in plan.Invoices)
         {
-            var who = $"{invoice.Recipient.FirstName} {invoice.Recipient.LastName}";
+            var who = invoice.Recipient.FullName;
             try
             {
                 var result = await create(invoice, ct);

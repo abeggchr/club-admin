@@ -58,7 +58,7 @@ public class InvoiceCreator(
             var date = InvoiceTime.ZurichDate(now);
             var number = InvoiceRules.FormatNumber(invoice.Id);
             var values = new PlaceholderValues(
-                $"{person.FirstName} {person.LastName}",
+                person.FullName,
                 string.Join(", ", addressLines),
                 InvoiceDocument.FormatAmount(invoice.Lines.Sum(l => l.Amount)),
                 number,
@@ -69,7 +69,7 @@ public class InvoiceCreator(
                 new InvoiceDocumentData(
                     number,
                     date,
-                    $"{person.FirstName} {person.LastName}",
+                    person.FullName,
                     addressLines,
                     TextTemplatePlaceholders.Resolve(template.Subject, values),
                     TextTemplatePlaceholders.Resolve(template.Text, values),
