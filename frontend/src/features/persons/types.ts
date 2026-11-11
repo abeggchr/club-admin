@@ -8,7 +8,8 @@ export type Person = {
   email: string | null
   mobilePhone: string | null
   landlinePhone: string | null
-  address: string | null
+  street: string | null
+  number: string | null
   postalCode: string | null
   city: string | null
   country: string | null

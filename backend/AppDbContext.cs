@@ -19,6 +19,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(o => o.Id).ValueGeneratedNever();
             e.Property(o => o.OpeningBalance).HasPrecision(18, 2);
+            e.Property(o => o.Iban).HasMaxLength(21);
         });
         modelBuilder.Entity<AccountUsage>(e =>
         {
@@ -51,6 +52,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(x => x.Amount).HasPrecision(18, 2);
             e.Property(x => x.Text).HasMaxLength(500);
+            e.Property(x => x.BankReference).HasMaxLength(35);
+            // Several manual Bewegungen have no BankReference; the database lets them coexist.
+            e.HasIndex(x => x.BankReference).IsUnique();
             e.HasIndex(x => x.Date);
             e.HasOne<Person>().WithMany().HasForeignKey(x => x.PersonId).OnDelete(DeleteBehavior.SetNull);
         });

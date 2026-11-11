@@ -4,8 +4,8 @@ import {
   accountsQueryOptions,
   deleteTransaction,
   invalidateJournalQueries,
-  openingBalanceQueryOptions,
   saveTransaction,
+  settingsQueryOptions,
 } from './api'
 import { MdClose } from 'react-icons/md'
 import { formatChf } from './amount'
@@ -53,17 +53,19 @@ type Props = {
 export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onDeleted, onDirtyChange }: Props) {
   const queryClient = useQueryClient()
   const { data: accounts } = useSuspenseQuery(accountsQueryOptions)
-  const { data: openingBalance } = useSuspenseQuery(openingBalanceQueryOptions)
+  const { data: settings } = useSuspenseQuery(settingsQueryOptions)
   const [baseline] = useState<TransactionDraft>(() =>
     transaction ? draftFromTransaction(transaction, entries, accounts) : emptyDraft(today()),
   )
   const [draft, setDraft] = useState(baseline)
   const [errors, setErrors] = useState<DraftErrors | null>(null)
   const [serverError, setServerError] = useState<string>()
+  // The date, amount, text and person of an imported Bewegung are bank facts; the form shows them read-only.
+  const imported = transaction?.bankReference != null
   const dirty = isDraftDirty(baseline, draft, accounts)
   const rest = remainder(draft, accounts)
   const deletable = canDelete(draft)
-  const savable = canSave(draft, accounts, openingBalance?.startDate)
+  const savable = canSave(draft, accounts, settings?.startDate)
   const textInputs = useRef<(HTMLInputElement | null)[]>([])
   // Latest draft for the focus effect, which must only re-run when the focused Buchung changes.
   const draftRef = useRef(draft)
@@ -99,7 +101,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    const found = validateDraft(draft, accounts, openingBalance?.startDate)
+    const found = validateDraft(draft, accounts, settings?.startDate)
     setErrors(found)
     setServerError(undefined)
     const body = found ? null : toTransactionInput(draft, accounts)
@@ -123,6 +125,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
             type="date"
             value={draft.date}
             onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+            readOnly={imported}
             className={input}
           />
           {errors?.date && <span className="text-red-600">{errors.date}</span>}
@@ -134,6 +137,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
             value={draft.amount}
             onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
             placeholder="Auszahlung mit -"
+            readOnly={imported}
             className={`${input} text-right`}
           />
           {errors?.amount && <span className="text-red-600">{errors.amount}</span>}
@@ -145,16 +149,18 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
         <PersonPicker
           value={draft.personId}
           onChange={(personId) => setDraft((d) => ({ ...d, personId }))}
+          readOnly={imported}
           className={input}
         />
       </label>
-      
+
       <label className="flex flex-col text-sm">
         Text
         <input
           value={draft.text}
           maxLength={500}
           onChange={(e) => setDraft({ ...draft, text: e.target.value })}
+          readOnly={imported}
           className={input}
         />
       </label>
@@ -215,7 +221,7 @@ export function EditPanel({ transaction, entries = [], focusEntryId, onDone, onD
       >
         + Buchung
       </button>
-      {rest !== null && (
+      {draft.entries.length > 0 && rest !== null && (
         <p className={`text-sm ${rest === 0 ? 'text-slate-600' : 'font-medium text-red-700'}`}>
           Differenz {formatChf(rest)}
         </p>

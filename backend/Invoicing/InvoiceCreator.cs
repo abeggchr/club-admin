@@ -6,7 +6,11 @@ public record InvoiceCreationResult(Invoice? Invoice, string? Error);
 /// Creates a Rechnung in one DB transaction: insert Invoice, lines and Created status change, obtain the ID,
 /// render the PDF, upload it, commit. Any failure rolls back; the lost ID leaves an accepted gap in the numbering.
 /// </summary>
-public class InvoiceCreator(AppDbContext db, IInvoiceStorage storage, ILogger<InvoiceCreator> logger)
+public class InvoiceCreator(
+    AppDbContext db,
+    IInvoiceStorage storage,
+    ILogger<InvoiceCreator> logger
+)
 {
     public async Task<InvoiceCreationResult> CreateAsync(
         backend.Person.Person person,
@@ -23,9 +27,20 @@ public class InvoiceCreator(AppDbContext db, IInvoiceStorage storage, ILogger<In
             {
                 PersonId = person.Id,
                 Lines = lines
-                    .Select((l, i) => new InvoiceLine { Text = l.Text!.Trim(), Amount = l.Amount, Position = i })
+                    .Select(
+                        (l, i) =>
+                            new InvoiceLine
+                            {
+                                Text = l.Text!.Trim(),
+                                Amount = l.Amount,
+                                Position = i,
+                            }
+                    )
                     .ToList(),
-                StatusChanges = [new InvoiceStatusChange { Status = InvoiceStatus.Created, Timestamp = now }],
+                StatusChanges =
+                [
+                    new InvoiceStatusChange { Status = InvoiceStatus.Created, Timestamp = now },
+                ],
             };
             db.Invoices.Add(invoice);
             await db.SaveChangesAsync(ct);
@@ -35,7 +50,13 @@ public class InvoiceCreator(AppDbContext db, IInvoiceStorage storage, ILogger<In
                     InvoiceRules.FormatNumber(invoice.Id),
                     InvoiceTime.ZurichDate(now),
                     $"{person.FirstName} {person.LastName}",
-                    InvoiceDocument.AddressLines(person.Address, person.PostalCode, person.City, person.Country),
+                    InvoiceDocument.AddressLines(
+                        person.Street,
+                        person.Number,
+                        person.PostalCode,
+                        person.City,
+                        person.Country
+                    ),
                     template.Subject,
                     template.Text,
                     template.Greetings,

@@ -6,7 +6,7 @@ function person(id: number, firstName: string, lastName: string, leftOn: string 
   return {
     id, firstName, lastName, leftOn,
     dateOfBirth: null, joinedOn: null, email: null, mobilePhone: null, landlinePhone: null,
-    address: null, postalCode: null, city: null, country: null, notes: null,
+    street: null, number: null, postalCode: null, city: null, country: null, notes: null,
   }
 }
 

@@ -1,15 +1,15 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { openingBalanceQueryOptions } from './api'
+import { settingsQueryOptions } from './api'
 import { TransactionsView } from './TransactionsView'
 
 export function AccountingPage() {
-  const { data: openingBalance } = useSuspenseQuery(openingBalanceQueryOptions)
+  const { data: settings } = useSuspenseQuery(settingsQueryOptions)
 
   return (
     <div className="px-8">
       <h2 className="mt-4 text-xl font-semibold text-sky-900">Buchhaltung</h2>
-      {openingBalance ? (
+      {settings ? (
         <TransactionsView />
       ) : (
         <p className="mt-4">

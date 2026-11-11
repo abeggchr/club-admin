@@ -19,7 +19,9 @@ InvoiceDocument.UseCommunityLicense();
 
 // A malformed Kontoplan file fails startup (see ADR 0001).
 builder.Services.AddSingleton(
-    ChartOfAccounts.Load(Path.Combine(AppContext.BaseDirectory, "Accounting", "chart-of-accounts.json"))
+    ChartOfAccounts.Load(
+        Path.Combine(AppContext.BaseDirectory, "Accounting", "chart-of-accounts.json")
+    )
 );
 
 var app = builder.Build();
@@ -35,7 +37,9 @@ using (var scope = app.Services.CreateScope())
     var recorded = SyncAccountUsages(db, chart);
     if (ChartConsistency.Check(chart, recorded) is { } inconsistency)
     {
-        throw new ChartOfAccountsException($"Kontoplan passt nicht zu den Buchungen. {inconsistency}");
+        throw new ChartOfAccountsException(
+            $"Kontoplan passt nicht zu den Buchungen. {inconsistency}"
+        );
     }
     db.SaveChanges();
 }
@@ -72,7 +76,10 @@ api.MapPut(
     "/persons/{id:int}",
     async (int id, PersonUpdate update, AppDbContext db) =>
     {
-        if (string.IsNullOrWhiteSpace(update.FirstName) || string.IsNullOrWhiteSpace(update.LastName))
+        if (
+            string.IsNullOrWhiteSpace(update.FirstName)
+            || string.IsNullOrWhiteSpace(update.LastName)
+        )
         {
             return Results.BadRequest(new { error = "Vorname und Nachname sind erforderlich." });
         }
@@ -91,7 +98,8 @@ api.MapPut(
         person.Email = update.Email;
         person.MobilePhone = update.MobilePhone;
         person.LandlinePhone = update.LandlinePhone;
-        person.Address = update.Address;
+        person.Street = update.Street;
+        person.Number = update.Number;
         person.PostalCode = update.PostalCode;
         person.City = update.City;
         person.Country = update.Country;
@@ -125,42 +133,46 @@ api.MapPost(
     .DisableAntiforgery();
 
 api.MapGet(
-    "/opening-balance",
+    "/settings",
     async (AppDbContext db) =>
-        await db.Settings.FindAsync(Settings.SingletonId) is { } ob
-            ? Results.Ok(ob)
+        await db.Settings.FindAsync(Settings.SingletonId) is { } settings
+            ? Results.Ok(settings)
             : Results.NotFound()
 );
 
 api.MapPut(
-    "/opening-balance",
-    async (OpeningBalanceUpdate update, AppDbContext db) =>
+    "/settings",
+    async (SettingsUpdate update, AppDbContext db) =>
     {
-        if (update.OpeningBalance != decimal.Round(update.OpeningBalance, 2))
-        {
-            return Results.BadRequest(new { error = "Der Betrag darf höchstens zwei Dezimalstellen haben." });
-        }
-
         var earliest = await db.Transactions.AnyAsync()
             ? await db.Transactions.MinAsync(t => t.Date)
             : (DateOnly?)null;
-        if (TransactionRules.ValidateOpeningStartDate(update.StartDate, earliest) is { } dateError)
+        if (
+            SettingsRules.Validate(
+                update.OpeningBalance,
+                update.StartDate,
+                update.Iban,
+                earliest
+            ) is
+            { } error
+        )
         {
-            return Results.BadRequest(new { error = dateError });
+            return Results.BadRequest(new { error });
         }
 
-        var ob = await db.Settings.FindAsync(Settings.SingletonId);
-        if (ob is null)
+        var settings = await db.Settings.FindAsync(Settings.SingletonId);
+        if (settings is null)
         {
-            ob = new Settings();
-            db.Settings.Add(ob);
+            settings = new Settings();
+            db.Settings.Add(settings);
         }
 
-        ob.OpeningBalance = update.OpeningBalance;
-        ob.StartDate = update.StartDate;
+        settings.OpeningBalance = update.OpeningBalance;
+        settings.StartDate = update.StartDate;
+        settings.Iban = Iban.Normalize(update.Iban)!;
 
         await db.SaveChangesAsync();
-        return Results.Ok(ob);
+        return Results.Ok(settings);
     }
 );
 
@@ -183,7 +195,13 @@ api.MapGet(
         var entries = await db.JournalEntries.Include(e => e.Transaction).ToListAsync();
         // Balances are computed over the whole journal; filters only hide rows.
         return JournalFilter
-            .Apply(AccountingCalculator.RunningBalances(opening, entries), from, to, accountNumber, search)
+            .Apply(
+                AccountingCalculator.RunningBalances(opening, entries),
+                from,
+                to,
+                accountNumber,
+                search
+            )
             .Select(r => new JournalEntryDto(
                 r.Entry.Id,
                 r.Entry.TransactionId,
@@ -207,14 +225,18 @@ api.MapGet(
             return Results.NotFound();
         }
 
-        var entries = await db.JournalEntries
-            .Include(e => e.Transaction)
+        var entries = await db
+            .JournalEntries.Include(e => e.Transaction)
             .Where(e => e.Transaction.Date <= date)
             .ToListAsync();
         var transactions = await db.Transactions.Where(t => t.Date <= date).ToListAsync();
 
         var journalBalance = AccountingCalculator.ExpectedBalance(opening, entries, date);
-        var transactionBalance = AccountingCalculator.TransactionBalance(opening, transactions, date);
+        var transactionBalance = AccountingCalculator.TransactionBalance(
+            opening,
+            transactions,
+            date
+        );
         return Results.Ok(
             new
             {
@@ -247,7 +269,9 @@ api.MapPost(
         }
         var opening = await db.Settings.FindAsync(Settings.SingletonId);
         var drafts = lines.Select(l => new EntryDraft(l.Text, l.AccountNumber, l.Amount)).ToList();
-        if (TransactionRules.Validate(opening, chart, input.Date, input.Amount, drafts) is { } error)
+        if (
+            TransactionRules.Validate(opening, chart, input.Date, input.Amount, drafts) is { } error
+        )
         {
             return Results.BadRequest(new { error });
         }
@@ -262,7 +286,9 @@ api.MapPost(
             Amount = input.Amount,
             Text = NormalizeText(input.Text),
             PersonId = input.PersonId,
-            Entries = lines.Select(l => Line(new Entry(), l.Text, l.AccountNumber, l.Amount)).ToList(),
+            Entries = lines
+                .Select(l => Line(new Entry(), l.Text, l.AccountNumber, l.Amount))
+                .ToList(),
         };
         db.Transactions.Add(transaction);
         await SaveEntryChangeAsync(db, chart);
@@ -277,10 +303,27 @@ api.MapPut(
     "/transactions/{id:int}",
     async (int id, TransactionInput input, AppDbContext db, ChartOfAccounts chart) =>
     {
-        var transaction = await db.Transactions.Include(t => t.Entries).FirstOrDefaultAsync(t => t.Id == id);
+        var transaction = await db
+            .Transactions.Include(t => t.Entries)
+            .FirstOrDefaultAsync(t => t.Id == id);
         if (transaction is null)
         {
             return Results.NotFound();
+        }
+
+        // The date, amount, text and person of an imported Bewegung are bank facts and cannot change.
+        if (
+            TransactionRules.ValidateUnchangedBankFacts(
+                transaction,
+                input.Date,
+                input.Amount,
+                NormalizeText(input.Text),
+                input.PersonId
+            ) is
+            { } bankFactError
+        )
+        {
+            return Results.BadRequest(new { error = bankFactError });
         }
 
         var lines = input.Entries ?? [];
@@ -288,7 +331,9 @@ api.MapPut(
         var givenIds = lines.Where(l => l.Id is not null).Select(l => l.Id!.Value).ToList();
         if (givenIds.Any(i => !stored.ContainsKey(i)))
         {
-            return Results.BadRequest(new { error = "Eine Buchung gehört nicht zu dieser Bewegung." });
+            return Results.BadRequest(
+                new { error = "Eine Buchung gehört nicht zu dieser Bewegung." }
+            );
         }
         if (givenIds.Distinct().Count() != givenIds.Count)
         {
@@ -297,9 +342,16 @@ api.MapPut(
 
         var opening = await db.Settings.FindAsync(Settings.SingletonId);
         var drafts = lines
-            .Select(l => new EntryDraft(l.Text, l.AccountNumber, l.Amount, l.Id is { } i ? stored[i].AccountNumber : null))
+            .Select(l => new EntryDraft(
+                l.Text,
+                l.AccountNumber,
+                l.Amount,
+                l.Id is { } i ? stored[i].AccountNumber : null
+            ))
             .ToList();
-        if (TransactionRules.Validate(opening, chart, input.Date, input.Amount, drafts) is { } error)
+        if (
+            TransactionRules.Validate(opening, chart, input.Date, input.Amount, drafts) is { } error
+        )
         {
             return Results.BadRequest(new { error });
         }
@@ -320,7 +372,9 @@ api.MapPut(
             }
             else
             {
-                transaction.Entries.Add(Line(new Entry(), line.Text, line.AccountNumber, line.Amount));
+                transaction.Entries.Add(
+                    Line(new Entry(), line.Text, line.AccountNumber, line.Amount)
+                );
             }
         }
         db.JournalEntries.RemoveRange(stored.Values.Where(e => !givenIds.Contains(e.Id)));
@@ -334,7 +388,9 @@ api.MapDelete(
     "/transactions/{id:int}",
     async (int id, AppDbContext db, ChartOfAccounts chart) =>
     {
-        var transaction = await db.Transactions.Include(t => t.Entries).FirstOrDefaultAsync(t => t.Id == id);
+        var transaction = await db
+            .Transactions.Include(t => t.Entries)
+            .FirstOrDefaultAsync(t => t.Id == id);
         if (transaction is null)
         {
             return Results.NotFound();
@@ -347,9 +403,71 @@ api.MapDelete(
     }
 );
 
+// Imports one Bewegung per simple CAMT.053 entry of the eBanking zip (ticket #25); a re-import skips
+// transactions whose BankReference is already stored.
+api.MapPost(
+        "/transactions/import",
+        async (IFormFile file, AppDbContext db, ChartOfAccounts chart) =>
+        {
+            var settings = await db.Settings.FindAsync(Settings.SingletonId);
+            if (settings is null)
+            {
+                return Results.BadRequest(
+                    new
+                    {
+                        error = "Bitte zuerst die Einstellungen (Anfangssaldo, Startdatum, IBAN) speichern.",
+                    }
+                );
+            }
+
+            var existingReferences = await db
+                .Transactions.Where(t => t.BankReference != null)
+                .Select(t => t.BankReference!)
+                .ToListAsync();
+            var persons = await db.Persons.ToListAsync();
+            byte[] zip;
+            await using (var upload = file.OpenReadStream())
+            using (var memory = new MemoryStream())
+            {
+                await upload.CopyToAsync(memory);
+                zip = memory.ToArray();
+            }
+
+            var result = BankImport.Import(
+                zip,
+                new ImportSnapshot(settings, existingReferences, persons)
+            );
+            if (result.Errors.Count > 0)
+            {
+                return Results.BadRequest(new { errors = result.Errors });
+            }
+
+            db.Transactions.AddRange(
+                result.Transactions.Select(t => new Transaction
+                {
+                    Date = t.Date,
+                    Amount = t.Amount,
+                    Text = t.Text,
+                    BankReference = t.BankReference,
+                    PersonId = t.PersonId,
+                })
+            );
+            await SaveEntryChangeAsync(db, chart);
+            return Results.Ok(
+                new
+                {
+                    imported = result.Transactions.Count,
+                    skippedDuplicates = result.SkippedDuplicates,
+                }
+            );
+        }
+    )
+    .DisableAntiforgery();
+
 api.MapGet(
     "/text-templates",
-    async (AppDbContext db) => await db.TextTemplates.OrderBy(t => t.Subject).ThenBy(t => t.Id).ToListAsync()
+    async (AppDbContext db) =>
+        await db.TextTemplates.OrderBy(t => t.Subject).ThenBy(t => t.Id).ToListAsync()
 );
 
 api.MapPost(
@@ -405,11 +523,11 @@ api.MapGet(
     "/invoices",
     async (AppDbContext db) =>
     {
-        var invoices = await db.Invoices.WithDetails()
-            .OrderByDescending(i => i.Id)
-            .ToListAsync();
+        var invoices = await db.Invoices.WithDetails().OrderByDescending(i => i.Id).ToListAsync();
         var people = await PeopleByIdAsync(db, invoices.Select(i => i.PersonId));
-        return invoices.Select(i => InvoiceMapping.ToInvoiceListItem(i, people[i.PersonId])).ToList();
+        return invoices
+            .Select(i => InvoiceMapping.ToInvoiceListItem(i, people[i.PersonId]))
+            .ToList();
     }
 );
 
@@ -417,8 +535,7 @@ api.MapGet(
     "/invoices/{id:int}",
     async (int id, AppDbContext db) =>
     {
-        var invoice = await db.Invoices.WithDetails()
-            .FirstOrDefaultAsync(i => i.Id == id);
+        var invoice = await db.Invoices.WithDetails().FirstOrDefaultAsync(i => i.Id == id);
         if (invoice is null)
         {
             return Results.NotFound();
@@ -432,7 +549,9 @@ api.MapPost(
     "/invoices",
     async (InvoiceInput input, AppDbContext db, InvoiceCreator creator, CancellationToken ct) =>
     {
-        var lines = (input.Lines ?? []).Select(l => new InvoiceLineDraft(l.Text, l.Amount)).ToList();
+        var lines = (input.Lines ?? [])
+            .Select(l => new InvoiceLineDraft(l.Text, l.Amount))
+            .ToList();
         if (InvoiceRules.Validate(input.PersonId, input.TemplateId, lines) is { } error)
         {
             return Results.BadRequest(new { error });
@@ -451,15 +570,27 @@ api.MapPost(
         var result = await creator.CreateAsync(person, template, lines, ct);
         if (result.Invoice is not { } invoice)
         {
-            return Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status500InternalServerError);
+            return Results.Json(
+                new { error = result.Error },
+                statusCode: StatusCodes.Status500InternalServerError
+            );
         }
-        return Results.Created($"/api/invoices/{invoice.Id}", InvoiceMapping.ToInvoiceDetail(invoice, person));
+        return Results.Created(
+            $"/api/invoices/{invoice.Id}",
+            InvoiceMapping.ToInvoiceDetail(invoice, person)
+        );
     }
 );
 
 api.MapGet(
     "/invoices/{id:int}/pdf",
-    async (int id, AppDbContext db, IInvoiceStorage storage, HttpContext http, CancellationToken ct) =>
+    async (
+        int id,
+        AppDbContext db,
+        IInvoiceStorage storage,
+        HttpContext http,
+        CancellationToken ct
+    ) =>
     {
         if (!await db.Invoices.AnyAsync(i => i.Id == id, ct))
         {
@@ -471,7 +602,8 @@ api.MapGet(
             return Results.NotFound();
         }
         // Set directly: Results.File with a filename would emit "attachment".
-        http.Response.Headers.ContentDisposition = $"inline; filename=\"Rechnung-{InvoiceRules.FormatNumber(id)}.pdf\"";
+        http.Response.Headers.ContentDisposition =
+            $"inline; filename=\"Rechnung-{InvoiceRules.FormatNumber(id)}.pdf\"";
         return Results.Bytes(pdf, "application/pdf");
     }
 );
@@ -501,7 +633,9 @@ static Dictionary<int, Category> SyncAccountUsages(AppDbContext db, ChartOfAccou
     {
         if (chart.Find(number) is { } account)
         {
-            db.AccountUsages.Add(new AccountUsage { AccountNumber = number, Category = account.Category });
+            db.AccountUsages.Add(
+                new AccountUsage { AccountNumber = number, Category = account.Category }
+            );
             result[number] = account.Category;
         }
         else
@@ -531,14 +665,20 @@ static Entry Line(Entry entry, string? text, int accountNumber, decimal amount)
     return entry;
 }
 
-static async Task<TransactionDto> LoadTransactionDtoAsync(AppDbContext db, Settings opening, int id) =>
-    (await LoadTransactionDtosAsync(db, opening)).Single(t => t.Id == id);
+static async Task<TransactionDto> LoadTransactionDtoAsync(
+    AppDbContext db,
+    Settings opening,
+    int id
+) => (await LoadTransactionDtosAsync(db, opening)).Single(t => t.Id == id);
 
 // All Bewegungen, newest first, each with the Kontostand after it.
 static async Task<Dictionary<int, Person>> PeopleByIdAsync(AppDbContext db, IEnumerable<int> ids)
 {
     var wanted = ids.Distinct().ToList();
-    return await db.Persons.AsNoTracking().Where(p => wanted.Contains(p.Id)).ToDictionaryAsync(p => p.Id);
+    return await db
+        .Persons.AsNoTracking()
+        .Where(p => wanted.Contains(p.Id))
+        .ToDictionaryAsync(p => p.Id);
 }
 
 // Copies an already validated Textvorlage input onto the entity, trimmed.
@@ -563,6 +703,7 @@ static async Task<List<TransactionDto>> LoadTransactionDtosAsync(AppDbContext db
             r.Transaction.Amount,
             r.Transaction.Text,
             r.Transaction.PersonId,
+            r.Transaction.BankReference,
             r.Balance,
             r.Transaction.Entries.Select(e => e.Id).Order().ToList()
         ))
@@ -581,9 +722,26 @@ record JournalEntryDto(
 
 record TransactionEntryInput(int? Id, string? Text, int AccountNumber, decimal Amount);
 
-record TransactionInput(DateOnly Date, decimal Amount, string? Text, int? PersonId, List<TransactionEntryInput>? Entries);
+record TransactionInput(
+    DateOnly Date,
+    decimal Amount,
+    string? Text,
+    int? PersonId,
+    List<TransactionEntryInput>? Entries
+);
 
-record TransactionDto(int Id, DateOnly Date, decimal Amount, string? Text, int? PersonId, decimal Balance, List<int> EntryIds);
+record TransactionDto(
+    int Id,
+    DateOnly Date,
+    decimal Amount,
+    string? Text,
+    int? PersonId,
+    string? BankReference,
+    decimal Balance,
+    List<int> EntryIds
+);
+
+record SettingsUpdate(decimal OpeningBalance, DateOnly StartDate, string? Iban);
 
 record TextTemplateInput(string? Subject, string? Text, string? Greetings);
 
@@ -602,7 +760,8 @@ record PersonUpdate(
     string? Email,
     string? MobilePhone,
     string? LandlinePhone,
-    string? Address,
+    string? Street,
+    string? Number,
     string? PostalCode,
     string? City,
     string? Country,

@@ -125,15 +125,16 @@ public static class InvoiceDocument
 
     /// <summary>Address lines below the name: street, "PLZ Ort", Land. Missing parts are omitted.</summary>
     public static IReadOnlyList<string> AddressLines(
-        string? address,
+        string? street,
+        string? number,
         string? postalCode,
         string? city,
         string? country
     )
     {
         var lines = new List<string>();
-        if (!string.IsNullOrWhiteSpace(address))
-            lines.Add(address.Trim());
+        if (!string.IsNullOrWhiteSpace(street) && !string.IsNullOrWhiteSpace(number))
+            lines.Add(street.Trim() + " " + number.Trim());
         var cityLine = $"{postalCode?.Trim()} {city?.Trim()}".Trim();
         if (cityLine.Length > 0)
             lines.Add(cityLine);

@@ -2,17 +2,18 @@ import { useState, type FormEvent } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import {
   invalidateJournalQueries,
-  openingBalanceQueryOptions,
-  saveOpeningBalance,
+  saveSettings,
+  settingsQueryOptions,
 } from '../accounting/api'
 import { TextTemplatesSection } from './TextTemplatesSection'
 import { formatChf, parseAmount } from '../accounting/amount'
 
 export function SettingsPage() {
   const queryClient = useQueryClient()
-  const { data: openingBalance } = useSuspenseQuery(openingBalanceQueryOptions)
-  const [amount, setAmount] = useState(openingBalance ? formatChf(openingBalance.openingBalance) : '')
-  const [startDate, setStartDate] = useState(openingBalance?.startDate ?? '')
+  const { data: settings } = useSuspenseQuery(settingsQueryOptions)
+  const [amount, setAmount] = useState(settings ? formatChf(settings.openingBalance) : '')
+  const [startDate, setStartDate] = useState(settings?.startDate ?? '')
+  const [iban, setIban] = useState(settings?.iban ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
@@ -26,10 +27,11 @@ export function SettingsPage() {
       return
     }
     try {
-      const result = await saveOpeningBalance({ openingBalance: parsed.value, startDate })
-      queryClient.setQueryData(openingBalanceQueryOptions.queryKey, result)
+      const result = await saveSettings({ openingBalance: parsed.value, startDate, iban: iban.trim() })
+      queryClient.setQueryData(settingsQueryOptions.queryKey, result)
       await invalidateJournalQueries(queryClient)
       setAmount(formatChf(result.openingBalance))
+      setIban(result.iban)
       setSaved(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')
@@ -57,6 +59,15 @@ export function SettingsPage() {
             required
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
+            className="rounded border border-slate-300 p-2"
+          />
+        </label>
+        <label className="flex flex-col text-sm">
+          IBAN
+          <input
+            required
+            value={iban}
+            onChange={(e) => setIban(e.target.value)}
             className="rounded border border-slate-300 p-2"
           />
         </label>

@@ -17,7 +17,11 @@ public class InvoiceDocumentTests
             TemplateTitle: "Jahresbeitrag 2026",
             TemplateText: "Wir erlauben uns, Ihnen folgendes zu verrechnen.",
             TemplateGreetings: "Freundliche Grüsse",
-            Lines: [new InvoiceLineDraft("Jahresbeitrag", 100m), new InvoiceLineDraft("Spende", 1234.50m)]
+            Lines:
+            [
+                new InvoiceLineDraft("Jahresbeitrag", 100m),
+                new InvoiceLineDraft("Spende", 1234.50m),
+            ]
         );
 
     private static string Text(byte[] pdf)
@@ -76,9 +80,12 @@ public class InvoiceDocumentTests
     {
         Assert.Equal(
             ["Dorfstrasse 1", "8000 Zürich"],
-            InvoiceDocument.AddressLines("Dorfstrasse 1", "8000", "Zürich", null)
+            InvoiceDocument.AddressLines("Dorfstrasse", "1", "8000", "Zürich", null)
         );
-        Assert.Equal(["Zürich", "Schweiz"], InvoiceDocument.AddressLines(" ", null, "Zürich", "Schweiz"));
-        Assert.Empty(InvoiceDocument.AddressLines(null, null, null, null));
+        Assert.Equal(
+            ["Zürich", "Schweiz"],
+            InvoiceDocument.AddressLines(" ", "", null, "Zürich", "Schweiz")
+        );
+        Assert.Empty(InvoiceDocument.AddressLines(null, null, null, null, null));
     }
 }

@@ -1,9 +1,10 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query'
 import type { Account, JournalEntry, Transaction, TransactionInput } from './types'
 
-export type OpeningBalance = {
+export type Settings = {
   openingBalance: number
   startDate: string
+  iban: string
 }
 
 /** Throws the backend's German error message, or a generic one, for a non-OK response. */
@@ -35,20 +36,20 @@ export const accountsQueryOptions = queryOptions({
   staleTime: Infinity, // the Kontoplan only changes with a deploy
 })
 
-async function fetchOpeningBalance(): Promise<OpeningBalance | null> {
-  const res = await fetch('/api/opening-balance')
+async function fetchSettings(): Promise<Settings | null> {
+  const res = await fetch('/api/settings')
   if (res.status === 404) return null
   await ensureOk(res)
   return res.json()
 }
 
-export const openingBalanceQueryOptions = queryOptions({
-  queryKey: ['opening-balance'],
-  queryFn: fetchOpeningBalance,
+export const settingsQueryOptions = queryOptions({
+  queryKey: ['settings'],
+  queryFn: fetchSettings,
 })
 
-export function saveOpeningBalance(balance: OpeningBalance): Promise<OpeningBalance> {
-  return requestJson('/api/opening-balance', 'PUT', balance)
+export function saveSettings(settings: Settings): Promise<Settings> {
+  return requestJson('/api/settings', 'PUT', settings)
 }
 
 export type JournalFilters = {
@@ -90,7 +91,35 @@ export async function deleteTransaction(id: number): Promise<void> {
   await ensureOk(await fetch(`/api/transactions/${id}`, { method: 'DELETE' }))
 }
 
-/** Refreshes everything derived from the journal after a Bewegung or the Anfangssaldo changed. */
+export type TransactionImportResult = {
+  imported: number
+  skippedDuplicates: number
+}
+
+export type TransactionImportError = {
+  file: string | null
+  message: string
+}
+
+/** Thrown when the backend rejects the eBanking zip; the errors name their file. */
+export class TransactionImportFailed extends Error {
+  constructor(public readonly errors: TransactionImportError[]) {
+    super(errors.map((e) => (e.file ? `${e.file}: ${e.message}` : e.message)).join('\n'))
+  }
+}
+
+/** Uploads the eBanking zip as-is; the backend creates one Bewegung per simple CAMT entry. */
+export async function importTransactions(file: File): Promise<TransactionImportResult> {
+  const body = new FormData()
+  body.append('file', file)
+  const res = await fetch('/api/transactions/import', { method: 'POST', body })
+  if (res.ok) return res.json()
+  const data = await res.json().catch(() => null)
+  if (Array.isArray(data?.errors)) throw new TransactionImportFailed(data.errors)
+  throw new Error(data?.error ?? `Backend returned ${res.status}`)
+}
+
+/** Refreshes everything derived from the journal after a Bewegung or the settings changed. */
 export async function invalidateJournalQueries(queryClient: QueryClient): Promise<void> {
   await queryClient.invalidateQueries({ queryKey: entriesQueryOptions.queryKey })
   await queryClient.invalidateQueries({ queryKey: transactionsQueryOptions.queryKey })

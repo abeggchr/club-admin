@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { MdAdd } from 'react-icons/md'
+import { MdAdd, MdFileUpload } from 'react-icons/md'
 import { entriesQueryOptions, transactionsQueryOptions } from './api'
 import { BalanceAtDate } from './BalanceAtDate'
 import { EditPanel } from './EditPanel'
+import { ImportDialog } from './ImportDialog'
 import { JournalList } from './JournalList'
 import { highlightOf, toggleSelection, type Selection } from './selection'
 import { TransactionsTable } from './TransactionsTable'
@@ -19,6 +20,7 @@ export function TransactionsView() {
   const [mode, setMode] = useState<PanelMode>({ kind: 'closed' })
   const [selection, setSelection] = useState<Selection | null>(null)
   const [dirty, setDirty] = useState(false)
+  const importDialog = useRef<HTMLDialogElement>(null)
   const { data: transactions = [], isError: transactionsFailed } = useQuery(transactionsQueryOptions)
   const { data: entries = [], isError: entriesFailed } = useQuery(entriesQueryOptions)
   const editing = mode.kind === 'edit' ? transactions.find((t) => t.id === mode.id) : undefined
@@ -46,21 +48,35 @@ export function TransactionsView() {
   return (
     <>
       <div className="mt-4 flex items-center justify-between gap-4">
-        <button
-          type="button"
-          onClick={() => {
-            setSelection(null)
-            setMode({ kind: 'add' })
-          }}
-          disabled={dirty}
-          aria-label="Neue Bewegung"
-          title={dirty ? 'Zuerst die ungespeicherten Änderungen speichern oder verwerfen' : 'Neue Bewegung'}
-          className="rounded bg-sky-600 p-2 text-white enabled:hover:bg-sky-700 disabled:opacity-40"
-        >
-          <MdAdd className="size-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setSelection(null)
+              setMode({ kind: 'add' })
+            }}
+            disabled={dirty}
+            aria-label="Neue Bewegung"
+            title={dirty ? 'Zuerst die ungespeicherten Änderungen speichern oder verwerfen' : 'Neue Bewegung'}
+            className="rounded bg-sky-600 p-2 text-white enabled:hover:bg-sky-700 disabled:opacity-40"
+          >
+            <MdAdd className="size-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => importDialog.current?.showModal()}
+            disabled={dirty}
+            title={dirty ? 'Zuerst die ungespeicherten Änderungen speichern oder verwerfen' : 'Bewegungen aus der eBanking-ZIP importieren'}
+            className="flex items-center gap-2 rounded border border-sky-600 px-3 py-2 text-sm text-sky-700 enabled:hover:bg-sky-50 disabled:opacity-40"
+          >
+            <MdFileUpload className="size-4" />
+            Importieren
+          </button>
+        </div>
         <BalanceAtDate />
       </div>
+
+      <ImportDialog dialogRef={importDialog} />
 
       {(transactionsFailed || entriesFailed) && (
         <p className="mt-4 text-red-600">Bewegungen konnten nicht geladen werden.</p>

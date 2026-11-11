@@ -22,10 +22,6 @@ public static class TransactionRules
         {
             return amountError;
         }
-        if (entries.Count == 0)
-        {
-            return "Eine Bewegung braucht mindestens eine Buchung.";
-        }
         foreach (var entry in entries)
         {
             if (EntryRules.ValidateLine(chart, entry.Text, entry.AccountNumber, entry.Amount, entry.ExistingAccountNumber) is { } error)
@@ -33,13 +29,21 @@ public static class TransactionRules
                 return error;
             }
         }
-        var sum = entries.Sum(e => e.Amount);
-        if (sum != amount)
+        // A Bewegung with zero Buchungen is not booked yet ("Keine Buchung"); the sum rule applies once Buchungen exist.
+        if (entries.Count > 0)
         {
-            return $"Die Summe der Buchungen ({sum:0.00}) stimmt nicht mit dem Betrag der Bewegung ({amount:0.00}) überein.";
+            var sum = entries.Sum(e => e.Amount);
+            if (sum != amount)
+            {
+                return $"Die Summe der Buchungen ({sum:0.00}) stimmt nicht mit dem Betrag der Bewegung ({amount:0.00}) überein.";
+            }
         }
         return null;
     }
+
+    /// <summary>The date and amount rules only, for a Bewegung without Buchungen (e.g. an imported one) where the Kontoplan is not needed.</summary>
+    public static string? Validate(Settings? opening, DateOnly date, decimal amount) =>
+        ValidateDate(opening, date) ?? ValidateAmount(amount);
 
     private static string? ValidateDate(Settings? opening, DateOnly date)
     {
@@ -66,6 +70,30 @@ public static class TransactionRules
         }
         return null;
     }
+
+    /// <summary>
+    /// The date, amount, text and person of an imported Bewegung (one with a BankReference) are bank facts; a
+    /// change of any of them is rejected. Manual Bewegungen have no BankReference and are unchanged. The new
+    /// text is compared as given; the caller normalises it like the stored one.
+    /// </summary>
+    public static string? ValidateUnchangedBankFacts(
+        Transaction existing,
+        DateOnly newDate,
+        decimal newAmount,
+        string? newText,
+        int? newPersonId
+    ) =>
+        existing.BankReference is null
+            ? null
+            : newDate != existing.Date
+                ? "Das Datum einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+                : newAmount != existing.Amount
+                    ? "Der Betrag einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+                    : newText != existing.Text
+                        ? "Der Text einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+                        : newPersonId != existing.PersonId
+                            ? "Die Person einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+                            : null;
 
     /// <summary>The Anfangssaldo date must not be later than the earliest Bewegung.</summary>
     public static string? ValidateOpeningStartDate(DateOnly startDate, DateOnly? earliestTransaction) =>
