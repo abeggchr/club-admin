@@ -14,6 +14,7 @@ function filled(overrides: Partial<InvoiceDraft> = {}): InvoiceDraft {
     personId: 7,
     templateId: 3,
     lines: [{ text: 'Jahresbeitrag', amount: '120', account: 3400 }],
+    openAmount: false,
     ...overrides,
   }
 }
@@ -128,7 +129,16 @@ describe('toInvoiceInput', () => {
       personId: 7,
       templateId: 3,
       lines: [{ text: 'Beitrag', amount: 1250.5, accountNumber: 3400 }],
+      openAmount: false,
     })
+  })
+
+  it('is not open by default', () => {
+    expect(emptyInvoiceDraft().openAmount).toBe(false)
+  })
+
+  it('passes the open-amount flag on', () => {
+    expect(toInvoiceInput(filled({ openAmount: true }))?.openAmount).toBe(true)
   })
 
   it('is null for an invalid draft', () => {
