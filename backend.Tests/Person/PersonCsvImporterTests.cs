@@ -36,6 +36,51 @@ public class PersonCsvImporterTests
         Assert.Null(number);
     }
 
+    [Fact]
+    public void A_blank_Mitgliedschaft_stays_Unknown()
+    {
+        Assert.Equal(MembershipType.Unknown, ParseMembership(""));
+    }
+
+    [Theory]
+    [InlineData("Familienmitglied", MembershipType.Family)]
+    [InlineData("Einzelmitglied", MembershipType.Single)]
+    [InlineData("Junior:innen", MembershipType.Junior)]
+    [InlineData("Ehrenmitglied", MembershipType.Honorary)]
+    [InlineData("Freimitglied", MembershipType.Free)]
+    [InlineData("Gönner:innen", MembershipType.Patron)]
+    public void A_known_Mitgliedschaft_is_stored_as_the_matching_type(string value, MembershipType expected)
+    {
+        Assert.Equal(expected, ParseMembership(value));
+    }
+
+    [Fact]
+    public void A_Folgemitglied_imports_as_Family()
+    {
+        Assert.Equal(MembershipType.Family, ParseMembership("Folgemitglied"));
+    }
+
+    [Fact]
+    public void A_Gönner_imports_as_Patron()
+    {
+        Assert.Equal(MembershipType.Patron, ParseMembership("Gönner"));
+    }
+
+    [Fact]
+    public void An_unknown_Mitgliedschaft_rejects_the_file()
+    {
+        var csv = "Vorname;Nachname;Mitgliedschaft\nAnna;Meier;Zuschauer";
+        var ex = Assert.Throws<FormatException>(() => PersonCsvImporter.Parse(new StringReader(csv)));
+        Assert.Contains("Zuschauer", ex.Message);
+    }
+
+    // Parses a one-row member CSV with the given "Mitgliedschaft" value and returns the stored membership.
+    static MembershipType ParseMembership(string membership)
+    {
+        var csv = $"Vorname;Nachname;Mitgliedschaft\nAnna;Meier;{membership}";
+        return PersonCsvImporter.Parse(new StringReader(csv)).Single().Membership;
+    }
+
     // Parses a one-row member CSV with the given "Adresse" value and returns the stored address parts.
     static (string? Street, string? Number) ParseAddress(string address)
     {

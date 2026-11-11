@@ -1,7 +1,10 @@
+import type { MembershipType } from './membership'
+
 export type Person = {
   id: number
   firstName: string
   lastName: string
+  membership: MembershipType
   dateOfBirth: string | null
   joinedOn: string | null
   leftOn: string | null

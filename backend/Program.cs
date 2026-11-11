@@ -92,6 +92,7 @@ api.MapPut(
 
         person.FirstName = update.FirstName.Trim();
         person.LastName = update.LastName.Trim();
+        person.Membership = update.Membership;
         person.DateOfBirth = update.DateOfBirth;
         person.JoinedOn = update.JoinedOn;
         person.LeftOn = update.LeftOn;
@@ -796,6 +797,7 @@ record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
 record PersonUpdate(
     string FirstName,
     string LastName,
+    MembershipType Membership,
     DateOnly? DateOfBirth,
     DateOnly? JoinedOn,
     DateOnly? LeftOn,

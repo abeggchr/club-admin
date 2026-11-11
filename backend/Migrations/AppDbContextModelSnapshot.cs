@@ -264,6 +264,9 @@ namespace backend.Migrations
                     b.Property<DateOnly?>("LeftOn")
                         .HasColumnType("date");
 
+                    b.Property<int>("Membership")
+                        .HasColumnType("integer");
+
                     b.Property<string>("MobilePhone")
                         .HasColumnType("text");
 

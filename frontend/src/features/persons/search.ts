@@ -1,6 +1,7 @@
 import type { Row } from '@tanstack/react-table'
 import { rankItem, rankings } from '@tanstack/match-sorter-utils'
 import type { Features } from './columns'
+import { membershipLabels } from './membership'
 import type { Person } from './types'
 
 export function globalSearchFilter(row: Row<Features, Person>, _columnId: string, filterValue: unknown) {
@@ -11,6 +12,7 @@ export function globalSearchFilter(row: Row<Features, Person>, _columnId: string
       accessors: [
         (p) => p.firstName,
         (p) => p.lastName,
+        (p) => membershipLabels[p.membership],
         (p) => p.email ?? '',
         (p) => p.city ?? '',
         (p) => p.country ?? '',
