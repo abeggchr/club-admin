@@ -575,7 +575,13 @@ api.MapPost(
             return Results.BadRequest(new { error = "Die Textvorlage existiert nicht." });
         }
 
-        var result = await creator.CreateAsync(person, template, lines, ct);
+        var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
+        if (QrBillCreditor.From(settings) is not { } creditor)
+        {
+            return Results.BadRequest(new { error = QrBillCreditor.MissingAddressError });
+        }
+
+        var result = await creator.CreateAsync(person, template, lines, creditor, ct);
         if (result.Invoice is not { } invoice)
         {
             return Results.Json(
