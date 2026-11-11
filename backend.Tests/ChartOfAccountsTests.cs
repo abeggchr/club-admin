@@ -70,13 +70,13 @@ public class ChartOfAccountsTests
     }
 
     [Fact]
-    public void Checked_in_plan_has_7_income_and_12_expense_accounts()
+    public void Checked_in_plan_has_6_income_and_12_expense_accounts()
     {
         var chart = ChartOfAccounts.Load(
             Path.Combine(AppContext.BaseDirectory, "Accounting", "chart-of-accounts.json")
         );
 
-        Assert.Equal(7, chart.Accounts.Count(a => a.Category == Category.Income));
+        Assert.Equal(6, chart.Accounts.Count(a => a.Category == Category.Income));
         Assert.Equal(12, chart.Accounts.Count(a => a.Category == Category.Expense));
         Assert.Equal("Jahresbeiträge", chart.Find(3400)?.Name);
         Assert.Equal("Bankgebühren", chart.Find(6940)?.Name);
