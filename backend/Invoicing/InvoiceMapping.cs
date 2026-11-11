@@ -36,6 +36,7 @@ public record InvoiceDetailDto(
     List<InvoiceLineDto> Lines,
     decimal Total,
     string Status,
+    string Reference,
     List<InvoiceStatusChangeDto> StatusHistory
 );
 
@@ -90,6 +91,7 @@ public static class InvoiceMapping
                 .ToList(),
             i.Lines.Sum(l => l.Amount),
             CurrentStatus(i).Status.ToString(),
+            i.Reference,
             InOrder(i)
                 .Select(s => new InvoiceStatusChangeDto(
                     s.Status.ToString(),

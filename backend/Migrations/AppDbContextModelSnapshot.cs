@@ -156,6 +156,11 @@ namespace backend.Migrations
                     b.Property<int>("PersonId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(35)
+                        .HasColumnType("character varying(35)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PersonId");

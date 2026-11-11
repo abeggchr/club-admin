@@ -8,6 +8,8 @@ public class Invoice
 {
     public int Id { get; set; }
     public int PersonId { get; set; }
+    /// <summary>Swiss QR-bill Gläubigerreferenz (RF8008), stored at creation; '' for Rechnungen created before it was stored.</summary>
+    public string Reference { get; set; } = "";
     public List<InvoiceLine> Lines { get; set; } = [];
     public List<InvoiceStatusChange> StatusChanges { get; set; } = [];
 }

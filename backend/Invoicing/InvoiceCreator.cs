@@ -25,6 +25,15 @@ public class InvoiceCreator(
         try
         {
             var now = DateTime.UtcNow;
+            var debtor = QrBillSlip.DebtorFor(
+                person.FirstName,
+                person.LastName,
+                person.Street,
+                person.Number,
+                person.PostalCode,
+                person.City,
+                person.Country
+            );
             var invoice = new Invoice
             {
                 PersonId = person.Id,
@@ -48,6 +57,16 @@ public class InvoiceCreator(
             db.Invoices.Add(invoice);
             await db.SaveChangesAsync(ct);
 
+            // The QR-bill Gläubigerreferenz is the reference of the PDF rendered below; both derive from
+            // the same Rechnungsnummer, so it can be set once the ID is known, in the same transaction as the PDF upload.
+            var bill = QrBillSlip.Build(
+                creditor,
+                InvoiceRules.FormatNumber(invoice.Id),
+                openAmount ? null : invoice.Lines.Sum(l => l.Amount),
+                debtor
+            );
+            invoice.Reference = bill.Reference;
+
             var addressLines = InvoiceDocument.AddressLines(
                 person.Street,
                 person.Number,
@@ -66,17 +85,11 @@ public class InvoiceCreator(
                     template.Subject,
                     template.Text,
                     template.Greetings,
-                    invoice.Lines.Select(l => new InvoiceLineDraft(l.Text, l.Amount, l.AccountNumber)).ToList(),
+                    invoice
+                        .Lines.Select(l => new InvoiceLineDraft(l.Text, l.Amount, l.AccountNumber))
+                        .ToList(),
                     creditor,
-                    QrBillSlip.DebtorFor(
-                        person.FirstName,
-                        person.LastName,
-                        person.Street,
-                        person.Number,
-                        person.PostalCode,
-                        person.City,
-                        person.Country
-                    ),
+                    debtor,
                     openAmount
                 )
             );

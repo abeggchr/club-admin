@@ -33,6 +33,8 @@ export type InvoiceDetail = {
 	lines: { text: string; amount: number; accountNumber: number }[];
 	total: number;
 	status: string;
+	/** Swiss QR-bill Gläubigerreferenz (RF8008); "" for Rechnungen created before it was stored. */
+	reference: string;
 	statusHistory: { status: string; timestamp: string }[];
 };
 

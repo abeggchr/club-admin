@@ -47,6 +47,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         });
         modelBuilder.Entity<Invoice>(e =>
         {
+            // Matching on bank import is by exact Gläubigerreferenz string; '' never matches.
+            e.Property(x => x.Reference).IsRequired().HasMaxLength(35);
             e.HasOne<Person>().WithMany().HasForeignKey(x => x.PersonId).IsRequired().OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<InvoiceLine>(e =>
