@@ -152,6 +152,10 @@ api.MapPut(
                 update.OpeningBalance,
                 update.StartDate,
                 update.Iban,
+                update.Name,
+                update.Address,
+                update.PostalCode,
+                update.City,
                 earliest
             ) is
             { } error
@@ -170,6 +174,10 @@ api.MapPut(
         settings.OpeningBalance = update.OpeningBalance;
         settings.StartDate = update.StartDate;
         settings.Iban = Iban.Normalize(update.Iban)!;
+        settings.Name = update.Name!.Trim();
+        settings.Address = update.Address!.Trim();
+        settings.PostalCode = update.PostalCode!.Trim();
+        settings.City = update.City!.Trim();
 
         await db.SaveChangesAsync();
         return Results.Ok(settings);
@@ -609,7 +617,14 @@ api.MapPost(
             return Results.BadRequest(new { error = "Die Textvorlage existiert nicht." });
         }
 
-        var result = await creator.CreateAsync(person, template, lines, ct);
+        var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
+        var (creditor, creditorError) = QrBillCreditor.Resolve(settings);
+        if (creditor is null)
+        {
+            return Results.BadRequest(new { error = creditorError });
+        }
+
+        var result = await creator.CreateAsync(person, template, lines, creditor, input.OpenAmount, ct);
         if (result.Invoice is not { } invoice)
         {
             return Results.Json(
@@ -783,13 +798,21 @@ record TransactionDto(
     List<int> EntryIds
 );
 
-record SettingsUpdate(decimal OpeningBalance, DateOnly StartDate, string? Iban);
+record SettingsUpdate(
+    decimal OpeningBalance,
+    DateOnly StartDate,
+    string? Iban,
+    string? Name,
+    string? Address,
+    string? PostalCode,
+    string? City
+);
 
 record TextTemplateInput(string? Subject, string? Text, string? Greetings);
 
 record InvoiceLineInput(string? Text, decimal Amount, int AccountNumber);
 
-record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines);
+record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines, bool OpenAmount = false);
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
 

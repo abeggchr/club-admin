@@ -38,10 +38,13 @@ One line of a Bewegung: a text, a Konto and a signed amount (money in is positiv
 The chronological list of all Buchungen, ordered by the date of their Bewegung. It is the only record of money movements; it can be edited freely.
 
 **Anfangssaldo** (code: _OpeningBalance_):
-The bank account balance (an amount and a start date) from which the Erwarteter Kontostand is counted. The Anfangssaldo, its start date and the club's IBAN (Klub-IBAN, code: _Iban_) are stored together as the club settings (code: _Settings_); all three are required.
+The bank account balance (an amount and a start date) from which the Erwarteter Kontostand is counted. The Anfangssaldo, its start date, the club's IBAN (Klub-IBAN, code: _Iban_) and the Klubadresse are stored together as the club settings (code: _Settings_); all are required.
 
 **Klub-IBAN** (code: _Iban_):
-The IBAN of the club's bank account (CH or LI, 21 characters, valid mod-97 checksum). The import checks each bank statement against it.
+The IBAN of the club's bank account (CH or LI, 21 characters, valid mod-97 checksum). The import checks each bank statement against it. A QR-IBAN (institution ID 30000-31999) is rejected.
+
+**Klubadresse** (code: _Name_, _Address_, _PostalCode_ and _City_ in _Settings_):
+The club's address as creditor of the QR-bill: Name, Adresse (one free-text line, e.g. "Sportweg 12"), PLZ and Ort. All four are required, with the QR-bill limits Name ≤ 70, Adresse ≤ 70, PLZ ≤ 16, Ort ≤ 35. The country is always CH. It is stored with the club settings and printed on every new Rechnung as the creditor of its QR-bill; creating a Rechnung without it is rejected.
 
 **Erwarteter Kontostand** (code: _ExpectedBalance_):
 The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen whose Bewegung is dated up to that date. The user compares it by eye against the bank statement.
@@ -53,7 +56,7 @@ A club member or contact: a name, membership dates and contact data. The address
 A reusable set of Betreff, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. Zero Textvorlagen is a valid state.
 
 **Rechnung** (code: _Invoice_):
-A bill to one Person, created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Textvorlage texts live only in that PDF. It has no link to a Textvorlage and no link to the Buchhaltung either: creating it writes no Buchung — each position's Konto is only a booking hint for the later Buchung (ADR 0004).
+A bill to one Person, created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Textvorlage texts live only in that PDF. It has no link to a Textvorlage and no link to the Buchhaltung either: creating it writes no Buchung — each position's Konto is only a booking hint for the later Buchung (ADR 0004). The last page of the PDF ends with the QR-Rechnung payment part (210×105 mm): Klub-IBAN, Klubadresse, the Rechnung total, a SCOR reference (RF + check digits + Rechnungsnummer) and the message "Rechnung #0042"; the Person is the debtor only when their address is complete. "Betrag offen lassen" leaves the amount out of the QR code, so the payer enters it. If less than 105 mm is free on the last page, the payment part gets a page of its own.
 
 **Rechnungsposition** (code: _InvoiceLine_):
 One line of a Rechnung: a text, an amount greater than 0 and a required Konto from the Kontoplan, which is the booking hint for the later Buchung. The total of a Rechnung is the sum of its Rechnungspositionen and is not stored.

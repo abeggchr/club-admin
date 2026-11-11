@@ -14,6 +14,10 @@ export function SettingsPage() {
   const [amount, setAmount] = useState(settings ? formatChf(settings.openingBalance) : '')
   const [startDate, setStartDate] = useState(settings?.startDate ?? '')
   const [iban, setIban] = useState(settings?.iban ?? '')
+  const [name, setName] = useState(settings?.name ?? '')
+  const [address, setAddress] = useState(settings?.address ?? '')
+  const [postalCode, setPostalCode] = useState(settings?.postalCode ?? '')
+  const [city, setCity] = useState(settings?.city ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
@@ -27,11 +31,23 @@ export function SettingsPage() {
       return
     }
     try {
-      const result = await saveSettings({ openingBalance: parsed.value, startDate, iban: iban.trim() })
+      const result = await saveSettings({
+        openingBalance: parsed.value,
+        startDate,
+        iban: iban.trim(),
+        name: name.trim(),
+        address: address.trim(),
+        postalCode: postalCode.trim(),
+        city: city.trim(),
+      })
       queryClient.setQueryData(settingsQueryOptions.queryKey, result)
       await invalidateJournalQueries(queryClient)
       setAmount(formatChf(result.openingBalance))
       setIban(result.iban)
+      setName(result.name)
+      setAddress(result.address)
+      setPostalCode(result.postalCode)
+      setCity(result.city)
       setSaved(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')
@@ -68,6 +84,47 @@ export function SettingsPage() {
             required
             value={iban}
             onChange={(e) => setIban(e.target.value)}
+            className="rounded border border-slate-300 p-2"
+          />
+        </label>
+        <h3 className="mt-2 font-medium">Klubadresse</h3>
+        <label className="flex flex-col text-sm">
+          Name
+          <input
+            required
+            maxLength={70}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="rounded border border-slate-300 p-2"
+          />
+        </label>
+        <label className="flex flex-col text-sm">
+          Adresse
+          <input
+            required
+            maxLength={70}
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="rounded border border-slate-300 p-2"
+          />
+        </label>
+        <label className="flex flex-col text-sm">
+          PLZ
+          <input
+            required
+            maxLength={16}
+            value={postalCode}
+            onChange={(e) => setPostalCode(e.target.value)}
+            className="rounded border border-slate-300 p-2"
+          />
+        </label>
+        <label className="flex flex-col text-sm">
+          Ort
+          <input
+            required
+            maxLength={35}
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
             className="rounded border border-slate-300 p-2"
           />
         </label>

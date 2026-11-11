@@ -98,14 +98,14 @@ export function CreatePanel({ onDone }: { onDone: () => void }) {
           </legend>
           <div className="flex gap-3">
             <label className="flex flex-[2] flex-col text-sm">
-              Text
-              <input value={line.text} onChange={(e) => patchLine(i, { text: e.target.value })} className={input} />
-              {errors?.rows[i]?.text && <span className="text-red-600">{errors.rows[i].text}</span>}
-            </label>
-            <label className="flex flex-[2] flex-col text-sm">
               Konto
               <KontoPicker value={line.account} onChange={(account) => patchLine(i, { account })} className={input} />
               {errors?.rows[i]?.account && <span className="text-red-600">{errors.rows[i].account}</span>}
+            </label>
+            <label className="flex flex-[2] flex-col text-sm">
+              Text
+              <input value={line.text} onChange={(e) => patchLine(i, { text: e.target.value })} className={input} />
+              {errors?.rows[i]?.text && <span className="text-red-600">{errors.rows[i].text}</span>}
             </label>
             <label className="flex flex-1 flex-col text-sm">
               Betrag
@@ -129,6 +129,15 @@ export function CreatePanel({ onDone }: { onDone: () => void }) {
         + Position
       </button>
       <p className="text-right font-medium">Total {formatChf(totalOf(draft.lines))}</p>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={draft.openAmount}
+          onChange={(e) => setDraft((d) => ({ ...d, openAmount: e.target.checked }))}
+        />
+        Betrag offen lassen
+      </label>
 
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onDone} className="rounded border border-slate-300 px-4 py-2 hover:bg-sky-100">

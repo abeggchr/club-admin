@@ -50,16 +50,16 @@ export function DetailPanel({ id, onClose }: { id: number; onClose: () => void }
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200">
               <tr>
-                <th className="py-1 font-medium">Text</th>
                 <th className="py-1 font-medium">Konto</th>
+                <th className="py-1 font-medium">Text</th>
                 <th className="py-1 text-right font-medium">Betrag</th>
               </tr>
             </thead>
             <tbody>
               {invoice.lines.map((l, i) => (
                 <tr key={i} className="border-b border-slate-100">
-                  <td className="py-1">{l.text}</td>
                   <td className="py-1">{accountOf(l.accountNumber)}</td>
+                  <td className="py-1">{l.text}</td>
                   <td className="py-1 text-right tabular-nums">{formatChf(l.amount)}</td>
                 </tr>
               ))}

@@ -20,6 +20,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(o => o.Id).ValueGeneratedNever();
             e.Property(o => o.OpeningBalance).HasPrecision(18, 2);
             e.Property(o => o.Iban).HasMaxLength(21);
+            e.Property(o => o.Name).IsRequired().HasMaxLength(70);
+            e.Property(o => o.Address).IsRequired().HasMaxLength(70);
+            e.Property(o => o.PostalCode).IsRequired().HasMaxLength(16);
+            e.Property(o => o.City).IsRequired().HasMaxLength(35);
         });
         modelBuilder.Entity<AccountUsage>(e =>
         {

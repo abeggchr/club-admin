@@ -14,6 +14,7 @@ function filled(overrides: Partial<InvoiceDraft> = {}): InvoiceDraft {
     personId: 7,
     templateId: 3,
     lines: [{ text: 'Jahresbeitrag', amount: '120', account: 3400 }],
+    openAmount: false,
     ...overrides,
   }
 }
@@ -40,13 +41,27 @@ describe('validateInvoiceDraft', () => {
     expect(errors?.rows[0].text).toBe('Text ist erforderlich.')
   })
 
-  it('refuses a position with an amount of 0 or less', () => {
+  it('accepts a negative position while the total stays positive', () => {
+    const lines = [
+      { text: 'a', amount: '100', account: 3400 },
+      { text: 'b', amount: '-30', account: 3400 },
+    ]
+    expect(validateInvoiceDraft(filled({ lines }))).toBeNull()
+    expect(totalOf(lines)).toBe(70)
+  })
+
+  it('refuses a total of 0 or less', () => {
+    const lines = [
+      { text: 'a', amount: '10', account: 3400 },
+      { text: 'b', amount: '-30', account: 3400 },
+    ]
+    expect(validateInvoiceDraft(filled({ lines }))?.lines).toBe('Die Summe der Positionen muss grösser als 0 sein.')
+  })
+
+  it('refuses a position with an amount of 0', () => {
     expect(
       validateInvoiceDraft(filled({ lines: [{ text: 'a', amount: '0', account: 3400 }] }))?.rows[0].amount,
     ).toBeDefined()
-    expect(
-      validateInvoiceDraft(filled({ lines: [{ text: 'a', amount: '-5', account: 3400 }] }))?.rows[0].amount,
-    ).toBe('Betrag muss grösser als 0 sein.')
   })
 
   it('refuses a position with an unparsable amount', () => {
@@ -128,7 +143,16 @@ describe('toInvoiceInput', () => {
       personId: 7,
       templateId: 3,
       lines: [{ text: 'Beitrag', amount: 1250.5, accountNumber: 3400 }],
+      openAmount: false,
     })
+  })
+
+  it('is not open by default', () => {
+    expect(emptyInvoiceDraft().openAmount).toBe(false)
+  })
+
+  it('passes the open-amount flag on', () => {
+    expect(toInvoiceInput(filled({ openAmount: true }))?.openAmount).toBe(true)
   })
 
   it('is null for an invalid draft', () => {
