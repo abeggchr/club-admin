@@ -72,17 +72,28 @@ public static class TransactionRules
     }
 
     /// <summary>
-    /// The date and amount of an imported Bewegung (one with a BankReference) are bank facts; a change is rejected.
-    /// Manual Bewegungen have no BankReference and are unchanged.
+    /// The date, amount, text and person of an imported Bewegung (one with a BankReference) are bank facts; a
+    /// change of any of them is rejected. Manual Bewegungen have no BankReference and are unchanged. The new
+    /// text is compared as given; the caller normalises it like the stored one.
     /// </summary>
-    public static string? ValidateUnchangedBankFacts(Transaction existing, DateOnly newDate, decimal newAmount) =>
+    public static string? ValidateUnchangedBankFacts(
+        Transaction existing,
+        DateOnly newDate,
+        decimal newAmount,
+        string? newText,
+        int? newPersonId
+    ) =>
         existing.BankReference is null
             ? null
             : newDate != existing.Date
                 ? "Das Datum einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
                 : newAmount != existing.Amount
                     ? "Der Betrag einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
-                    : null;
+                    : newText != existing.Text
+                        ? "Der Text einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+                        : newPersonId != existing.PersonId
+                            ? "Die Person einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+                            : null;
 
     /// <summary>The Anfangssaldo date must not be later than the earliest Bewegung.</summary>
     public static string? ValidateOpeningStartDate(DateOnly startDate, DateOnly? earliestTransaction) =>

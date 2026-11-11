@@ -311,14 +311,16 @@ api.MapPut(
             return Results.NotFound();
         }
 
-        // The date and amount of an imported Bewegung are bank facts and cannot change.
+        // The date, amount, text and person of an imported Bewegung are bank facts and cannot change.
         if (
             TransactionRules.ValidateUnchangedBankFacts(
                 transaction.BankReference,
                 transaction.Date,
                 transaction.Amount,
                 input.Date,
-                input.Amount
+                input.Amount,
+                NormalizeText(input.Text),
+                input.PersonId
             ) is
             { } bankFactError
         )

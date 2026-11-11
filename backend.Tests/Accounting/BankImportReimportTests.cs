@@ -34,25 +34,29 @@ public class BankImportReimportTests
 
     private static string CamtFile() => $"""
         <?xml version="1.0" encoding="UTF-8"?>
-        <Stmt xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
-          <Id>20260210</Id>
-          <CreDtTm>2026-02-11T00:00:00</CreDtTm>
-          <Acct>
-            <Id>
-              <IBAN>{ClubIban}</IBAN>
-            </Id>
-          </Acct>
-          <Ntry>
-            <Amt Ccy="CHF">100.00</Amt>
-            <CdtDbtInd>CRDT</CdtDbtInd>
-            <Sts>BOOK</Sts>
-            <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-            <TxDtls>
-              <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
-              <Amt Ccy="CHF">100.00</Amt>
-              <Ustrd>Jahresbeitrag</Ustrd>
-            </TxDtls>
-          </Ntry>
-        </Stmt>
+        <Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+            <BkToCstmrStmt>
+                <Stmt>
+                  <Id>20260210</Id>
+                  <CreDtTm>2026-02-11T00:00:00</CreDtTm>
+                  <Acct>
+                    <Id>
+                      <IBAN>{ClubIban}</IBAN>
+                    </Id>
+                  </Acct>
+                  <Ntry>
+                    <Amt Ccy="CHF">100.00</Amt>
+                    <CdtDbtInd>CRDT</CdtDbtInd>
+                    <Sts>BOOK</Sts>
+                    <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+                    <TxDtls>
+                      <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
+                      <Amt Ccy="CHF">100.00</Amt>
+                      <Ustrd>Jahresbeitrag</Ustrd>
+                    </TxDtls>
+                  </Ntry>
+                </Stmt>
+            </BkToCstmrStmt>
+        </Document>
         """;
 }

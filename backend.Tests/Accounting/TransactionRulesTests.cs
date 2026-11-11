@@ -34,11 +34,27 @@ public class TransactionRulesTests
             entries ?? [Line(-120m)]
         );
 
-    private static string? BankFacts(string? bankReference, string newDate = "2026-03-01", decimal newAmount = -120m) =>
+    // The stored Bewegung; the new values default to exactly these, so a test changes only what it asserts.
+    private static string? BankFacts(
+        string? bankReference,
+        string newDate = "2026-03-01",
+        decimal newAmount = -120m,
+        string? newText = "Miete",
+        int? newPersonId = 7
+    ) =>
         TransactionRules.ValidateUnchangedBankFacts(
-            new Transaction { BankReference = bankReference, Date = DateOnly.Parse("2026-03-01"), Amount = -120m },
+            new Transaction
+            {
+                BankReference = bankReference,
+                Date = DateOnly.Parse("2026-03-01"),
+                Amount = -120m,
+                Text = "Miete",
+                PersonId = 7,
+            },
             DateOnly.Parse(newDate),
-            newAmount
+            newAmount,
+            newText,
+            newPersonId
         );
 
     [Fact]
@@ -118,8 +134,18 @@ public class TransactionRulesTests
         Assert.Contains("Betrag", BankFacts("TX1", newAmount: -121m));
 
     [Fact]
-    public void A_manual_transaction_may_change_its_date_and_amount() =>
-        Assert.Null(BankFacts(null, newDate: "2026-03-02", newAmount: -121m));
+    public void The_text_of_an_imported_transaction_cannot_change() =>
+        Assert.Contains("Text", BankFacts("TX1", newText: "Miete April"));
+
+    [Fact]
+    public void The_person_of_an_imported_transaction_cannot_change() =>
+        Assert.Contains("Person", BankFacts("TX1", newPersonId: 8));
+
+    [Fact]
+    public void A_manual_transaction_may_change_its_date_amount_text_and_person() =>
+        Assert.Null(
+            BankFacts(null, newDate: "2026-03-02", newAmount: -121m, newText: "Miete April", newPersonId: 8)
+        );
 
     [Fact]
     public void An_imported_transaction_may_change_its_bookings_when_its_date_and_amount_are_unchanged()
