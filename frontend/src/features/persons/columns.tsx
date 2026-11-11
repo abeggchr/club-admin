@@ -68,7 +68,7 @@ export const columns = helper.columns([
     header: 'Strasse',
     cell: (info) => orDash(info.getValue()),
   }),
-  helper.accessor('houseNumber', {
+  helper.accessor('number', {
     header: 'Hausnummer',
     cell: (info) => orDash(info.getValue()),
   }),

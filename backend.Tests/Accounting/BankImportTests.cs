@@ -21,7 +21,16 @@ public class BankImportTests
     [Fact]
     public void A_credit_entry_maps_to_a_positive_transaction_with_the_booking_date()
     {
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1", ustrd: "Jahresbeitrag"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1", ustrd: "Jahresbeitrag")
+                )
+            )
+        );
 
         var transaction = Assert.Single(Import(zip).Transactions);
         Assert.Equal(new DateOnly(2026, 2, 10), transaction.Date);
@@ -33,7 +42,12 @@ public class BankImportTests
     [Fact]
     public void A_debit_entry_maps_to_a_negative_transaction()
     {
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, TxDtlsNtry("45.20", "DBIT", "2026-02-10", "TX1"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile("20260210", ClubIban, TxDtlsNtry("45.20", "DBIT", "2026-02-10", "TX1"))
+            )
+        );
 
         var transaction = Assert.Single(Import(zip).Transactions);
         Assert.Equal(-45.20m, transaction.Amount);
@@ -42,7 +56,22 @@ public class BankImportTests
     [Fact]
     public void A_fee_entry_without_TxDtls_is_an_outgoing_transaction_with_the_AddtlNtryInf_as_text()
     {
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, PlainNtry("12.50", "DBIT", "2026-02-10", "FEE1", addtl: "Zahlungsverkehrspreise"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    PlainNtry(
+                        "12.50",
+                        "DBIT",
+                        "2026-02-10",
+                        "FEE1",
+                        addtl: "Zahlungsverkehrspreise"
+                    )
+                )
+            )
+        );
 
         var transaction = Assert.Single(Import(zip).Transactions);
         Assert.Equal(-12.50m, transaction.Amount);
@@ -75,7 +104,22 @@ public class BankImportTests
     [Fact]
     public void Without_Ustrd_the_AddtlNtryInf_is_used_as_text()
     {
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, TxDtlsNtry("50.00", "CRDT", "2026-02-10", "TX1", addtl: "Zahlungsverkehrspreise"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtry(
+                        "50.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        addtl: "Zahlungsverkehrspreise"
+                    )
+                )
+            )
+        );
 
         Assert.Equal("Zahlungsverkehrspreise", Assert.Single(Import(zip).Transactions).Text);
     }
@@ -123,13 +167,25 @@ public class BankImportTests
             """;
         var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
 
-        Assert.Equal("Bäckerei Beispiel – Miete Februar", Assert.Single(Import(zip).Transactions).Text);
+        Assert.Equal(
+            "Bäckerei Beispiel – Miete Februar",
+            Assert.Single(Import(zip).Transactions).Text
+        );
     }
 
     [Fact]
     public void Without_a_counterparty_the_text_is_unchanged()
     {
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1", ustrd: "Jahresbeitrag"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1", ustrd: "Jahresbeitrag")
+                )
+            )
+        );
 
         Assert.Equal("Jahresbeitrag", Assert.Single(Import(zip).Transactions).Text);
     }
@@ -185,7 +241,15 @@ public class BankImportTests
     public void A_file_with_a_namespace_that_is_not_CAMT_053_is_an_error_naming_the_file()
     {
         var zip = CamtTestFiles.Zip(
-            ("20260210.xml", CamtFileIn("urn:iso:std:iso:20022:tech:xsd:camt.054.001.08", "20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")))
+            (
+                "20260210.xml",
+                CamtFileIn(
+                    "urn:iso:std:iso:20022:tech:xsd:camt.054.001.08",
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")
+                )
+            )
         );
 
         var result = Import(zip);
@@ -199,7 +263,15 @@ public class BankImportTests
     public void A_file_without_a_namespace_is_an_error()
     {
         var zip = CamtTestFiles.Zip(
-            ("20260210.xml", CamtFileIn("", "20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")))
+            (
+                "20260210.xml",
+                CamtFileIn(
+                    "",
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")
+                )
+            )
         );
 
         var result = Import(zip);
@@ -235,7 +307,12 @@ public class BankImportTests
         var zip = CamtTestFiles.Zip(
             (
                 "20260210.xml",
-                CamtFileIn("urn:iso:std:iso:20022:tech:xsd:camt.053.001.02", "20260210", ClubIban, ntry)
+                CamtFileIn(
+                    "urn:iso:std:iso:20022:tech:xsd:camt.053.001.02",
+                    "20260210",
+                    ClubIban,
+                    ntry
+                )
             )
         );
 
@@ -467,7 +544,12 @@ public class BankImportTests
     [Fact]
     public void A_file_with_a_different_IBAN_is_an_error_naming_the_file()
     {
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", OtherIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile("20260210", OtherIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"))
+            )
+        );
 
         var result = Import(zip);
         var error = Assert.Single(result.Errors);
@@ -479,7 +561,16 @@ public class BankImportTests
     [Fact]
     public void The_file_IBAN_is_compared_without_spaces_and_case()
     {
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", "ch93 0076 2011 6238 5295 7", TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    "ch93 0076 2011 6238 5295 7",
+                    TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")
+                )
+            )
+        );
 
         var result = Import(zip);
         Assert.Single(result.Transactions);
@@ -489,7 +580,12 @@ public class BankImportTests
     [Fact]
     public void A_transaction_before_the_StartDate_is_an_error()
     {
-        var zip = CamtTestFiles.Zip(("20251231.xml", CamtFile("20251231", ClubIban, TxDtlsNtry("100.00", "CRDT", "2025-12-31", "TX1"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20251231.xml",
+                CamtFile("20251231", ClubIban, TxDtlsNtry("100.00", "CRDT", "2025-12-31", "TX1"))
+            )
+        );
 
         var result = Import(zip);
         var error = Assert.Single(result.Errors);
@@ -500,7 +596,12 @@ public class BankImportTests
     [Fact]
     public void A_zero_amount_is_an_error()
     {
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, TxDtlsNtry("0.00", "CRDT", "2026-02-10", "TX1"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile("20260210", ClubIban, TxDtlsNtry("0.00", "CRDT", "2026-02-10", "TX1"))
+            )
+        );
 
         var result = Import(zip);
         var error = Assert.Single(result.Errors);
@@ -511,7 +612,12 @@ public class BankImportTests
     [Fact]
     public void A_reference_that_already_exists_is_skipped_and_counted()
     {
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile("20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"))
+            )
+        );
 
         var result = Import(zip, ["TX1"]);
         Assert.Empty(result.Transactions);
@@ -540,7 +646,11 @@ public class BankImportTests
     [Fact]
     public void An_error_in_one_file_prevents_anything_from_being_saved()
     {
-        var good = CamtFile("20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"));
+        var good = CamtFile(
+            "20260210",
+            ClubIban,
+            TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")
+        );
         var bad = CamtFile("20260211", OtherIban, TxDtlsNtry("50.00", "CRDT", "2026-02-11", "TX2"));
         var zip = CamtTestFiles.Zip(("a.xml", good), ("b.xml", bad));
 
@@ -638,8 +748,18 @@ public class BankImportTests
     [Fact]
     public void A_zip_with_more_than_100_xml_files_is_rejected()
     {
-        var files = Enumerable.Range(1, 101)
-            .Select(i => ($"{i:000}.xml", CamtFile($"{i:000}", ClubIban, TxDtlsNtry("1.00", "CRDT", "2026-02-10", $"TX{i}"))))
+        var files = Enumerable
+            .Range(1, 101)
+            .Select(i =>
+                (
+                    $"{i:000}.xml",
+                    CamtFile(
+                        $"{i:000}",
+                        ClubIban,
+                        TxDtlsNtry("1.00", "CRDT", "2026-02-10", $"TX{i}")
+                    )
+                )
+            )
             .ToArray();
 
         var result = Import(CamtTestFiles.Zip(files));
@@ -652,8 +772,18 @@ public class BankImportTests
     [Fact]
     public void A_zip_with_exactly_100_xml_files_is_accepted()
     {
-        var files = Enumerable.Range(1, 100)
-            .Select(i => ($"{i:000}.xml", CamtFile($"{i:000}", ClubIban, TxDtlsNtry("1.00", "CRDT", "2026-02-10", $"TX{i}"))))
+        var files = Enumerable
+            .Range(1, 100)
+            .Select(i =>
+                (
+                    $"{i:000}.xml",
+                    CamtFile(
+                        $"{i:000}",
+                        ClubIban,
+                        TxDtlsNtry("1.00", "CRDT", "2026-02-10", $"TX{i}")
+                    )
+                )
+            )
             .ToArray();
 
         var result = Import(CamtTestFiles.Zip(files));
@@ -712,7 +842,10 @@ public class BankImportTests
             ("readme.txt", "Kein XML"),
             ("documents.xml/", ""),
             ("20260210/", ""),
-            ("20260210.xml", CamtFile("20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")))
+            (
+                "20260210.xml",
+                CamtFile("20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"))
+            )
         );
 
         var result = Import(zip);
@@ -725,7 +858,10 @@ public class BankImportTests
     {
         var zip = CamtTestFiles.Zip(
             ("readme.txt", "Kein XML"),
-            ("20260210.xml", CamtFile("20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")))
+            (
+                "20260210.xml",
+                CamtFile("20260210", ClubIban, TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"))
+            )
         );
 
         var result = Import(zip);
@@ -747,9 +883,20 @@ public class BankImportTests
     public void A_matching_person_is_linked_to_the_transaction_without_the_name_prefix()
     {
         Person[] persons = [MakePerson(1, "Marianne", "Muster", "Bahnhofstr.", "7", "8004")];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "M. Muster", "Bahnhofstrasse", "7", "8004"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "M. Muster", "Bahnhofstrasse", "7", "8004")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Equal(1, transaction.PersonId);
         Assert.Equal("Jahresbeitrag", transaction.Text);
     }
@@ -758,9 +905,20 @@ public class BankImportTests
     public void An_unmatched_counterparty_keeps_the_name_prefix()
     {
         Person[] persons = [MakePerson(1, "Marianne", "Muster", "Bahnhofstr.", "7", "8004")];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "M. Muster", "Marktgasse", "3", "8001"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "M. Muster", "Marktgasse", "3", "8001")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Null(transaction.PersonId);
         Assert.Equal("M. Muster – Jahresbeitrag", transaction.Text);
     }
@@ -769,9 +927,20 @@ public class BankImportTests
     public void Umlauts_and_street_abbreviations_are_ignored_when_matching()
     {
         Person[] persons = [MakePerson(4, "Günter", "Müller", "Bergstr.", "12", "6300")];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "G. Mueller", "Bergstrasse", "12", "6300"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "G. Mueller", "Bergstrasse", "12", "6300")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Equal(4, transaction.PersonId);
         Assert.Equal("Jahresbeitrag", transaction.Text);
     }
@@ -780,9 +949,20 @@ public class BankImportTests
     public void A_person_without_a_house_number_is_not_matched()
     {
         Person[] persons = [MakePerson(1, "Marianne", "Muster", "Bahnhofstr.", null, "8004")];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "M. Muster", "Bahnhofstrasse", "7", "8004"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "M. Muster", "Bahnhofstrasse", "7", "8004")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Null(transaction.PersonId);
         Assert.Equal("M. Muster – Jahresbeitrag", transaction.Text);
     }
@@ -791,9 +971,20 @@ public class BankImportTests
     public void A_bank_address_without_a_house_number_is_not_matched()
     {
         Person[] persons = [MakePerson(1, "Marianne", "Muster", "Bahnhofstr.", "7", "8004")];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "M. Muster", "Bahnhofstrasse", null, "8004"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "M. Muster", "Bahnhofstrasse", null, "8004")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Null(transaction.PersonId);
         Assert.Equal("M. Muster – Jahresbeitrag", transaction.Text);
     }
@@ -802,9 +993,20 @@ public class BankImportTests
     public void An_address_from_AdrLine_only_is_matched()
     {
         Person[] persons = [MakePerson(1, "Marianne", "Muster", "Bahnhofstr.", "7", "8004")];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "M. Muster", null, null, null, "Bahnhofstr. 7", "8004 Zug"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "M. Muster", null, null, null, "Bahnhofstr. 7", "8004 Zug")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Equal(1, transaction.PersonId);
         Assert.Equal("Jahresbeitrag", transaction.Text);
     }
@@ -813,9 +1015,20 @@ public class BankImportTests
     public void A_StrtNm_without_a_BldgNb_splits_at_the_last_token_that_starts_with_a_digit()
     {
         Person[] persons = [MakePerson(1, "Marianne", "Muster", "Bahnhofstr.", "7", "8004")];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "M. Muster", "Bahnhofstrasse 7", null, "8004"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "M. Muster", "Bahnhofstrasse 7", null, "8004")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Equal(1, transaction.PersonId);
     }
 
@@ -827,9 +1040,20 @@ public class BankImportTests
             MakePerson(1, "Hans", "Muster", "Bahnhofstr.", "7", "8004"),
             MakePerson(2, "Lina", "Muster", "Bahnhofstr.", "7", "8004"),
         ];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "Lina Muster", "Bahnhofstrasse", "7", "8004"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "Lina Muster", "Bahnhofstrasse", "7", "8004")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Equal(2, transaction.PersonId);
     }
 
@@ -841,19 +1065,52 @@ public class BankImportTests
             MakePerson(1, "Hans", "Muster", "Bahnhofstr.", "7", "8004"),
             MakePerson(2, "Lina", "Muster", "Bahnhofstr.", "7", "8004"),
         ];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "Familie Muster", "Bahnhofstrasse", "7", "8004"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "Familie Muster", "Bahnhofstrasse", "7", "8004")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Equal(1, transaction.PersonId);
     }
 
     [Fact]
     public void A_former_member_is_matched()
     {
-        Person[] persons = [MakePerson(7, "Erika", "Muster", "Bahnhofstr.", "7", "8004", leftOn: new DateOnly(2025, 12, 31))];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "Erika Muster", "Bahnhofstrasse", "7", "8004"))));
+        Person[] persons =
+        [
+            MakePerson(
+                7,
+                "Erika",
+                "Muster",
+                "Bahnhofstr.",
+                "7",
+                "8004",
+                leftOn: new DateOnly(2025, 12, 31)
+            ),
+        ];
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "Erika Muster", "Bahnhofstrasse", "7", "8004")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Equal(7, transaction.PersonId);
         Assert.Equal("Jahresbeitrag", transaction.Text);
     }
@@ -862,9 +1119,20 @@ public class BankImportTests
     public void A_matched_credit_is_stored_with_its_positive_amount()
     {
         Person[] persons = [MakePerson(1, "Marianne", "Muster", "Bahnhofstr.", "7", "8004")];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "M. Muster", "Bahnhofstrasse", "7", "8004"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "M. Muster", "Bahnhofstrasse", "7", "8004")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Equal(1, transaction.PersonId);
         Assert.Equal(100.00m, transaction.Amount);
     }
@@ -873,9 +1141,20 @@ public class BankImportTests
     public void A_plain_ntry_without_txdtls_has_no_person()
     {
         Person[] persons = [MakePerson(1, "Marianne", "Muster", "Bahnhofstr.", "7", "8004")];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, PlainNtry("5.00", "DBIT", "2026-02-10", "E1", "Zahlungsverkehrspreise"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    PlainNtry("5.00", "DBIT", "2026-02-10", "E1", "Zahlungsverkehrspreise")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Null(transaction.PersonId);
         Assert.Equal("Zahlungsverkehrspreise", transaction.Text);
     }
@@ -884,9 +1163,20 @@ public class BankImportTests
     public void A_different_PLZ_is_not_matched()
     {
         Person[] persons = [MakePerson(1, "Marianne", "Muster", "Bahnhofstr.", "7", "8004")];
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, AddressNtry("TX1", "M. Muster", "Bahnhofstrasse", "7", "6300"))));
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    AddressNtry("TX1", "M. Muster", "Bahnhofstrasse", "7", "6300")
+                )
+            )
+        );
 
-        var transaction = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions);
+        var transaction = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], persons)).Transactions
+        );
         Assert.Null(transaction.PersonId);
         Assert.Equal("M. Muster – Jahresbeitrag", transaction.Text);
     }
@@ -899,43 +1189,57 @@ public class BankImportTests
     private static string CamtFile(string name, string iban, params string[] ntries) =>
         CamtFileIn("urn:iso:std:iso:20022:tech:xsd:camt.053.001.08", name, iban, ntries);
 
-    private static string CamtFileIn(string ns, string name, string iban, params string[] ntries) => $"""
-        <?xml version="1.0" encoding="UTF-8"?>
-        <Stmt xmlns="{ns}">
-          <Id>{name}</Id>
-          <CreDtTm>2026-02-11T00:00:00</CreDtTm>
-          <Acct>
-            <Id>
-              <IBAN>{iban}</IBAN>
-            </Id>
-          </Acct>
-          {string.Join("\n", ntries)}
-        </Stmt>
-        """;
+    private static string CamtFileIn(string ns, string name, string iban, params string[] ntries) =>
+        $"""
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Stmt xmlns="{ns}">
+              <Id>{name}</Id>
+              <CreDtTm>2026-02-11T00:00:00</CreDtTm>
+              <Acct>
+                <Id>
+                  <IBAN>{iban}</IBAN>
+                </Id>
+              </Acct>
+              {string.Join("\n", ntries)}
+            </Stmt>
+            """;
 
     /// <summary>One Ntry with exactly one TxDtls, the shape the ZKB eBanking sends.</summary>
-    private static string TxDtlsNtry(string amount, string direction, string date, string txRef, string? ustrd = null, string? addtl = null) => $"""
-        <Ntry>
-          <Amt Ccy="CHF">{amount}</Amt>
-          <CdtDbtInd>{direction}</CdtDbtInd>
-          <Sts>BOOK</Sts>
-          <BookgDt><Dt>{date}</Dt></BookgDt>
-          <TxDtls>
-            <Refs><AcctSvcrRef>{txRef}</AcctSvcrRef></Refs>
-            <Amt Ccy="CHF">{amount}</Amt>
-            {(ustrd is null ? "" : $"<Ustrd>{ustrd}</Ustrd>")}
-          </TxDtls>
-          {(addtl is null ? "" : $"<AddtlNtryInf>{addtl}</AddtlNtryInf>")}
-        </Ntry>
-        """;
+    private static string TxDtlsNtry(
+        string amount,
+        string direction,
+        string date,
+        string txRef,
+        string? ustrd = null,
+        string? addtl = null
+    ) =>
+        $"""
+            <Ntry>
+              <Amt Ccy="CHF">{amount}</Amt>
+              <CdtDbtInd>{direction}</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>{date}</Dt></BookgDt>
+              <TxDtls>
+                <Refs><AcctSvcrRef>{txRef}</AcctSvcrRef></Refs>
+                <Amt Ccy="CHF">{amount}</Amt>
+                {(ustrd is null ? "" : $"<Ustrd>{ustrd}</Ustrd>")}
+              </TxDtls>
+              {(addtl is null ? "" : $"<AddtlNtryInf>{addtl}</AddtlNtryInf>")}
+            </Ntry>
+            """;
 
     /// <summary>One Ntry with several TxDtls, the shape of a batch payment: one debit paying several people. Each TxDtls may carry its own Cdtr.</summary>
-    private static string BatchNtry(string ntryAmount, string direction, string date, params (string Ref, string Amount, string? Ustrd, string? Cdtr)[] details)
+    private static string BatchNtry(
+        string ntryAmount,
+        string direction,
+        string date,
+        params (string Ref, string Amount, string? Ustrd, string? Cdtr)[] details
+    )
     {
         var txDtls = string.Join(
             "\n",
-            details.Select(
-                d => $"""
+            details.Select(d =>
+                $"""
                     <TxDtls>
                       <Refs><AcctSvcrRef>{d.Ref}</AcctSvcrRef></Refs>
                       <Amt Ccy="CHF">{d.Amount}</Amt>
@@ -957,54 +1261,79 @@ public class BankImportTests
     }
 
     /// <summary>One Ntry without TxDtls, e.g. the fee entry "Zahlungsverkehrspreise".</summary>
-    private static string PlainNtry(string amount, string direction, string date, string entryRef, string? ustrd = null, string? addtl = null) => $"""
-        <Ntry>
-          <Amt Ccy="CHF">{amount}</Amt>
-          <CdtDbtInd>{direction}</CdtDbtInd>
-          <Sts>BOOK</Sts>
-          <BookgDt><Dt>{date}</Dt></BookgDt>
-          <AcctSvcrRef>{entryRef}</AcctSvcrRef>
-          {(ustrd is null ? "" : $"<Ustrd>{ustrd}</Ustrd>")}
-          {(addtl is null ? "" : $"<AddtlNtryInf>{addtl}</AddtlNtryInf>")}
-        </Ntry>
-        """;
+    private static string PlainNtry(
+        string amount,
+        string direction,
+        string date,
+        string entryRef,
+        string? ustrd = null,
+        string? addtl = null
+    ) =>
+        $"""
+            <Ntry>
+              <Amt Ccy="CHF">{amount}</Amt>
+              <CdtDbtInd>{direction}</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>{date}</Dt></BookgDt>
+              <AcctSvcrRef>{entryRef}</AcctSvcrRef>
+              {(ustrd is null ? "" : $"<Ustrd>{ustrd}</Ustrd>")}
+              {(addtl is null ? "" : $"<AddtlNtryInf>{addtl}</AddtlNtryInf>")}
+            </Ntry>
+            """;
 
     /// <summary>One Ntry with one TxDtls whose Dbtr carries the counterparty's name and postal address (the .08 shape).</summary>
-    private static string AddressNtry(string txRef, string name, string? street, string? building, string? postalCode, params string[] addressLines) => $"""
-        <Ntry>
-          <Amt Ccy="CHF">100.00</Amt>
-          <CdtDbtInd>CRDT</CdtDbtInd>
-          <Sts>BOOK</Sts>
-          <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-          <TxDtls>
-            <Refs><AcctSvcrRef>{txRef}</AcctSvcrRef></Refs>
-            <Amt Ccy="CHF">100.00</Amt>
-            <Dbtr>
-              <Pty>
-                <Nm>{name}</Nm>
-                <PstA>
-                  {(street is null ? "" : $"<StrtNm>{street}</StrtNm>")}
-                  {(building is null ? "" : $"<BldgNb>{building}</BldgNb>")}
-                  {(postalCode is null ? "" : $"<PstCd>{postalCode}</PstCd>")}
-                  {string.Join("\n", addressLines.Select(line => $"<AdrLine>{line}</AdrLine>"))}
-                </PstA>
-              </Pty>
-            </Dbtr>
-            <Ustrd>Jahresbeitrag</Ustrd>
-          </TxDtls>
-        </Ntry>
-        """;
+    private static string AddressNtry(
+        string txRef,
+        string name,
+        string? street,
+        string? building,
+        string? postalCode,
+        params string[] addressLines
+    ) =>
+        $"""
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts>BOOK</Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <TxDtls>
+                <Refs><AcctSvcrRef>{txRef}</AcctSvcrRef></Refs>
+                <Amt Ccy="CHF">100.00</Amt>
+                <Dbtr>
+                  <Pty>
+                    <Nm>{name}</Nm>
+                    <PstA>
+                      {(street is null ? "" : $"<StrtNm>{street}</StrtNm>")}
+                      {(building is null ? "" : $"<BldgNb>{building}</BldgNb>")}
+                      {(postalCode is null ? "" : $"<PstCd>{postalCode}</PstCd>")}
+                      {string.Join("\n", addressLines.Select(line => $"<AdrLine>{line}</AdrLine>"))}
+                    </PstA>
+                  </Pty>
+                </Dbtr>
+                <Ustrd>Jahresbeitrag</Ustrd>
+              </TxDtls>
+            </Ntry>
+            """;
 
     /// <summary>A fictional Person for the matching tests.</summary>
-    private static Person MakePerson(int id, string firstName, string lastName, string? street, string? houseNumber, string? postalCode, DateOnly? leftOn = null) => new()
-    {
-        Id = id,
-        FirstName = firstName,
-        LastName = lastName,
-        Street = street,
-        HouseNumber = houseNumber,
-        PostalCode = postalCode,
-        City = "Zug",
-        LeftOn = leftOn,
-    };
+    private static Person MakePerson(
+        int id,
+        string firstName,
+        string lastName,
+        string? street,
+        string? number,
+        string? postalCode,
+        DateOnly? leftOn = null
+    ) =>
+        new()
+        {
+            Id = id,
+            FirstName = firstName,
+            LastName = lastName,
+            Street = street,
+            Number = number,
+            PostalCode = postalCode,
+            City = "Zug",
+            LeftOn = leftOn,
+        };
 }

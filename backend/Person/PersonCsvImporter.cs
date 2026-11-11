@@ -58,7 +58,7 @@ public static class PersonCsvImporter
             if (firstName is null || lastName is null)
                 throw new FormatException($"Row {row}: first and last name are required.");
 
-            var (street, houseNumber) = SplitAddress(Get("Adresse"));
+            var (street, number) = SplitAddress(Get("Adresse"));
 
             persons.Add(
                 new Person
@@ -72,7 +72,7 @@ public static class PersonCsvImporter
                     MobilePhone = Get("Mobilfunknummer"),
                     LandlinePhone = Get("Festnetznummer"),
                     Street = street,
-                    HouseNumber = houseNumber,
+                    Number = number,
                     PostalCode = Get("PLZ"),
                     City = Get("Ort"),
                     Country = Get("Land"),
@@ -89,7 +89,7 @@ public static class PersonCsvImporter
     /// starts with a digit, everything before it is the street. A value without such a token goes whole
     /// into the street.
     /// </summary>
-    private static (string? Street, string? HouseNumber) SplitAddress(string? address)
+    private static (string? Street, string? Number) SplitAddress(string? address)
     {
         if (string.IsNullOrWhiteSpace(address))
             return (null, null);

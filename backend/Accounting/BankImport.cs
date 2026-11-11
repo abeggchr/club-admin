@@ -12,16 +12,30 @@ using Person = backend.Person.Person;
 /// The state the bank import validates against: the club settings (Klub-IBAN, Startdatum), the
 /// BankReferences already stored, and all Persons (including former members) for counterparty matching.
 /// </summary>
-public record ImportSnapshot(Settings Settings, IReadOnlyCollection<string> ExistingBankReferences, IReadOnlyCollection<Person> Persons);
+public record ImportSnapshot(
+    Settings Settings,
+    IReadOnlyCollection<string> ExistingBankReferences,
+    IReadOnlyCollection<Person> Persons
+);
 
 /// <summary>One imported Bewegung to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId.</summary>
-public record ImportedTransaction(DateOnly Date, decimal Amount, string? Text, string BankReference, int? PersonId);
+public record ImportedTransaction(
+    DateOnly Date,
+    decimal Amount,
+    string? Text,
+    string BankReference,
+    int? PersonId
+);
 
 /// <summary>One problem found in one file; File is null for a problem of the zip itself.</summary>
 public record ImportError(string? File, string Message);
 
 /// <summary>The outcome of the bank import: the new Bewegungen plus the skipped duplicates, or the per-file errors. When Errors is non-empty, nothing may be saved.</summary>
-public record BankImportResult(List<ImportedTransaction> Transactions, int SkippedDuplicates, List<ImportError> Errors);
+public record BankImportResult(
+    List<ImportedTransaction> Transactions,
+    int SkippedDuplicates,
+    List<ImportError> Errors
+);
 
 /// <summary>
 /// The pure bank import: reads every CAMT.053 file of an eBanking zip entirely in memory and creates one
@@ -64,25 +78,41 @@ public static class BankImport
         }
         catch (InvalidDataException)
         {
-            return new BankImportResult([], 0, [new ImportError(null, "Die ZIP-Datei ist nicht gültig.")]);
+            return new BankImportResult(
+                [],
+                0,
+                [new ImportError(null, "Die ZIP-Datei ist nicht gültig.")]
+            );
         }
 
         using (archive)
         {
             // Directories and non-.xml entries of the eBanking zip are ignored.
-            var xmlEntries = archive.Entries
-                .Where(e => !e.FullName.EndsWith('/') && e.FullName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+            var xmlEntries = archive
+                .Entries.Where(e =>
+                    !e.FullName.EndsWith('/')
+                    && e.FullName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)
+                )
                 .ToList();
             if (xmlEntries.Count == 0)
             {
-                return new BankImportResult([], 0, [new ImportError(null, "Keine CAMT.053-Datei in der ZIP gefunden.")]);
+                return new BankImportResult(
+                    [],
+                    0,
+                    [new ImportError(null, "Keine CAMT.053-Datei in der ZIP gefunden.")]
+                );
             }
             if (xmlEntries.Count > MaxXmlFiles)
             {
                 return new BankImportResult(
                     [],
                     0,
-                    [new ImportError(null, $"Die ZIP-Datei enthält {xmlEntries.Count} XML-Dateien, aber es werden maximal {MaxXmlFiles} akzeptiert.")]
+                    [
+                        new ImportError(
+                            null,
+                            $"Die ZIP-Datei enthält {xmlEntries.Count} XML-Dateien, aber es werden maximal {MaxXmlFiles} akzeptiert."
+                        ),
+                    ]
                 );
             }
             if (archive.Entries.Sum(e => e.Length) > MaxUncompressedBytes)
@@ -90,7 +120,12 @@ public static class BankImport
                 return new BankImportResult(
                     [],
                     0,
-                    [new ImportError(null, $"Die ZIP-Datei ist nach dem Entpacken zu gross (maximal {MaxUncompressedBytes / 1024 / 1024} MB).")]
+                    [
+                        new ImportError(
+                            null,
+                            $"Die ZIP-Datei ist nach dem Entpacken zu gross (maximal {MaxUncompressedBytes / 1024 / 1024} MB)."
+                        ),
+                    ]
                 );
             }
 
@@ -129,7 +164,9 @@ public static class BankImport
         var stmt = document.Root;
         if (stmt is null || stmt.Name.LocalName != "Stmt")
         {
-            context.Errors.Add(new ImportError(file, "Die Datei ist keine CAMT.053-Datei (Stmt fehlt)."));
+            context.Errors.Add(
+                new ImportError(file, "Die Datei ist keine CAMT.053-Datei (Stmt fehlt).")
+            );
             return;
         }
 
@@ -150,14 +187,19 @@ public static class BankImport
         var fileIban = Iban.Normalize(Local(Local(Local(stmt, "Acct"), "Id"), "IBAN")?.Value);
         if (string.IsNullOrEmpty(fileIban))
         {
-            context.Errors.Add(new ImportError(file, "Es fehlt die Konto-IBAN (Stmt/Acct/Id/IBAN)."));
+            context.Errors.Add(
+                new ImportError(file, "Es fehlt die Konto-IBAN (Stmt/Acct/Id/IBAN).")
+            );
             return;
         }
         var clubIban = Iban.Normalize(context.Snapshot.Settings.Iban)!;
         if (fileIban != clubIban)
         {
             context.Errors.Add(
-                new ImportError(file, $"Die IBAN {fileIban} in der Datei stimmt nicht mit der Klub-IBAN {clubIban} überein.")
+                new ImportError(
+                    file,
+                    $"Die IBAN {fileIban} in der Datei stimmt nicht mit der Klub-IBAN {clubIban} überein."
+                )
             );
             return;
         }
@@ -187,25 +229,43 @@ public static class BankImport
         if (status != "BOOK")
         {
             context.Errors.Add(
-                new ImportError(file, $"Der Eintrag hat den Status {status}, aber nur abschließende Bewegungen (BOOK) werden importiert.")
+                new ImportError(
+                    file,
+                    $"Der Eintrag hat den Status {status}, aber nur abschließende Bewegungen (BOOK) werden importiert."
+                )
             );
             return;
         }
         if (ReversalIndicated(ntry))
         {
-            context.Errors.Add(new ImportError(file, "Der Eintrag ist eine Stornierung (RvslInd) und wird nicht importiert."));
+            context.Errors.Add(
+                new ImportError(
+                    file,
+                    "Der Eintrag ist eine Stornierung (RvslInd) und wird nicht importiert."
+                )
+            );
             return;
         }
 
         var direction = Local(ntry, "CdtDbtInd")?.Value?.Trim();
         if (direction is null)
         {
-            context.Errors.Add(new ImportError(file, "Es fehlt die Gutschrift-/Lastschriftkennzeichnung (CdtDbtInd)."));
+            context.Errors.Add(
+                new ImportError(
+                    file,
+                    "Es fehlt die Gutschrift-/Lastschriftkennzeichnung (CdtDbtInd)."
+                )
+            );
             return;
         }
         if (direction is not ("CRDT" or "DBIT"))
         {
-            context.Errors.Add(new ImportError(file, $"Ungültige Gutschrift-/Lastschriftkennzeichnung: {direction}"));
+            context.Errors.Add(
+                new ImportError(
+                    file,
+                    $"Ungültige Gutschrift-/Lastschriftkennzeichnung: {direction}"
+                )
+            );
             return;
         }
 
@@ -220,7 +280,12 @@ public static class BankImport
         if (!DateOnly.TryParse(dateElement?.Value, CultureInfo.InvariantCulture, out var date))
         {
             context.Errors.Add(
-                new ImportError(file, dateElement is null ? "Es fehlt das Buchungsdatum (BookgDt/Dt)." : $"Ungültiges Buchungsdatum: {dateElement.Value}")
+                new ImportError(
+                    file,
+                    dateElement is null
+                        ? "Es fehlt das Buchungsdatum (BookgDt/Dt)."
+                        : $"Ungültiges Buchungsdatum: {dateElement.Value}"
+                )
             );
             return;
         }
@@ -232,19 +297,40 @@ public static class BankImport
             for (var i = 0; i < txDtls.Count; i++)
             {
                 var txAmountElement = AmountOf(txDtls[i]);
-                if (!decimal.TryParse(txAmountElement?.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var txAmount))
+                if (
+                    !decimal.TryParse(
+                        txAmountElement?.Value,
+                        NumberStyles.Number,
+                        CultureInfo.InvariantCulture,
+                        out var txAmount
+                    )
+                )
                 {
                     context.Errors.Add(
-                        new ImportError(file, txAmountElement is null ? "Es fehlt der Betrag (Amt)." : $"Ungültiger Betrag: {txAmountElement.Value}")
+                        new ImportError(
+                            file,
+                            txAmountElement is null
+                                ? "Es fehlt der Betrag (Amt)."
+                                : $"Ungültiger Betrag: {txAmountElement.Value}"
+                        )
                     );
                     return;
                 }
                 txAmounts[i] = txAmount;
             }
 
-            if (!decimal.TryParse(ntryAmountElement.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var ntryAmount))
+            if (
+                !decimal.TryParse(
+                    ntryAmountElement.Value,
+                    NumberStyles.Number,
+                    CultureInfo.InvariantCulture,
+                    out var ntryAmount
+                )
+            )
             {
-                context.Errors.Add(new ImportError(file, $"Ungültiger Betrag: {ntryAmountElement.Value}"));
+                context.Errors.Add(
+                    new ImportError(file, $"Ungültiger Betrag: {ntryAmountElement.Value}")
+                );
                 return;
             }
             if (txAmounts.Sum() != ntryAmount)
@@ -267,11 +353,25 @@ public static class BankImport
 
         // The simple entry: exactly one TxDtls, or none (then the entry itself is the transaction).
         var transaction = txDtls.Count == 1 ? txDtls[0] : ntry;
-        var amountElement = ReferenceEquals(transaction, ntry) ? ntryAmountElement : AmountOf(transaction);
-        if (!decimal.TryParse(amountElement?.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount))
+        var amountElement = ReferenceEquals(transaction, ntry)
+            ? ntryAmountElement
+            : AmountOf(transaction);
+        if (
+            !decimal.TryParse(
+                amountElement?.Value,
+                NumberStyles.Number,
+                CultureInfo.InvariantCulture,
+                out var amount
+            )
+        )
         {
             context.Errors.Add(
-                new ImportError(file, amountElement is null ? "Es fehlt der Betrag (Amt)." : $"Ungültiger Betrag: {amountElement.Value}")
+                new ImportError(
+                    file,
+                    amountElement is null
+                        ? "Es fehlt der Betrag (Amt)."
+                        : $"Ungültiger Betrag: {amountElement.Value}"
+                )
             );
             return;
         }
@@ -296,11 +396,19 @@ public static class BankImport
     {
         if (ReversalIndicated(transaction))
         {
-            context.Errors.Add(new ImportError(file, "Der Eintrag ist eine Stornierung (RvslInd) und wird nicht importiert."));
+            context.Errors.Add(
+                new ImportError(
+                    file,
+                    "Der Eintrag ist eine Stornierung (RvslInd) und wird nicht importiert."
+                )
+            );
             return;
         }
 
-        var bankReference = (Local(Local(transaction, "Refs"), "AcctSvcrRef")?.Value ?? Local(ntry, "AcctSvcrRef")?.Value)?.Trim();
+        var bankReference = (
+            Local(Local(transaction, "Refs"), "AcctSvcrRef")?.Value
+            ?? Local(ntry, "AcctSvcrRef")?.Value
+        )?.Trim();
         if (string.IsNullOrEmpty(bankReference))
         {
             context.Errors.Add(new ImportError(file, "Es fehlt die Bankreferenz (AcctSvcrRef)."));
@@ -326,10 +434,17 @@ public static class BankImport
             .Where(v => v.Length > 0)
             .ToList();
         var addtlNtryInf = Local(ntry, "AddtlNtryInf")?.Value?.Trim();
-        var text = ustrd.Count > 0 ? string.Join(' ', ustrd) : (string.IsNullOrEmpty(addtlNtryInf) ? null : addtlNtryInf);
+        var text =
+            ustrd.Count > 0
+                ? string.Join(' ', ustrd)
+                : (string.IsNullOrEmpty(addtlNtryInf) ? null : addtlNtryInf);
         var counterpartyParty = CounterpartyPartyOf(transaction, direction);
         var counterparty = CounterpartyNameOf(counterpartyParty);
-        var person = MatchPerson(counterparty, BankAddressOf(counterpartyParty), context.Snapshot.Persons);
+        var person = MatchPerson(
+            counterparty,
+            BankAddressOf(counterpartyParty),
+            context.Snapshot.Persons
+        );
         // A matched counterparty is linked to its Person and the text is kept as-is; otherwise the name goes in front.
         if (person is null && text is not null && counterparty is not null)
         {
@@ -337,7 +452,9 @@ public static class BankImport
         }
         // The Text column is varchar(500), so the final text must fit it, prefixed or not.
         text = text is null ? null : (text.Length > MaxTextLength ? text[..MaxTextLength] : text);
-        context.Transactions.Add(new ImportedTransaction(date, signedAmount, text, bankReference, person?.Id));
+        context.Transactions.Add(
+            new ImportedTransaction(date, signedAmount, text, bankReference, person?.Id)
+        );
     }
 
     /// <summary>The counterparty party of a transaction: the Dbtr (payer) for a credit, the Cdtr (payee) for a debit.</summary>
@@ -358,7 +475,7 @@ public static class BankImport
         Local(party, localName) ?? Local(Local(party, "Pty"), localName);
 
     /// <summary>The normalised PLZ, street and house number of a bank counterparty's postal address.</summary>
-    private sealed record BankAddress(string PostalCode, string Street, string HouseNumber);
+    private sealed record BankAddress(string PostalCode, string Street, string Number);
 
     /// <summary>
     /// The postal address (PstA, directly or under Pty) of a party, reduced to what matching needs: the PLZ,
@@ -377,14 +494,17 @@ public static class BankImport
 
         var streetName = Local(address, "StrtNm")?.Value?.Trim();
         var buildingNumber = Local(address, "BldgNb")?.Value?.Trim();
-        var addressLines = LocalAll(address, "AdrLine").Select(l => l.Value.Trim()).Where(l => l.Length > 0).ToList();
+        var addressLines = LocalAll(address, "AdrLine")
+            .Select(l => l.Value.Trim())
+            .Where(l => l.Length > 0)
+            .ToList();
 
         string? street = null;
-        string? houseNumber = null;
+        string? number = null;
         if (!string.IsNullOrEmpty(streetName) && !string.IsNullOrEmpty(buildingNumber))
         {
             street = streetName;
-            houseNumber = buildingNumber;
+            number = buildingNumber;
         }
         else if (!string.IsNullOrEmpty(streetName))
         {
@@ -393,7 +513,7 @@ public static class BankImport
             if (splitAt > 0)
             {
                 street = string.Join(' ', tokens[..splitAt]);
-                houseNumber = tokens[splitAt];
+                number = tokens[splitAt];
             }
         }
         if (street is null)
@@ -401,10 +521,14 @@ public static class BankImport
             foreach (var line in addressLines)
             {
                 var tokens = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (tokens.Length >= 2 && char.IsDigit(tokens[^1][0]) && tokens[..^1].Any(t => !char.IsDigit(t[0])))
+                if (
+                    tokens.Length >= 2
+                    && char.IsDigit(tokens[^1][0])
+                    && tokens[..^1].Any(t => !char.IsDigit(t[0]))
+                )
                 {
                     street = string.Join(' ', tokens[..^1]);
-                    houseNumber = tokens[^1];
+                    number = tokens[^1];
                     break;
                 }
             }
@@ -416,12 +540,16 @@ public static class BankImport
             postalCode = PostalCodeFromAddressLines(addressLines);
         }
 
-        if (string.IsNullOrEmpty(street) || string.IsNullOrEmpty(houseNumber) || string.IsNullOrEmpty(postalCode))
+        if (
+            string.IsNullOrEmpty(street)
+            || string.IsNullOrEmpty(number)
+            || string.IsNullOrEmpty(postalCode)
+        )
         {
             return null;
         }
 
-        return new BankAddress(Normalize(postalCode), NormalizeStreet(street), Normalize(houseNumber));
+        return new BankAddress(Normalize(postalCode), NormalizeStreet(street), Normalize(number));
     }
 
     /// <summary>The index of the last token that starts with a digit, or -1 when there is none.</summary>
@@ -443,7 +571,11 @@ public static class BankImport
         foreach (var line in lines)
         {
             var tokens = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (tokens.Length >= 2 && tokens[0].Length is >= 4 and <= 5 && tokens[0].All(char.IsDigit))
+            if (
+                tokens.Length >= 2
+                && tokens[0].Length is >= 4 and <= 5
+                && tokens[0].All(char.IsDigit)
+            )
             {
                 return tokens[0];
             }
@@ -457,7 +589,11 @@ public static class BankImport
     /// normalised bank name. All Persons are candidates, including former members; a candidate whose first name
     /// is also in the bank name ranks first, and within the same rank the lowest PersonId wins.
     /// </summary>
-    private static Person? MatchPerson(string? bankName, BankAddress? bankAddress, IReadOnlyCollection<Person> persons)
+    private static Person? MatchPerson(
+        string? bankName,
+        BankAddress? bankAddress,
+        IReadOnlyCollection<Person> persons
+    )
     {
         if (bankAddress is null)
         {
@@ -474,12 +610,18 @@ public static class BankImport
                 continue;
             }
 
-            var firstHit = !string.IsNullOrEmpty(person.FirstName)
+            var firstHit =
+                !string.IsNullOrEmpty(person.FirstName)
                 && normalizedBankName is not null
-                && normalizedBankName.Contains(Normalize(person.FirstName), StringComparison.Ordinal);
-            if (best is null
+                && normalizedBankName.Contains(
+                    Normalize(person.FirstName),
+                    StringComparison.Ordinal
+                );
+            if (
+                best is null
                 || (firstHit && !bestFirstHit)
-                || (firstHit == bestFirstHit && person.Id < best.Id))
+                || (firstHit == bestFirstHit && person.Id < best.Id)
+            )
             {
                 best = person;
                 bestFirstHit = firstHit;
@@ -490,20 +632,28 @@ public static class BankImport
 
     private static bool Matches(Person person, BankAddress address, string? bankName)
     {
-        if (string.IsNullOrEmpty(person.PostalCode) || string.IsNullOrEmpty(person.Street) || string.IsNullOrEmpty(person.HouseNumber))
+        if (
+            string.IsNullOrEmpty(person.PostalCode)
+            || string.IsNullOrEmpty(person.Street)
+            || string.IsNullOrEmpty(person.Number)
+        )
         {
             return false;
         }
 
         var lastName = Normalize(person.LastName);
-        if (lastName.Length == 0 || bankName is null || !bankName.Contains(lastName, StringComparison.Ordinal))
+        if (
+            lastName.Length == 0
+            || bankName is null
+            || !bankName.Contains(lastName, StringComparison.Ordinal)
+        )
         {
             return false;
         }
 
         return Normalize(person.PostalCode) == address.PostalCode
             && Similarity(NormalizeStreet(person.Street), address.Street) >= MinimumSimilarity
-            && Similarity(Normalize(person.HouseNumber), address.HouseNumber) >= MinimumSimilarity;
+            && Similarity(Normalize(person.Number), address.Number) >= MinimumSimilarity;
     }
 
     /// <summary>The similarity of two strings: 1 minus the Levenshtein distance divided by the length of the longer string; two empty strings are identical.</summary>
@@ -528,7 +678,10 @@ public static class BankImport
             for (var j = 1; j <= b.Length; j++)
             {
                 var current = distance[j];
-                distance[j] = Math.Min(distance[j] + 1, Math.Min(distance[j - 1] + 1, previous + (a[i - 1] == b[j - 1] ? 0 : 1)));
+                distance[j] = Math.Min(
+                    distance[j] + 1,
+                    Math.Min(distance[j - 1] + 1, previous + (a[i - 1] == b[j - 1] ? 0 : 1))
+                );
                 previous = current;
             }
         }
@@ -544,11 +697,21 @@ public static class BankImport
     /// </summary>
     private static string Normalize(string value)
     {
-        var collapsed = string.Join(' ', value.ToLowerInvariant().Split(Whitespace, StringSplitOptions.RemoveEmptyEntries));
-        var withoutAccents = new string(
-            collapsed.Normalize(NormalizationForm.FormD).Where(c => char.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray()
+        var collapsed = string.Join(
+            ' ',
+            value.ToLowerInvariant().Split(Whitespace, StringSplitOptions.RemoveEmptyEntries)
         );
-        return withoutAccents.Replace("ß", "ss").Replace("ae", "a").Replace("oe", "o").Replace("ue", "u");
+        var withoutAccents = new string(
+            collapsed
+                .Normalize(NormalizationForm.FormD)
+                .Where(c => char.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                .ToArray()
+        );
+        return withoutAccents
+            .Replace("ß", "ss")
+            .Replace("ae", "a")
+            .Replace("oe", "o")
+            .Replace("ue", "u");
     }
 
     /// <summary>Normalises a street name and expands the street abbreviations as whole tokens or word endings.</summary>
@@ -599,7 +762,8 @@ public static class BankImport
     private sealed class ImportContext(ImportSnapshot snapshot)
     {
         public ImportSnapshot Snapshot { get; } = snapshot;
-        public HashSet<string> SeenReferences { get; } = snapshot.ExistingBankReferences.ToHashSet();
+        public HashSet<string> SeenReferences { get; } =
+            snapshot.ExistingBankReferences.ToHashSet();
         public List<ImportedTransaction> Transactions { get; } = [];
         public List<ImportError> Errors { get; } = [];
         public int SkippedDuplicates { get; set; }
