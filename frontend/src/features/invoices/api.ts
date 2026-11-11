@@ -10,6 +10,8 @@ export type InvoiceListItem = {
 	person: { id: number; name: string };
 	total: number;
 	status: string;
+	/** The id of the Bewegung that first covered the total, or null. */
+	paidBy: number | null;
 };
 
 export const invoicesQueryOptions = queryOptions({
@@ -35,6 +37,8 @@ export type InvoiceDetail = {
 	status: string;
 	/** Swiss QR-bill Gläubigerreferenz (RF8008); "" for Rechnungen created before it was stored. */
 	reference: string;
+	/** The id of the Bewegung that first covered the total, or null. */
+	paidBy: number | null;
 	statusHistory: { status: string; timestamp: string }[];
 };
 
@@ -109,7 +113,10 @@ export function invalidateInvoices(queryClient: QueryClient) {
 	});
 }
 
-const statusLabels: Record<string, string> = { Created: "Erstellt" };
+const statusLabels: Record<string, string> = {
+	Created: "Erstellt",
+	Paid: "Bezahlt",
+};
 
 export function statusLabel(status: string): string {
 	return statusLabels[status] ?? status;

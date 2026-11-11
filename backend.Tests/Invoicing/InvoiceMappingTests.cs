@@ -37,6 +37,39 @@ public class InvoiceMappingTests
     }
 
     [Fact]
+    public void List_and_detail_show_the_Bezahlt_status_for_a_paid_Rechnung()
+    {
+        // The Created change comes first; the Paid change (timestamped with the paying movement's booking
+        // date) is the last, so it is the current status of the Rechnung.
+        var created = new DateTime(2026, 1, 8, 12, 0, 0, DateTimeKind.Utc);
+        var paidAt = new DateTime(2026, 2, 9, 23, 0, 0, DateTimeKind.Utc);
+        var invoice = Invoice("RF340042");
+        invoice.StatusChanges[0].Timestamp = created;
+        invoice.StatusChanges.Add(new InvoiceStatusChange { Status = InvoiceStatus.Paid, Timestamp = paidAt });
+
+        var item = InvoiceMapping.ToInvoiceListItem(invoice, Person);
+        var detail = InvoiceMapping.ToInvoiceDetail(invoice, Person);
+
+        // The current status is the last status change; both views render the same enum name the
+        // frontend maps to "Bezahlt". The detail view shows the status history in Europe/Zurich, so the
+        // booking date 2026-02-09 23:00 UTC is shown as 2026-02-10 00:00.
+        Assert.Equal("Paid", item.Status);
+        Assert.Equal("Paid", detail.Status);
+        Assert.Equal(new DateTime(2026, 2, 10, 0, 0, 0), detail.StatusHistory.Last().Timestamp);
+    }
+
+    [Fact]
+    public void The_detail_shows_the_Paid_by_movement_id()
+    {
+        var invoice = Invoice("RF340042");
+        invoice.PaidBy = 77;
+
+        var detail = InvoiceMapping.ToInvoiceDetail(invoice, Person);
+
+        Assert.Equal(77, detail.PaidBy);
+    }
+
+    [Fact]
     public void List_stays_unchanged_and_has_no_reference()
     {
         var item = InvoiceMapping.ToInvoiceListItem(Invoice("RF340042"), Person);

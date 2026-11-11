@@ -9,16 +9,18 @@ namespace backend.Accounting;
 
 using Camt = Iso20022.Contracts.Camt05300110;
 using Person = backend.Person.Person;
+using backend.Invoicing;
 
 /// <summary>A position of an open Rechnung as seen by the import: its Kontoplan hint and amount.</summary>
 public record ImportInvoiceLine(string Text, int AccountNumber, decimal Amount);
 
-/// <summary>An open Rechnung as seen by the import: the QR-bill reference, the total, the positions, and how much is already paid.</summary>
+/// <summary>An open Rechnung as seen by the import: the QR-bill reference, the total, the positions, how much is already paid, and whether it is already Bezahlt (terminal: it never matches again).</summary>
 public record ImportInvoice(
     int Id,
     string Reference,
     decimal Total,
     decimal ExistingPaid,
+    bool AlreadyPaid,
     IReadOnlyList<ImportInvoiceLine> Lines
 );
 
@@ -49,7 +51,7 @@ public record ImportSnapshot(
     }
 }
 
-/// <summary>One imported Bewegung to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId. A matched Bewegung additionally carries the Rechnung it covers and the Buchungen the import proposes for it.</summary>
+/// <summary>One imported Bewegung to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId. A matched Bewegung additionally carries the Rechnung it covers, the Buchungen the import proposes for it, and — when this Bewegung is the first to cover the total — the UTC timestamp of the Paid status change (the movement's booking date in Zurich time).</summary>
 public record ImportedTransaction(
     DateOnly Date,
     decimal Amount,
@@ -57,7 +59,8 @@ public record ImportedTransaction(
     string BankReference,
     int? PersonId,
     int? MatchedInvoiceId,
-    IReadOnlyList<ImportEntryDraft> AutoEntries
+    IReadOnlyList<ImportEntryDraft> AutoEntries,
+    DateTime? PaidAt
 );
 
 /// <summary>One problem found in one file; File is null for a problem of the zip itself.</summary>
@@ -465,7 +468,7 @@ public static class BankImport
         text = text is null ? null : (text.Length > MaxTextLength ? text[..MaxTextLength] : text);
 
         // Try to match the payment to its open Rechnung and auto-book it.
-        var match = MatchInvoice(transaction, signedAmount, context.Snapshot);
+        var match = MatchInvoice(transaction, signedAmount, credit, date, context.Snapshot);
         context.Transactions.Add(
             new ImportedTransaction(
                 date,
@@ -474,7 +477,8 @@ public static class BankImport
                 bankReference,
                 person?.Id,
                 match?.InvoiceId,
-                match?.Entries ?? []
+                match?.Entries ?? [],
+                match?.PaidAt
             )
         );
     }
@@ -799,11 +803,14 @@ public static class BankImport
     /// Tries to match a payment to its open Rechnung and build the auto-entries. Returns null (no match) when:
     /// there is no QR-bill reference, no matching Rechnung, the Rechnung is already paid, the amount does not
     /// match the outstanding amount exactly, a line's Konto is missing or inactive, or the overpayment account
-    /// is missing from the chart.
+    /// is missing from the chart. A credit that completes the total returns the PaidAt timestamp (the booking
+    /// date as a UTC instant) for the Paid status change; a debit never does.
     /// </summary>
-    private static (int InvoiceId, IReadOnlyList<ImportEntryDraft> Entries)? MatchInvoice(
+    private static (int InvoiceId, IReadOnlyList<ImportEntryDraft> Entries, DateTime? PaidAt)? MatchInvoice(
         Camt.EntryTransaction12? transaction,
         decimal signedAmount,
+        bool credit,
+        DateOnly date,
         ImportSnapshot snapshot
     )
     {
@@ -827,8 +834,8 @@ public static class BankImport
         }
         var invoice = matches[0];
 
-        // Already fully paid → no match.
-        if (invoice.ExistingPaid == invoice.Total)
+        // Once Bezahlt, always Bezahlt: no further match, so a re-import never re-books or re-sets PaidBy.
+        if (invoice.AlreadyPaid)
         {
             return null;
         }
@@ -875,7 +882,15 @@ public static class BankImport
             return null;
         }
 
-        return (invoice.Id, entries.AsReadOnly());
+        // Only a credit that completes the total records the Paid status change, timestamped with the
+        // movement's booking date (Zurich midnight as a UTC instant); a debit reduces the covered amount.
+        var covered =
+            credit
+            && invoice.ExistingPaid >= 0
+            && signedAmount == invoice.Total - invoice.ExistingPaid;
+        DateTime? paidAt = covered ? InvoiceTime.TimestampFor(date) : null;
+
+        return (invoice.Id, entries.AsReadOnly(), paidAt);
     }
 
     private sealed class ImportContext(ImportSnapshot snapshot)

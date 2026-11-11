@@ -478,11 +478,15 @@ api.MapPost(
                 .ToListAsync();
             var persons = await db.Persons.ToListAsync();
 
-            // Open Rechnungen for matching: QR-bill reference, total, and positions.
-            // existingPaid is always 0 here: re-imports are skipped via BankReference, so a Bewegung
-            // is only ever imported once. The Buchungen created by the import are attributed to the
-            // Rechnung by their Text and Konto, not by a foreign key.
-            var invoices = await db.Invoices.Include(i => i.Lines).ToListAsync();
+            // Rechnungen for matching: QR-bill reference, total, and positions. A Rechnung that already
+            // has a Paid status change is terminal (once Paid, always Paid) and is flagged so the matcher
+            // never re-books or re-sets PaidBy, e.g. when the paying movement was deleted and re-imported.
+            // existingPaid is 0 here: re-imports of the same movement are skipped via BankReference, so
+            // the Buchungen of an already-imported movement are attributed to the Rechnung by its Paid
+            // status change, not by a foreign key.
+            var invoices = await db
+                .Invoices.Include(i => i.Lines).Include(i => i.StatusChanges)
+                .ToListAsync();
             var importInvoices = invoices
                 .Where(i => !string.IsNullOrEmpty(i.Reference))
                 .Select(i => new ImportInvoice(
@@ -490,6 +494,7 @@ api.MapPost(
                     i.Reference,
                     i.Lines.Sum(l => l.Amount),
                     0m,
+                    i.StatusChanges.Any(s => s.Status == InvoiceStatus.Paid),
                     i.Lines.OrderBy(l => l.Position).Select(l => new ImportInvoiceLine(l.Text, l.AccountNumber, l.Amount)).ToList()
                 ))
                 .ToList();
@@ -526,6 +531,31 @@ api.MapPost(
                     }).ToList(),
                 })
             );
+
+            // The first fully-covering credit Bewegung marks the Rechnung Bezahlt: append the Paid status
+            // change (timestamped with the movement's booking date, shown in Europe/Zurich) and record
+            // the Bewegung's id as PaidBy. Transactions added above resolve their ids during the save below.
+            var paidMovements = result
+                .Transactions.Where(t => t.PaidAt is not null && t.MatchedInvoiceId is not null)
+                .ToList();
+            foreach (var t in paidMovements)
+            {
+                var invoice = db.Invoices.Single(i => i.Id == t.MatchedInvoiceId);
+                invoice.StatusChanges.Add(
+                    new InvoiceStatusChange { Status = InvoiceStatus.Paid, Timestamp = t.PaidAt!.Value }
+                );
+            }
+            await SaveEntryChangeAsync(db, chart);
+            // Ids are available after the save; set PaidBy to the first covering Bewegung's id.
+            foreach (var t in paidMovements)
+            {
+                var invoice = db.Invoices.Single(i => i.Id == t.MatchedInvoiceId);
+                if (invoice.PaidBy is null)
+                {
+                    invoice.PaidBy = db.Transactions.Single(x => x.BankReference == t.BankReference).Id;
+                }
+            }
+            await db.SaveChangesAsync();
             await SaveEntryChangeAsync(db, chart);
             return Results.Ok(
                 new

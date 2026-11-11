@@ -68,7 +68,13 @@ The ID of a Rechnung with at least four digits (0042, 12345). Gaps are possible 
 The date a Rechnung was created: the date of its Erstellt status change.
 
 **Rechnungsstatus** (code: _InvoiceStatus_):
-A lifecycle step of a Rechnung, recorded as an append-only status change with a timestamp. Currently only Erstellt (_Created_) exists.
+A lifecycle step of a Rechnung, recorded as an append-only status change with a timestamp. Erstellt (_Created_) and Bezahlt (_Paid_, terminal).
+
+**Bezahlt** (code: _Paid_ on _InvoiceStatus_):
+A terminal Rechnungsstatus, recorded as a status change when the first imported Bewegung covers the Rechnung's total exactly. Its timestamp is the movement's booking date (shown in Europe/Zurich); once set, the Rechnung never matches another payment.
+
+**PaidBy** (code: _PaidBy_ on _Invoice_):
+The id of the Bewegung that first covered a Rechnung's total (null while open). Plain column without a foreign key: the Bewegung may be edited or deleted, but the Rechnung stays Bezahlt.
 
 **Mitgliedschaft** (code: _MembershipType_):
 The kind of membership of a Person (Familie, Einzel, Junior, Ehren, Frei, Gönner, or Unbekannt), which decides the Jahresbeitrag. Unbekannt is never invoiced.

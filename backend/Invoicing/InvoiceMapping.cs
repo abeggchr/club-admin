@@ -11,7 +11,8 @@ public record InvoiceListItemDto(
     DateOnly Date,
     InvoicePersonDto Person,
     decimal Total,
-    string Status
+    string Status,
+    int? PaidBy
 );
 
 public record InvoiceLineDto(string Text, decimal Amount, int AccountNumber);
@@ -37,6 +38,7 @@ public record InvoiceDetailDto(
     decimal Total,
     string Status,
     string Reference,
+    int? PaidBy,
     List<InvoiceStatusChangeDto> StatusHistory
 );
 
@@ -69,7 +71,8 @@ public static class InvoiceMapping
             InvoiceDate(i),
             new InvoicePersonDto(p.Id, DisplayName(p)),
             i.Lines.Sum(l => l.Amount),
-            CurrentStatus(i).Status.ToString()
+            CurrentStatus(i).Status.ToString(),
+            i.PaidBy
         );
 
     public static InvoiceDetailDto ToInvoiceDetail(Invoice i, PersonEntity p) =>
@@ -92,6 +95,7 @@ public static class InvoiceMapping
             i.Lines.Sum(l => l.Amount),
             CurrentStatus(i).Status.ToString(),
             i.Reference,
+            i.PaidBy,
             InOrder(i)
                 .Select(s => new InvoiceStatusChangeDto(
                     s.Status.ToString(),

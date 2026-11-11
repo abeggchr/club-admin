@@ -41,4 +41,30 @@ public class InvoiceTimeTests
     {
         Assert.Throws<ArgumentException>(() => InvoiceTime.ToZurich(new DateTime(2026, 1, 15, 10, 0, 0)));
     }
+
+    [Fact]
+    public void Winter_booking_date_becomes_the_UTC_instant_of_Zurich_midnight()
+    {
+        // 2026-02-10 00:00 in Zurich (winter time, UTC+1) is 2026-02-09 23:00 UTC.
+        var utc = InvoiceTime.TimestampFor(new DateOnly(2026, 2, 10));
+
+        Assert.Equal(new DateTime(2026, 2, 9, 23, 0, 0, DateTimeKind.Utc), utc);
+    }
+
+    [Fact]
+    public void Summer_booking_date_becomes_the_UTC_instant_of_Zurich_midnight()
+    {
+        // 2026-07-15 00:00 in Zurich (summer time, UTC+2) is 2026-07-14 22:00 UTC.
+        var utc = InvoiceTime.TimestampFor(new DateOnly(2026, 7, 15));
+
+        Assert.Equal(new DateTime(2026, 7, 14, 22, 0, 0, DateTimeKind.Utc), utc);
+    }
+
+    [Fact]
+    public void The_converted_instant_displays_the_booking_date_in_Zurich()
+    {
+        // A movement booked 2026-02-10 must show 2026-02-10, not the previous UTC day.
+        Assert.Equal(new DateOnly(2026, 2, 10), InvoiceTime.ZurichDate(InvoiceTime.TimestampFor(new DateOnly(2026, 2, 10))));
+        Assert.Equal(new DateOnly(2026, 7, 15), InvoiceTime.ZurichDate(InvoiceTime.TimestampFor(new DateOnly(2026, 7, 15))));
+    }
 }

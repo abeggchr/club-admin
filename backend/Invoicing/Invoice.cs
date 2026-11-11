@@ -10,6 +10,8 @@ public class Invoice
     public int PersonId { get; set; }
     /// <summary>Swiss QR-bill Gläubigerreferenz (RF8008), stored at creation; '' for Rechnungen created before it was stored.</summary>
     public string Reference { get; set; } = "";
+    /// <summary>The id of the Bewegung that first covered the total; plain column, no foreign key (set only by the import).</summary>
+    public int? PaidBy { get; set; }
     public List<InvoiceLine> Lines { get; set; } = [];
     public List<InvoiceStatusChange> StatusChanges { get; set; } = [];
 }
@@ -30,6 +32,8 @@ public class InvoiceLine
 public enum InvoiceStatus
 {
     Created,
+    /// <summary>Bezahlt: terminal, recorded when a Bewegung's signed amount covers the total; the paying Bewegung's id is in <see cref="Invoice.PaidBy"/>.</summary>
+    Paid,
 }
 
 /// <summary>One lifecycle step of a Rechnung. The Rechnungsdatum is the date of the Created row.</summary>

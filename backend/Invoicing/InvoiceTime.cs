@@ -15,4 +15,14 @@ public static class InvoiceTime
     }
 
     public static DateOnly ZurichDate(DateTime utc) => DateOnly.FromDateTime(ToZurich(utc));
+
+    /// <summary>
+    /// The UTC instant that represents a Zurich calendar date (that date's midnight in Europe/Zurich).
+    /// Used for the Paid status timestamp of a movement, whose BookgDt is a date without time.
+    /// </summary>
+    public static DateTime TimestampFor(DateOnly zurichDate)
+    {
+        var midnight = new DateTime(zurichDate.Year, zurichDate.Month, zurichDate.Day, 0, 0, 0, 0, DateTimeKind.Unspecified);
+        return DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(midnight, Zurich), DateTimeKind.Utc);
+    }
 }
