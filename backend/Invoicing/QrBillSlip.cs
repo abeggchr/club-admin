@@ -5,7 +5,13 @@ namespace backend.Invoicing;
 /// <summary>The club as QR-bill creditor: its normal IBAN and the Klubadresse from the settings (country is always CH).</summary>
 public record QrBillCreditor(string Iban, string Name, string Address, string PostalCode, string City)
 {
-    public const string MissingAddressError = "Bitte zuerst die Klubadresse in den Einstellungen erfassen";
+    private const string MissingAddressError = "Bitte zuerst die Klubadresse in den Einstellungen erfassen";
+
+    /// <summary>
+    /// The creditor for creating a Rechnung, or the German error to answer with (400) before anything is created.
+    /// </summary>
+    public static (QrBillCreditor? Creditor, string? Error) Resolve(backend.Accounting.Settings? settings) =>
+        From(settings) is { } creditor ? (creditor, null) : (null, MissingAddressError);
 
     /// <summary>The creditor from the club settings, or null when the settings lack the IBAN or any part of the Klubadresse.</summary>
     public static QrBillCreditor? From(backend.Accounting.Settings? settings)
@@ -40,9 +46,6 @@ public static class QrBillSlip
 {
     /// <summary>Height of the payment part.</summary>
     public const float HeightMm = 105;
-
-    /// <summary>Width of the payment part.</summary>
-    public const float WidthMm = 210;
 
     private static readonly Dictionary<string, string> CountryNames = new(StringComparer.OrdinalIgnoreCase)
     {

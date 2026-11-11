@@ -31,7 +31,10 @@ export function SettingsPage() {
       return
     }
     try {
-      const result = await saveSettings({ openingBalance: parsed.value, startDate, iban: iban.trim(),
+      const result = await saveSettings({
+        openingBalance: parsed.value,
+        startDate,
+        iban: iban.trim(),
         name: name.trim(),
         address: address.trim(),
         postalCode: postalCode.trim(),
