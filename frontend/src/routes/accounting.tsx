@@ -1,12 +1,19 @@
-import { createFileRoute, type ErrorComponentProps } from "@tanstack/react-router";
-import { settingsQueryOptions } from '../features/accounting/api'
-import { AccountingPage } from '../features/accounting/AccountingPage'
+import {
+	createFileRoute,
+	type ErrorComponentProps,
+} from "@tanstack/react-router";
+import { settingsQueryOptions } from "../features/accounting/api";
+import { AccountingPage } from "../features/accounting/AccountingPage";
 
-export const Route = createFileRoute('/accounting')({
-  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(settingsQueryOptions),
-  component: AccountingPage,
-  pendingComponent: () => <p className="p-8">Laden…</p>,
-  errorComponent: ({ error }: ErrorComponentProps) => (
-    <p className="p-8 text-red-600">Laden fehlgeschlagen: {error instanceof Error ? error.message : String(error)}</p>
-  ),
-})
+export const Route = createFileRoute("/accounting")({
+	loader: ({ context: { queryClient } }) =>
+		queryClient.ensureQueryData(settingsQueryOptions),
+	component: AccountingPage,
+	pendingComponent: () => <p className="p-8">Laden…</p>,
+	errorComponent: ({ error }: ErrorComponentProps) => (
+		<p className="p-8 text-red-600">
+			Laden fehlgeschlagen:{" "}
+			{error instanceof Error ? error.message : String(error)}
+		</p>
+	),
+});
