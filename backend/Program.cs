@@ -640,6 +640,37 @@ api.MapPost(
     }
 );
 
+api.MapPost(
+    "/invoices/annual-fees",
+    async (AnnualFeesInput input, AppDbContext db, InvoiceCreator creator, CancellationToken ct) =>
+    {
+        if (input.TemplateId is null)
+        {
+            return Results.BadRequest(new { error = "Die Textvorlage ist erforderlich." });
+        }
+        var template = await db.TextTemplates.FindAsync([input.TemplateId.Value], ct);
+        if (template is null)
+        {
+            return Results.BadRequest(new { error = "Die Textvorlage existiert nicht." });
+        }
+        var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
+        var (creditor, creditorError) = QrBillCreditor.Resolve(settings);
+        if (creditor is null)
+        {
+            return Results.BadRequest(new { error = creditorError });
+        }
+
+        var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
+        var plan = MembershipFeeRules.Plan(persons, settings!.StartDate);
+        var summary = await BulkInvoiceRunner.RunAsync(
+            plan,
+            (invoice, token) => creator.CreateAsync(invoice.Recipient, template, invoice.Lines, creditor, false, token),
+            ct
+        );
+        return Results.Ok(summary);
+    }
+);
+
 api.MapGet(
     "/invoices/{id:int}/pdf",
     async (
@@ -812,6 +843,8 @@ record SettingsUpdate(
 record TextTemplateInput(string? Subject, string? Text, string? Greetings);
 
 record InvoiceLineInput(string? Text, decimal Amount, int AccountNumber);
+
+record AnnualFeesInput(int? TemplateId);
 
 record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines, bool OpenAmount = false);
 
