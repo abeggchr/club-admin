@@ -29,8 +29,13 @@ public static class MembershipFeeRules
     public static bool IsActive(backend.Person.Person p, DateOnly at) =>
         p.JoinedOn is { } joined && joined <= at && (p.LeftOn is null || p.LeftOn > at);
 
-    public static BulkInvoicePlan Plan(IEnumerable<backend.Person.Person> persons, DateOnly at)
+    public static BulkInvoicePlan Plan(
+        IEnumerable<backend.Person.Person> persons,
+        DateOnly at,
+        IReadOnlyDictionary<int, MembershipDiscount>? discounts = null
+    )
     {
+        discounts ??= new Dictionary<int, MembershipDiscount>();
         var warnings = new List<string>();
         var members = new List<backend.Person.Person>();
         foreach (var p in persons.Where(p => IsActive(p, at)).OrderBy(p => p.Id))
@@ -78,17 +83,29 @@ public static class MembershipFeeRules
                 .Where(p => FeeFor(p.Membership) > 0)
                 .OrderBy(Seniority, SeniorityComparer)
                 .ToList();
+            foreach (var p in group.Except(payers).Where(p => discounts.ContainsKey(p.Id)))
+                warnings.Add($"{Name(p)} zahlt nichts; die Ermässigung wird ignoriert.");
             if (payers.Count == 0) continue;
             var lines = payers
-                .Select(p => new InvoiceLineDraft(
-                    $"Jahresbeitrag – {Name(p)} ({p.Membership.Label()})",
-                    FeeFor(p.Membership)!.Value,
-                    AccountNumber
-                ))
+                .Select(p => Line(p, discounts.GetValueOrDefault(p.Id)))
+                .Where(l => l.Amount > 0)
                 .ToList();
+            if (lines.Count == 0) continue;
             invoices.Add(new PlannedInvoice(payerFamily is not null ? payerFamily : payers[0], lines));
         }
         return new BulkInvoicePlan(invoices, warnings);
+    }
+
+    private static InvoiceLineDraft Line(backend.Person.Person p, MembershipDiscount? discount)
+    {
+        var text = $"Jahresbeitrag – {Name(p)} ({p.Membership.Label()})";
+        var amount = FeeFor(p.Membership)!.Value;
+        if (discount is not null)
+        {
+            amount = Math.Round(amount * (100 - discount.Percent) / 100m * 20m, MidpointRounding.AwayFromZero) / 20m;
+            text += $" – {discount.Percent} % Ermässigung: {discount.Text}";
+        }
+        return new InvoiceLineDraft(text, amount, AccountNumber);
     }
 
     private static (DateOnly, int) Seniority(backend.Person.Person p) => (p.JoinedOn ?? DateOnly.MaxValue, p.Id);
