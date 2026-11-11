@@ -75,7 +75,7 @@ export function DiscountsSection({ disabled }: { disabled: boolean }) {
 					{discounts.map((d) => (
 						<li key={d.personId} className="flex items-center gap-2 py-0.5">
 							<span className="flex-1">
-								{nameOf(d.personId)} – {d.percent} %: {d.text}
+								{nameOf(d.personId)} – {d.percent}%: {d.text}
 							</span>
 							<button
 								type="button"

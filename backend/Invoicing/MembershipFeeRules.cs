@@ -49,10 +49,17 @@ public static class MembershipFeeRules
         {
             var payerFamily = SelectFamilyPayer(group);
             var ordered = group.OrderBy(Seniority, SeniorityComparer).ToList();
-            foreach (var p in ordered.Where(p => FeeOf(p, payerFamily) == 0 && discounts.ContainsKey(p.Id)))
+            foreach (
+                var p in ordered.Where(p =>
+                    FeeOf(p, payerFamily) == 0 && discounts.ContainsKey(p.Id)
+                )
+            )
                 warnings.Add($"{p.FullName} zahlt nichts; die Ermässigung wird ignoriert.");
-            var lines = ordered.Select(p => BuildLine(p, FeeOf(p, payerFamily), discounts.GetValueOrDefault(p.Id))).ToList();
-            if (lines.Sum(l => l.Amount) <= 0) continue;
+            var lines = ordered
+                .Select(p => BuildLine(p, FeeOf(p, payerFamily), discounts.GetValueOrDefault(p.Id)))
+                .ToList();
+            if (lines.Sum(l => l.Amount) <= 0)
+                continue;
             invoices.Add(new PlannedInvoice(payerFamily ?? ordered[0], lines));
         }
         return new BulkInvoicePlan(invoices, warnings);
@@ -124,16 +131,26 @@ public static class MembershipFeeRules
 
     /// <summary>The fee a Person pays: a Familie member other than the payer pays nothing.</summary>
     private static decimal FeeOf(backend.Person.Person p, backend.Person.Person? payerFamily) =>
-        p.Membership == MembershipType.Family && p != payerFamily ? 0m : FeeFor(p.Membership)!.Value;
+        p.Membership == MembershipType.Family && p != payerFamily
+            ? 0m
+            : FeeFor(p.Membership)!.Value;
 
-    private static InvoiceLineDraft BuildLine(backend.Person.Person p, decimal fee, MembershipDiscount? discount)
+    private static InvoiceLineDraft BuildLine(
+        backend.Person.Person p,
+        decimal fee,
+        MembershipDiscount? discount
+    )
     {
-        var text = $"Jahresbeitrag – {p.FullName} ({p.Membership.Label()})";
+        var text = $"{p.FullName} ({p.Membership.Label()})";
         var amount = fee;
         if (discount is not null && fee > 0)
         {
-            amount = Math.Round(amount * (100 - discount.Percent) / 100m * 20m, MidpointRounding.AwayFromZero) / 20m;
-            text += $" – {discount.Percent} % Ermässigung: {discount.Text}";
+            amount =
+                Math.Round(
+                    amount * (100 - discount.Percent) / 100m * 20m,
+                    MidpointRounding.AwayFromZero
+                ) / 20m;
+            text += $" – {discount.Percent}% {discount.Text}";
         }
         return new InvoiceLineDraft(text, amount, AccountNumber);
     }
