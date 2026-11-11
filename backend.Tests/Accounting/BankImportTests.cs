@@ -1202,9 +1202,94 @@ public class BankImportTests
     }
 
     [Fact]
-    public void An_overpayment_imports_without_bookings_and_without_error()
+    public void An_overpayment_books_the_excess_to_Konto_3600()
     {
         var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                false,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtTestHelpers.CamtFile(
+                    "20260210",
+                    ClubIban,
+                    CamtTestHelpers.TxDtlsNtryWithReference("115.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Equal(42, tx.MatchedInvoiceId);
+        Assert.Equal(2, tx.AutoEntries.Count);
+        Assert.Equal("Jahresbeitrag", tx.AutoEntries[0].Text);
+        Assert.Equal(3400, tx.AutoEntries[0].AccountNumber);
+        Assert.Equal(100m, tx.AutoEntries[0].Amount);
+        Assert.Equal("Rechnung 0042", tx.AutoEntries[1].Text);
+        Assert.Equal(3600, tx.AutoEntries[1].AccountNumber);
+        Assert.Equal(15m, tx.AutoEntries[1].Amount);
+        Assert.Equal(115m, tx.AutoEntries.Sum(e => e.Amount));
+        Assert.Equal(15m, tx.OverpaymentAmount);
+    }
+
+    [Fact]
+    public void An_exact_credit_does_not_book_Konto_3600()
+    {
+        var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                false,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtTestHelpers.CamtFile(
+                    "20260210",
+                    ClubIban,
+                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Equal(42, tx.MatchedInvoiceId);
+        Assert.Single(tx.AutoEntries);
+        Assert.Equal(3400, tx.AutoEntries[0].AccountNumber);
+        Assert.Null(tx.OverpaymentAmount);
+    }
+
+    [Fact]
+    public void An_overpayment_degrades_to_no_match_when_Konto_3600_is_missing()
+    {
+        var chart = ChartOfAccounts.Parse(
+            """
+            {
+              "income": [
+                { "number": 3400, "name": "Beiträge" }
+              ],
+              "expense": []
+            }
+            """
+        );
         var invoices = new[]
         {
             new ImportInvoice(
@@ -1233,6 +1318,40 @@ public class BankImportTests
         Assert.Null(tx.MatchedInvoiceId);
         Assert.Empty(tx.AutoEntries);
         Assert.Null(tx.OverpaymentAmount);
+        Assert.Null(tx.PaidAt);
+    }
+
+    [Fact]
+    public void An_overpayment_does_not_set_Paid()
+    {
+        var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                false,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtTestHelpers.CamtFile(
+                    "20260210",
+                    ClubIban,
+                    CamtTestHelpers.TxDtlsNtryWithReference("115.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Equal(42, tx.MatchedInvoiceId);
+        Assert.Equal(15m, tx.OverpaymentAmount);
         Assert.Null(tx.PaidAt);
     }
 

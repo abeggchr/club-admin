@@ -89,6 +89,9 @@ public static class BankImport
     /// <summary>...and about this many bytes in total, uncompressed.</summary>
     private const long MaxUncompressedBytes = 10 * 1024 * 1024;
 
+    /// <summary>The Kontoplan account the overpayment of a matched credit is booked to (Spenden).</summary>
+    private const int OverpaymentAccount = 3600;
+
     /// <summary>The maximum length of a Bewegung text, the same limit as the Text column.</summary>
     private const int MaxTextLength = 500;
 
@@ -792,9 +795,11 @@ public static class BankImport
 
     /// <summary>
     /// Tries to match a payment to its open Rechnung and build the auto-entries. Returns null (no match) when:
-    /// there is no QR-bill reference, no matching Rechnung, the Rechnung is already paid, the amount differs
-    /// from the outstanding amount (an underpayment or an overpayment of any size does not match), or a
-    /// line's Konto is missing or inactive. A credit that completes the total returns the PaidAt timestamp
+    /// there is no QR-bill reference, no matching Rechnung, the Rechnung is already paid, the credit is an
+    /// underpayment, the debit's magnitude differs from the outstanding amount, a line's Konto is missing or
+    /// inactive, an overpayment Buchung is needed but Konto 3600 is missing or inactive, or the Buchungen
+    /// do not sum to the movement's amount. An overpaying credit additionally books the excess to Konto 3600.
+    /// A credit that completes the total returns the PaidAt timestamp
     /// (the booking date as a UTC instant) for the Paid status change; a debit never does.
     /// </summary>
     private static (
@@ -837,9 +842,9 @@ public static class BankImport
         }
 
         var outstanding = invoice.Total - invoice.ExistingPaid;
-        // The payment must exactly equal the outstanding amount (spec §5): an underpayment does not
-        // match, and neither does an overpayment — neither for credits nor for debits.
-        if (Math.Abs(signedAmount) != outstanding)
+        // A credit must cover at least the outstanding amount (an underpayment does not match); a debit
+        // must exactly equal it (a debit whose magnitude exceeds the outstanding amount does not match).
+        if (credit ? signedAmount < outstanding : signedAmount != -outstanding)
         {
             return null;
         }
@@ -858,13 +863,38 @@ public static class BankImport
             entries.Add(new ImportEntry(line.Text, line.AccountNumber, line.Amount * sign));
         }
 
-        // Only a credit that completes the total records the Paid status change, timestamped with the
-        // movement's booking date (Zurich midnight as a UTC instant); a debit reduces the covered amount.
-        var covered =
-            credit && invoice.ExistingPaid >= 0 && signedAmount == invoice.Total - invoice.ExistingPaid;
+        // Overpayment (spec §3/§5): an overpaying credit books the excess to Konto 3600 (Spenden).
+        decimal? overpaymentAmount = null;
+        var excess = signedAmount - outstanding;
+        if (excess > 0)
+        {
+            var overpaymentAccount = chart.Find(OverpaymentAccount);
+            if (overpaymentAccount is null || !overpaymentAccount.Active)
+            {
+                return null;
+            }
+            overpaymentAmount = excess;
+            entries.Add(
+                new ImportEntry(
+                    $"Rechnung {InvoiceRules.FormatNumber(invoice.Id)}",
+                    OverpaymentAccount,
+                    excess
+                )
+            );
+        }
+
+        // The Buchungen must sum to the movement's amount.
+        if (entries.Sum(e => e.Amount) != signedAmount)
+        {
+            return null;
+        }
+
+        // Only a credit that completes the total exactly records the Paid status change, timestamped with the
+        // movement's booking date (Zurich midnight as a UTC instant); an overpayment does not set Paid.
+        var covered = credit && invoice.ExistingPaid >= 0 && signedAmount == outstanding;
         DateTime? paidAt = covered ? InvoiceTime.TimestampFor(date) : null;
 
-        return (invoice.Id, entries.AsReadOnly(), (decimal?)null, paidAt);
+        return (invoice.Id, entries.AsReadOnly(), overpaymentAmount, paidAt);
     }
 
     /// <summary>The Rechnungsnummern of the movements that were auto-booked, in import order (spec #44 §7, the response's bookedInvoices).</summary>
