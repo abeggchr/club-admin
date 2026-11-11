@@ -5,6 +5,10 @@ export type Settings = {
   openingBalance: number
   startDate: string
   iban: string
+  name: string
+  address: string
+  postalCode: string
+  city: string
 }
 
 /** Throws the backend's German error message, or a generic one, for a non-OK response. */

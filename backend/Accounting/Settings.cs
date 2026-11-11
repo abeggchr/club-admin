@@ -9,4 +9,10 @@ public class Settings
     public decimal OpeningBalance { get; set; }
     public DateOnly StartDate { get; set; }
     public string Iban { get; set; } = "";
+
+    /// <summary>The club's address as the QR-bill creditor. Name and Address (one line, e.g. "Sportweg 12") ≤ 70, PostalCode ≤ 16, City ≤ 35.</summary>
+    public string Name { get; set; } = "";
+    public string Address { get; set; } = "";
+    public string PostalCode { get; set; } = "";
+    public string City { get; set; } = "";
 }

@@ -8,12 +8,20 @@ public class SettingsRulesTests
         decimal openingBalance = 1_000m,
         string? startDate = "2026-01-01",
         string? iban = "CH93 0076 2011 6238 5295 7",
-        DateOnly? earliestTransaction = null
+        DateOnly? earliestTransaction = null,
+        string? name = "SC Wiedikon",
+        string? address = "Sportweg 12",
+        string? postalCode = "8000",
+        string? city = "Zürich"
     ) =>
         SettingsRules.Validate(
             openingBalance,
             startDate is null ? default : DateOnly.Parse(startDate),
             iban,
+            name,
+            address,
+            postalCode,
+            city,
             earliestTransaction
         );
 
@@ -50,4 +58,59 @@ public class SettingsRulesTests
     [Fact]
     public void The_start_date_may_equal_the_earliest_transaction() =>
         Assert.Null(Validate(startDate: "2026-03-01", earliestTransaction: new DateOnly(2026, 3, 1)));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("  ")]
+    public void A_missing_name_is_rejected(string? name) => Assert.Contains("Name", Validate(name: name));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void A_missing_address_is_rejected(string? address) => Assert.Contains("Adresse", Validate(address: address));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void A_missing_postal_code_is_rejected(string? postalCode) =>
+        Assert.Contains("PLZ", Validate(postalCode: postalCode));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void A_missing_city_is_rejected(string? city) => Assert.Contains("Ort", Validate(city: city));
+
+    [Fact]
+    public void Values_at_the_QR_bill_limits_are_accepted() =>
+        Assert.Null(
+            Validate(name: new string('a', 70), address: new string('a', 70), postalCode: new string('1', 16), city: new string('a', 35))
+        );
+
+    [Fact]
+    public void A_name_over_70_characters_is_rejected() =>
+        Assert.Contains("70", Validate(name: new string('a', 71)));
+
+    [Fact]
+    public void An_address_over_70_characters_is_rejected() =>
+        Assert.Contains("70", Validate(address: new string('a', 71)));
+
+    [Fact]
+    public void A_postal_code_over_16_characters_is_rejected() =>
+        Assert.Contains("16", Validate(postalCode: new string('1', 17)));
+
+    [Fact]
+    public void A_city_over_35_characters_is_rejected() =>
+        Assert.Contains("35", Validate(city: new string('a', 36)));
+
+    [Fact]
+    public void A_QR_IBAN_is_rejected() =>
+        Assert.Equal("Bitte eine normale IBAN statt der QR-IBAN verwenden", Validate(iban: "CH44 3199 9123 0008 8901 2"));
+
+    [Fact]
+    public void A_QR_IBAN_at_the_lower_institution_ID_bound_is_rejected() =>
+        Assert.Contains("QR-IBAN", Validate(iban: "CH5730000123456789012"));
+
+    [Fact]
+    public void An_IBAN_just_outside_the_QR_range_is_accepted() =>
+        Assert.Null(Validate(iban: "CH5232000123456789012"));
 }

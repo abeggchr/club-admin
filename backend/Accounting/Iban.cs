@@ -27,6 +27,10 @@ public static class Iban
         return Mod97(iban) == 1 ? null : InvalidError;
     }
 
+    /// <summary>True when the (valid) IBAN is a QR-IBAN: its institution ID (characters 5-9) is 30000-31999.</summary>
+    public static bool IsQrIban(string? raw) =>
+        Normalize(raw) is { Length: >= 9 } iban && int.TryParse(iban[4..9], out var iid) && iid is >= 30000 and <= 31999;
+
     /// <summary>ISO 7064 mod 97-10: move the first four characters to the end, letters become digits (A=10 … Z=35), the remainder must be 1.</summary>
     static int Mod97(string iban)
     {
