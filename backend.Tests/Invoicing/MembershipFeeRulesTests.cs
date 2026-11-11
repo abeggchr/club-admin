@@ -49,7 +49,7 @@ public class MembershipFeeRulesTests
         var line = Assert.Single(invoice.Lines);
         Assert.Equal(fee, line.Amount);
         Assert.Equal(3400, line.AccountNumber);
-        Assert.Equal($"Jahresbeitrag – Anna Muster ({type.Label()})", line.Text);
+        Assert.Equal($"Anna Muster ({type.Label()})", line.Text);
     }
 
     [Fact]

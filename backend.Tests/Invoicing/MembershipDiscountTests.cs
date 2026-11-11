@@ -36,7 +36,7 @@ public class MembershipDiscountTests
 
         var line = Assert.Single(Assert.Single(plan.Invoices).Lines);
         Assert.Equal(72m, line.Amount);
-        Assert.Equal("Jahresbeitrag – Anna Muster (Einzelmitglied) – 20 % Ermässigung: Studentin", line.Text);
+        Assert.Equal("Anna Muster (Einzelmitglied) – 20% Studentin", line.Text);
     }
 
     [Fact]
