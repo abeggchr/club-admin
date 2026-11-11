@@ -152,6 +152,10 @@ api.MapPut(
                 update.OpeningBalance,
                 update.StartDate,
                 update.Iban,
+                update.Name,
+                update.Address,
+                update.PostalCode,
+                update.City,
                 earliest
             ) is
             { } error
@@ -170,6 +174,10 @@ api.MapPut(
         settings.OpeningBalance = update.OpeningBalance;
         settings.StartDate = update.StartDate;
         settings.Iban = Iban.Normalize(update.Iban)!;
+        settings.Name = update.Name!.Trim();
+        settings.Address = update.Address!.Trim();
+        settings.PostalCode = update.PostalCode!.Trim();
+        settings.City = update.City!.Trim();
 
         await db.SaveChangesAsync();
         return Results.Ok(settings);
@@ -741,7 +749,15 @@ record TransactionDto(
     List<int> EntryIds
 );
 
-record SettingsUpdate(decimal OpeningBalance, DateOnly StartDate, string? Iban);
+record SettingsUpdate(
+    decimal OpeningBalance,
+    DateOnly StartDate,
+    string? Iban,
+    string? Name,
+    string? Address,
+    string? PostalCode,
+    string? City
+);
 
 record TextTemplateInput(string? Subject, string? Text, string? Greetings);
 

@@ -38,10 +38,13 @@ One line of a Bewegung: a text, a Konto and a signed amount (money in is positiv
 The chronological list of all Buchungen, ordered by the date of their Bewegung. It is the only record of money movements; it can be edited freely.
 
 **Anfangssaldo** (code: _OpeningBalance_):
-The bank account balance (an amount and a start date) from which the Erwarteter Kontostand is counted. The Anfangssaldo, its start date and the club's IBAN (Klub-IBAN, code: _Iban_) are stored together as the club settings (code: _Settings_); all three are required.
+The bank account balance (an amount and a start date) from which the Erwarteter Kontostand is counted. The Anfangssaldo, its start date, the club's IBAN (Klub-IBAN, code: _Iban_) and the Klubadresse are stored together as the club settings (code: _Settings_); all are required.
 
 **Klub-IBAN** (code: _Iban_):
-The IBAN of the club's bank account (CH or LI, 21 characters, valid mod-97 checksum). The import checks each bank statement against it.
+The IBAN of the club's bank account (CH or LI, 21 characters, valid mod-97 checksum). The import checks each bank statement against it. A QR-IBAN (institution ID 30000-31999) is rejected.
+
+**Klubadresse** (code: _Name_, _Address_, _PostalCode_ and _City_ in _Settings_):
+The club's address as creditor of the QR-bill: Name, Adresse (one free-text line, e.g. "Sportweg 12"), PLZ and Ort. All four are required, with the QR-bill limits Name ≤ 70, Adresse ≤ 70, PLZ ≤ 16, Ort ≤ 35. The country is always CH. It is stored with the club settings and not used anywhere yet.
 
 **Erwarteter Kontostand** (code: _ExpectedBalance_):
 The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen whose Bewegung is dated up to that date. The user compares it by eye against the bank statement.
