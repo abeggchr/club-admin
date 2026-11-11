@@ -21,7 +21,8 @@ public record InvoiceStatusChangeDto(string Status, DateTime Timestamp);
 public record InvoicePersonDetailDto(
     int Id,
     string Name,
-    string? Address,
+    string? Street,
+    string? Number,
     string? PostalCode,
     string? City,
     string? Country
@@ -56,7 +57,9 @@ public static class InvoiceMapping
     private static InvoiceStatusChange CurrentStatus(Invoice i) => InOrder(i).Last();
 
     private static DateOnly InvoiceDate(Invoice i) =>
-        InvoiceTime.ZurichDate(i.StatusChanges.First(s => s.Status == InvoiceStatus.Created).Timestamp);
+        InvoiceTime.ZurichDate(
+            i.StatusChanges.First(s => s.Status == InvoiceStatus.Created).Timestamp
+        );
 
     public static InvoiceListItemDto ToInvoiceListItem(Invoice i, PersonEntity p) =>
         new(
@@ -73,12 +76,25 @@ public static class InvoiceMapping
             i.Id,
             InvoiceRules.FormatNumber(i.Id),
             InvoiceDate(i),
-            new InvoicePersonDetailDto(p.Id, DisplayName(p), p.Address, p.PostalCode, p.City, p.Country),
-            i.Lines.OrderBy(l => l.Position).Select(l => new InvoiceLineDto(l.Text, l.Amount)).ToList(),
+            new InvoicePersonDetailDto(
+                p.Id,
+                DisplayName(p),
+                p.Street,
+                p.Number,
+                p.PostalCode,
+                p.City,
+                p.Country
+            ),
+            i.Lines.OrderBy(l => l.Position)
+                .Select(l => new InvoiceLineDto(l.Text, l.Amount))
+                .ToList(),
             i.Lines.Sum(l => l.Amount),
             CurrentStatus(i).Status.ToString(),
             InOrder(i)
-                .Select(s => new InvoiceStatusChangeDto(s.Status.ToString(), InvoiceTime.ToZurich(s.Timestamp)))
+                .Select(s => new InvoiceStatusChangeDto(
+                    s.Status.ToString(),
+                    InvoiceTime.ToZurich(s.Timestamp)
+                ))
                 .ToList()
         );
 }

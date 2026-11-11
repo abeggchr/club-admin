@@ -314,9 +314,7 @@ api.MapPut(
         // The date, amount, text and person of an imported Bewegung are bank facts and cannot change.
         if (
             TransactionRules.ValidateUnchangedBankFacts(
-                transaction.BankReference,
-                transaction.Date,
-                transaction.Amount,
+                transaction,
                 input.Date,
                 input.Amount,
                 NormalizeText(input.Text),

@@ -24,7 +24,8 @@ export type InvoiceDetail = {
   person: {
     id: number
     name: string
-    address: string | null
+    street: string | null
+    number: string | null
     postalCode: string | null
     city: string | null
     country: string | null
