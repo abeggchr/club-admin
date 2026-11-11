@@ -23,7 +23,7 @@ A Bewegung where money comes in.
 A Bewegung where money goes out.
 
 **Importierte Bewegung** (code: a _Transaction_ with a BankReference):
-A Bewegung imported from the eBanking zip (CAMT.053 statements): the bank's booking date, the signed amount, the text and the BankReference. If the counterparty matched, the matching Person is linked as well. The date, amount, text and Person of an imported Bewegung are read-only afterwards, in the UI and the API; only its Buchungen may be edited. It has no Buchungen until the Kassier books it ("Keine Buchung"); a re-import skips a transaction whose BankReference is already stored.
+A Bewegung imported from the eBanking zip (CAMT.053 statements): the bank's booking date, the signed amount, the text and the BankReference. If the counterparty matched, the matching Person is linked as well. The date, amount, text and Person of an imported Bewegung are read-only afterwards, in the UI and the API; only its Buchungen may be edited. If the QR-bill reference of the payment matches an open Rechnung, the Bewegung arrives already carrying its Buchungen, derived from the Rechnung's positions; otherwise it has no Buchungen ("Keine Buchung"). A re-import skips a transaction whose BankReference is already stored.
 
 **BankReference** (code: _BankReference_):
 The bank's account server reference (AcctSvcrRef) of an imported booking. Unique per Bewegung and set only for imported ones, it is how the import recognizes a transaction that is already stored.
@@ -78,6 +78,12 @@ The yearly membership fee of a Person, set per Mitgliedschaft (a constant in the
 
 **Ermässigung** (code: _MembershipDiscount_):
 A percentage (1-100) with a text that reduces one Person's Jahresbeitrag in the Jahresbeiträge run. It is stored per Person until removed, and its text is printed on the Rechnungsposition.
+
+**Gläubigerreferenz** (code: _Reference_ on _Invoice_):
+The Swiss QR-bill creditor reference (RF + check digits + Rechnungsnummer) stored at Rechnung creation. It is the sole key by which the bank import matches a payment to its Rechnung.
+
+**Zuvielzahlung** (code: the extra Buchung to Konto 3600 on an overpayment):
+When an imported payment exceeds the outstanding amount of its Rechnung, the excess is booked as an additional Buchung "Rechnung 0042" to Konto 3600 (Spenden).
 
 ## Relationships
 

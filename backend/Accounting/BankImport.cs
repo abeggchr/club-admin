@@ -10,23 +10,54 @@ namespace backend.Accounting;
 using Camt = Iso20022.Contracts.Camt05300110;
 using Person = backend.Person.Person;
 
+/// <summary>A position of an open Rechnung as seen by the import: its Kontoplan hint and amount.</summary>
+public record ImportInvoiceLine(string Text, int AccountNumber, decimal Amount);
+
+/// <summary>An open Rechnung as seen by the import: the QR-bill reference, the total, the positions, and how much is already paid.</summary>
+public record ImportInvoice(
+    int Id,
+    string Reference,
+    decimal Total,
+    decimal ExistingPaid,
+    IReadOnlyList<ImportInvoiceLine> Lines
+);
+
+/// <summary>A Buchung the import proposes for a matched Bewegung: the position text, the Kontoplan account and the signed amount.</summary>
+public record ImportEntryDraft(string Text, int AccountNumber, decimal Amount);
+
 /// <summary>
 /// The state the bank import validates against: the club settings (Klub-IBAN, Startdatum), the
-/// BankReferences already stored, and all Persons (including former members) for counterparty matching.
+/// BankReferences already stored, all Persons (including former members) for counterparty matching, the
+/// open Rechnungen and their positions (for matching a payment to its Rechnung), and the Kontoplan
+/// (to resolve the Konten the auto-entries would book to).
 /// </summary>
 public record ImportSnapshot(
     Settings Settings,
     IReadOnlyCollection<string> ExistingBankReferences,
-    IReadOnlyCollection<Person> Persons
-);
+    IReadOnlyCollection<Person> Persons,
+    IReadOnlyCollection<ImportInvoice> Invoices,
+    ChartOfAccounts? Chart
+)
+{
+    /// <summary>Convenience constructor without invoices and chart.</summary>
+    public ImportSnapshot(
+        Settings Settings,
+        IReadOnlyCollection<string> ExistingBankReferences,
+        IReadOnlyCollection<Person> Persons
+    ) : this(Settings, ExistingBankReferences, Persons, [], null)
+    {
+    }
+}
 
-/// <summary>One imported Bewegung to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId.</summary>
+/// <summary>One imported Bewegung to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId. A matched Bewegung additionally carries the Rechnung it covers and the Buchungen the import proposes for it.</summary>
 public record ImportedTransaction(
     DateOnly Date,
     decimal Amount,
     string? Text,
     string BankReference,
-    int? PersonId
+    int? PersonId,
+    int? MatchedInvoiceId,
+    IReadOnlyList<ImportEntryDraft> AutoEntries
 );
 
 /// <summary>One problem found in one file; File is null for a problem of the zip itself.</summary>
@@ -64,6 +95,9 @@ public static class BankImport
 
     /// <summary>The maximum length of a Bewegung text, the same limit as the Text column.</summary>
     private const int MaxTextLength = 500;
+
+    /// <summary>The Kontoplan account an overpayment is booked to (Spenden).</summary>
+    private const int OverpaymentAccount = 3600;
 
     /// <summary>The minimum similarity for a street or house number to count as nearly identical.</summary>
     private const double MinimumSimilarity = 0.9;
@@ -429,8 +463,19 @@ public static class BankImport
         }
         // The Text column is varchar(500), so the final text must fit it, prefixed or not.
         text = text is null ? null : (text.Length > MaxTextLength ? text[..MaxTextLength] : text);
+
+        // Try to match the payment to its open Rechnung and auto-book it.
+        var match = MatchInvoice(transaction, signedAmount, context.Snapshot);
         context.Transactions.Add(
-            new ImportedTransaction(date, signedAmount, text, bankReference, person?.Id)
+            new ImportedTransaction(
+                date,
+                signedAmount,
+                text,
+                bankReference,
+                person?.Id,
+                match?.InvoiceId,
+                match?.Entries ?? []
+            )
         );
     }
 
@@ -733,6 +778,104 @@ public static class BankImport
             return token[..^3] + "weg";
         }
         return token;
+    }
+
+    /// <summary>The first CdtrRefInf/Ref of the transaction's RmtInf/Strd, or null when absent.</summary>
+    private static string? QrBillReferenceOf(Camt.EntryTransaction12? transaction)
+    {
+        var strd = transaction?.RmtInf?.Strd;
+        if (strd is { Length: > 0 })
+        {
+            var refValue = strd[0].CdtrRefInf?.Ref?.Trim();
+            if (!string.IsNullOrEmpty(refValue))
+            {
+                return refValue;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Tries to match a payment to its open Rechnung and build the auto-entries. Returns null (no match) when:
+    /// there is no QR-bill reference, no matching Rechnung, the Rechnung is already paid, the amount does not
+    /// match the outstanding amount exactly, a line's Konto is missing or inactive, or the overpayment account
+    /// is missing from the chart.
+    /// </summary>
+    private static (int InvoiceId, IReadOnlyList<ImportEntryDraft> Entries)? MatchInvoice(
+        Camt.EntryTransaction12? transaction,
+        decimal signedAmount,
+        ImportSnapshot snapshot
+    )
+    {
+        var reference = QrBillReferenceOf(transaction);
+        if (string.IsNullOrEmpty(reference))
+        {
+            return null;
+        }
+
+        var chart = snapshot.Chart;
+        if (chart is null)
+        {
+            return null;
+        }
+
+        // A reference collision: two Rechnungen with the same non-empty reference → no match.
+        var matches = snapshot.Invoices.Where(inv => inv.Reference == reference).ToList();
+        if (matches.Count == 0 || matches.Count > 1)
+        {
+            return null;
+        }
+        var invoice = matches[0];
+
+        // Already fully paid → no match.
+        if (invoice.ExistingPaid == invoice.Total)
+        {
+            return null;
+        }
+
+        var outstanding = invoice.Total - invoice.ExistingPaid;
+        // The payment must cover at least the outstanding amount; an underpayment does not match.
+        // For a debit, the signed amount is negative; compare absolute values.
+        if (Math.Abs(signedAmount) < outstanding)
+        {
+            return null;
+        }
+
+        var entries = new List<ImportEntryDraft>();
+        foreach (var line in invoice.Lines)
+        {
+            // A missing or inactive line Konto → no match.
+            var account = chart.Find(line.AccountNumber);
+            if (account is null || !account.Active)
+            {
+                return null;
+            }
+            // The position's amount is multiplied by the movement's sign: credits positive, debits negative.
+            var sign = signedAmount >= 0 ? 1m : -1m;
+            entries.Add(new ImportEntryDraft(line.Text, line.AccountNumber, line.Amount * sign));
+        }
+
+        // Overpayment (credit side): one extra Buchung to Konto 3600 for the excess.
+        var excess = Math.Abs(signedAmount) - outstanding;
+        if (excess > 0)
+        {
+            var overpaymentAccount = chart.Find(OverpaymentAccount);
+            if (overpaymentAccount is null || !overpaymentAccount.Active)
+            {
+                return null;
+            }
+            // The overpayment Buchung takes the movement's sign.
+            var overpaymentAmount = signedAmount > 0 ? excess : -excess;
+            entries.Add(new ImportEntryDraft($"Rechnung {invoice.Id:D4}", OverpaymentAccount, overpaymentAmount));
+        }
+
+        // The Buchungen must sum to the movement's amount.
+        if (entries.Sum(e => e.Amount) != signedAmount)
+        {
+            return null;
+        }
+
+        return (invoice.Id, entries.AsReadOnly());
     }
 
     private sealed class ImportContext(ImportSnapshot snapshot)

@@ -477,6 +477,22 @@ api.MapPost(
                 .Select(t => t.BankReference!)
                 .ToListAsync();
             var persons = await db.Persons.ToListAsync();
+
+            // Open Rechnungen for matching: QR-bill reference, total, and positions.
+            // existingPaid is always 0 here: re-imports are skipped via BankReference, so a Bewegung
+            // is only ever imported once. The Buchungen created by the import are attributed to the
+            // Rechnung by their Text and Konto, not by a foreign key.
+            var invoices = await db.Invoices.Include(i => i.Lines).ToListAsync();
+            var importInvoices = invoices
+                .Where(i => !string.IsNullOrEmpty(i.Reference))
+                .Select(i => new ImportInvoice(
+                    i.Id,
+                    i.Reference,
+                    i.Lines.Sum(l => l.Amount),
+                    0m,
+                    i.Lines.OrderBy(l => l.Position).Select(l => new ImportInvoiceLine(l.Text, l.AccountNumber, l.Amount)).ToList()
+                ))
+                .ToList();
             byte[] zip;
             await using (var upload = file.OpenReadStream())
             using (var memory = new MemoryStream())
@@ -487,7 +503,7 @@ api.MapPost(
 
             var result = BankImport.Import(
                 zip,
-                new ImportSnapshot(settings, existingReferences, persons)
+                new ImportSnapshot(settings, existingReferences, persons, importInvoices, chart)
             );
             if (result.Errors.Count > 0)
             {
@@ -502,6 +518,12 @@ api.MapPost(
                     Text = t.Text,
                     BankReference = t.BankReference,
                     PersonId = t.PersonId,
+                    Entries = t.AutoEntries.Select(e => new Entry
+                    {
+                        Text = e.Text,
+                        AccountNumber = e.AccountNumber,
+                        Amount = e.Amount,
+                    }).ToList(),
                 })
             );
             await SaveEntryChangeAsync(db, chart);

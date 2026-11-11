@@ -1135,10 +1135,456 @@ public class BankImportTests
         Assert.Equal("M. Muster – Jahresbeitrag", transaction.Text);
     }
 
-    private static BankImportResult Import(byte[] zip, string[]? existingReferences = null)
+    [Fact]
+    public void A_camt_file_with_a_structured_CdtrRefInf_deserializes()
     {
-        return BankImport.Import(zip, new ImportSnapshot(Settings, existingReferences ?? [], []));
+        var ntry = """
+            <Ntry>
+              <Amt Ccy="CHF">100.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Sts><Cd>BOOK</Cd></Sts>
+              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+              <NtryDtls><TxDtls>
+                <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
+                <Amt Ccy="CHF">100.00</Amt>
+                <RmtInf>
+                <Strd>
+                  <CdtrRefInf>
+                    <Ref>RF340042</Ref>
+                  </CdtrRefInf>
+                </Strd>
+                </RmtInf>
+              </TxDtls></NtryDtls>
+            </Ntry>
+            """;
+        var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile("20260210", ClubIban, ntry)));
+        var result = Import(zip);
+        Assert.Single(result.Transactions);
+        Assert.Empty(result.Errors);
     }
+
+    [Fact]
+    public void A_payment_whose_QR_reference_matches_an_open_Rechnung_imports_with_auto_bookings()
+    {
+        var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042", ustrd: "Jahresbeitrag")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Equal(42, tx.MatchedInvoiceId);
+        Assert.Single(tx.AutoEntries);
+        Assert.Equal("Jahresbeitrag", tx.AutoEntries[0].Text);
+        Assert.Equal(3400, tx.AutoEntries[0].AccountNumber);
+        Assert.Equal(100m, tx.AutoEntries[0].Amount);
+        Assert.Equal(100m, tx.AutoEntries.Sum(e => e.Amount));
+    }
+
+    [Fact]
+    public void An_overpayment_adds_an_extra_booking_to_Konto_3600()
+    {
+        var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtryWithReference("115.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Equal(42, tx.MatchedInvoiceId);
+        Assert.Equal(2, tx.AutoEntries.Count);
+        Assert.Equal("Jahresbeitrag", tx.AutoEntries[0].Text);
+        Assert.Equal(3400, tx.AutoEntries[0].AccountNumber);
+        Assert.Equal(100m, tx.AutoEntries[0].Amount);
+        Assert.Equal("Rechnung 0042", tx.AutoEntries[1].Text);
+        Assert.Equal(3600, tx.AutoEntries[1].AccountNumber);
+        Assert.Equal(15m, tx.AutoEntries[1].Amount);
+        Assert.Equal(115m, tx.AutoEntries.Sum(e => e.Amount));
+    }
+
+    [Fact]
+    public void An_underpayment_imports_without_bookings_and_without_error()
+    {
+        var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtryWithReference("80.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Null(tx.MatchedInvoiceId);
+        Assert.Empty(tx.AutoEntries);
+    }
+
+    [Fact]
+    public void A_missing_reference_imports_without_bookings_and_without_error()
+    {
+        var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1", ustrd: "Jahresbeitrag")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Null(tx.MatchedInvoiceId);
+        Assert.Empty(tx.AutoEntries);
+    }
+
+    [Fact]
+    public void An_unknown_reference_imports_without_bookings_and_without_error()
+    {
+        var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340999")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Null(tx.MatchedInvoiceId);
+        Assert.Empty(tx.AutoEntries);
+    }
+
+    [Fact]
+    public void A_debit_matching_an_open_Rechnung_imports_with_negative_bookings()
+    {
+        var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtryWithReference("100.00", "DBIT", "2026-02-10", "TX1", "RF340042")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Equal(42, tx.MatchedInvoiceId);
+        Assert.Single(tx.AutoEntries);
+        Assert.Equal(-100m, tx.AutoEntries[0].Amount);
+    }
+
+    [Fact]
+    public void A_line_with_a_missing_Konto_degrades_to_no_match()
+    {
+        var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                [new ImportInvoiceLine("Jahresbeitrag", 9999, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Null(tx.MatchedInvoiceId);
+        Assert.Empty(tx.AutoEntries);
+    }
+
+    [Fact]
+    public void A_line_with_an_inactive_Konto_degrades_to_no_match()
+    {
+        var chart = ChartOfAccounts.Parse(
+            """
+            {
+              "income": [
+                { "number": 3400, "name": "Beiträge", "inactive": true }
+              ],
+              "expense": []
+            }
+            """
+        );
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Null(tx.MatchedInvoiceId);
+        Assert.Empty(tx.AutoEntries);
+    }
+
+    [Fact]
+    public void An_overpayment_with_a_missing_3600_degrades_to_no_match()
+    {
+        var chart = ChartOfAccounts.Parse(
+            """
+            {
+              "income": [
+                { "number": 3400, "name": "Beiträge" }
+              ],
+              "expense": []
+            }
+            """
+        );
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtryWithReference("115.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Null(tx.MatchedInvoiceId);
+        Assert.Empty(tx.AutoEntries);
+    }
+
+    [Fact]
+    public void A_reference_collision_degrades_to_no_match()
+    {
+        var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(42, "RF340042", 100m, 0m, [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]),
+            new ImportInvoice(43, "RF340042", 200m, 0m, [new ImportInvoiceLine("Beitrag", 3400, 200m)]),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Null(tx.MatchedInvoiceId);
+        Assert.Empty(tx.AutoEntries);
+    }
+
+    [Fact]
+    public void A_multi_position_Rechnung_imports_one_booking_per_position_in_order()
+    {
+        var chart = TestChart();
+        var invoices = new[]
+        {
+            new ImportInvoice(
+                42,
+                "RF340042",
+                150m,
+                0m,
+                [
+                    new ImportInvoiceLine("Jahresbeitrag", 3400, 100m),
+                    new ImportInvoiceLine("Material", 4550, 50m),
+                ]
+            ),
+        };
+        var zip = CamtTestFiles.Zip(
+            (
+                "20260210.xml",
+                CamtFile(
+                    "20260210",
+                    ClubIban,
+                    TxDtlsNtryWithReference("150.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                )
+            )
+        );
+
+        var result = Import(zip, invoices: invoices, chart: chart);
+        Assert.Empty(result.Errors);
+        var tx = Assert.Single(result.Transactions);
+        Assert.Equal(42, tx.MatchedInvoiceId);
+        Assert.Equal(2, tx.AutoEntries.Count);
+        Assert.Equal("Jahresbeitrag", tx.AutoEntries[0].Text);
+        Assert.Equal(3400, tx.AutoEntries[0].AccountNumber);
+        Assert.Equal(100m, tx.AutoEntries[0].Amount);
+        Assert.Equal("Material", tx.AutoEntries[1].Text);
+        Assert.Equal(4550, tx.AutoEntries[1].AccountNumber);
+        Assert.Equal(50m, tx.AutoEntries[1].Amount);
+        Assert.Equal(150m, tx.AutoEntries.Sum(e => e.Amount));
+    }
+
+    private static BankImportResult Import(
+        byte[] zip,
+        string[]? existingReferences = null,
+        IReadOnlyCollection<ImportInvoice> invoices = null,
+        ChartOfAccounts? chart = null,
+        IReadOnlyCollection<Person> persons = null
+    )
+    {
+        return BankImport.Import(
+            zip,
+            new ImportSnapshot(
+                Settings,
+                existingReferences ?? [],
+                persons ?? [],
+                invoices ?? [],
+                chart
+            )
+        );
+    }
+
+    private static ChartOfAccounts TestChart() =>
+        ChartOfAccounts.Parse(
+            """
+            {
+              "income": [
+                { "number": 3400, "name": "Beiträge" },
+                { "number": 3600, "name": "Spenden" }
+              ],
+              "expense": [
+                { "number": 4600, "name": "Verband" },
+                { "number": 4550, "name": "Material" }
+              ]
+            }
+            """
+        );
 
     private static string CamtFile(string name, string iban, params string[] ntries) =>
         CamtFileIn("urn:iso:std:iso:20022:tech:xsd:camt.053.001.08", name, iban, ntries);
@@ -1183,6 +1629,36 @@ public class BankImportTests
                 {(ustrd is null ? "" : $"<RmtInf><Ustrd>{ustrd}</Ustrd></RmtInf>")}
               </TxDtls></NtryDtls>
               {(addtl is null ? "" : $"<AddtlNtryInf>{addtl}</AddtlNtryInf>")}
+            </Ntry>
+            """;
+
+    /// <summary>One Ntry with exactly one TxDtls, with a QR-bill CdtrRefInf reference.</summary>
+    private static string TxDtlsNtryWithReference(
+        string amount,
+        string direction,
+        string date,
+        string txRef,
+        string qrReference,
+        string? ustrd = null
+    ) =>
+        $"""
+            <Ntry>
+              <Amt Ccy="CHF">{amount}</Amt>
+              <CdtDbtInd>{direction}</CdtDbtInd>
+              <Sts><Cd>BOOK</Cd></Sts>
+              <BookgDt><Dt>{date}</Dt></BookgDt>
+              <NtryDtls><TxDtls>
+                <Refs><AcctSvcrRef>{txRef}</AcctSvcrRef></Refs>
+                <Amt Ccy="CHF">{amount}</Amt>
+                <RmtInf>
+                  {(ustrd is null ? "" : $"<Ustrd>{ustrd}</Ustrd>")}
+                  <Strd>
+                    <CdtrRefInf>
+                      <Ref>{qrReference}</Ref>
+                    </CdtrRefInf>
+                  </Strd>
+                </RmtInf>
+              </TxDtls></NtryDtls>
             </Ntry>
             """;
 

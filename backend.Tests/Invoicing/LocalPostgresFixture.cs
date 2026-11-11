@@ -57,10 +57,9 @@ public sealed class LocalPostgresFixture : IAsyncLifetime
         await _connection.OpenAsync();
 
         // Apply the production migrations to the fresh database, exactly like Program.cs does at startup.
-        var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(ConnectionString)
-            .MigrationsAssembly(typeof(AppDbContext).Assembly);
-        var db = new AppDbContext(optionsBuilder.Options);
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(ConnectionString, b => b.MigrationsAssembly(typeof(AppDbContext).Assembly));
+        var db = new AppDbContext(options.Options);
         await db.Database.MigrateAsync();
         await db.DisposeAsync();
     }
