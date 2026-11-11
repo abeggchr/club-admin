@@ -46,8 +46,7 @@ public record BankImportResult(
 /// </summary>
 public static class BankImport
 {
-    /// <summary>Every CAMT.053 version shares this namespace prefix; only namespaces starting with it are accepted.</summary>
-    private const string Camt053NamespacePrefix = "urn:iso:std:iso:20022:tech:xsd:camt.053";
+    public static readonly XNamespace Namespace = "urn:iso:std:iso:20022:tech:xsd:camt.053.001.08";
 
     /// <summary>Safety limits for the eBanking zip: at most this many XML files...</summary>
     private const int MaxXmlFiles = 100;
@@ -99,7 +98,7 @@ public static class BankImport
                 return new BankImportResult(
                     [],
                     0,
-                    [new ImportError(null, "Keine CAMT.053-Datei in der ZIP gefunden.")]
+                    [new ImportError(null, "Keine Datei in der ZIP gefunden.")]
                 );
             }
             if (xmlEntries.Count > MaxXmlFiles)
@@ -161,17 +160,18 @@ public static class BankImport
 
     private static void ParseStatement(XDocument document, string file, ImportContext context)
     {
-        var stmt = document.Root;
-        if (stmt is null || stmt.Name.LocalName != "Stmt")
+        var root = document.Root;
+        if (root == null)
         {
-            context.Errors.Add(
-                new ImportError(file, "Die Datei ist keine CAMT.053-Datei (Stmt fehlt).")
-            );
+            context.Errors.Add(new ImportError(file, "Hat keine root Dokument"));
             return;
         }
 
-        var ns = stmt.Name.NamespaceName;
-        if (!ns.StartsWith(Camt053NamespacePrefix, StringComparison.Ordinal))
+        var ns = root.Name.NamespaceName;
+        if (
+            string.IsNullOrEmpty(ns)
+            || !ns.Equals(Namespace.NamespaceName, StringComparison.Ordinal)
+        )
         {
             context.Errors.Add(
                 new ImportError(
@@ -183,6 +183,14 @@ public static class BankImport
             );
             return;
         }
+
+        var stmts = root.Descendants(Namespace + "Stmt").ToList();
+        if (stmts.Count != 1)
+        {
+            context.Errors.Add(new ImportError(file, "Erwartet 1 Stmt, but was " + stmts.Count));
+            return;
+        }
+        var stmt = stmts.First();
 
         var fileIban = Iban.Normalize(Local(Local(Local(stmt, "Acct"), "Id"), "IBAN")?.Value);
         if (string.IsNullOrEmpty(fileIban))

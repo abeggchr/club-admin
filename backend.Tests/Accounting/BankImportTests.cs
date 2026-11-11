@@ -282,50 +282,6 @@ public class BankImportTests
     }
 
     [Fact]
-    public void A_dot_02_shaped_file_is_imported()
-    {
-        var ntry = """
-            <Ntry>
-              <AmtDtls>
-                <TxAmt><Amt Ccy="CHF">100.00</Amt></TxAmt>
-              </AmtDtls>
-              <CdtDbtInd>CRDT</CdtDbtInd>
-              <Sts>BOOK</Sts>
-              <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-              <TxDtls>
-                <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
-                <AmtDtls>
-                  <TxAmt><Amt Ccy="CHF">100.00</Amt></TxAmt>
-                </AmtDtls>
-                <Dbtr>
-                  <Nm>M. Muster</Nm>
-                </Dbtr>
-                <Ustrd>Jahresbeitrag</Ustrd>
-              </TxDtls>
-            </Ntry>
-            """;
-        var zip = CamtTestFiles.Zip(
-            (
-                "20260210.xml",
-                CamtFileIn(
-                    "urn:iso:std:iso:20022:tech:xsd:camt.053.001.02",
-                    "20260210",
-                    ClubIban,
-                    ntry
-                )
-            )
-        );
-
-        var result = Import(zip);
-        var transaction = Assert.Single(result.Transactions);
-        Assert.Empty(result.Errors);
-        Assert.Equal(100.00m, transaction.Amount);
-        // The dot 02 counterparty name (Dbtr/Nm) is put in front of the text, too.
-        Assert.Equal("M. Muster – Jahresbeitrag", transaction.Text);
-        Assert.Equal("TX1", transaction.BankReference);
-    }
-
-    [Fact]
     public void An_entry_without_a_status_is_an_error_naming_the_file()
     {
         var ntry = """
@@ -447,10 +403,14 @@ public class BankImportTests
             """;
         var document = $"""
             <?xml version="1.0" encoding="UTF-8"?>
-            <Stmt xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
-              <Id>20260210</Id>
-              {ntry}
-            </Stmt>
+            <Document xmlns="{BankImport.Namespace}">
+                <BkToCstmrStmt>
+                    <Stmt >
+                      <Id>20260210</Id>
+                      {ntry}
+                    </Stmt>
+                </BkToCstmrStmt>
+            </Document>
             """;
         var zip = CamtTestFiles.Zip(("20260210.xml", document));
 
@@ -876,7 +836,7 @@ public class BankImportTests
 
         var error = Assert.Single(Import(zip).Errors);
         Assert.Null(error.File);
-        Assert.Contains("CAMT.053", error.Message);
+        Assert.Contains("Keine", error.Message);
     }
 
     [Fact]
@@ -1192,16 +1152,20 @@ public class BankImportTests
     private static string CamtFileIn(string ns, string name, string iban, params string[] ntries) =>
         $"""
             <?xml version="1.0" encoding="UTF-8"?>
-            <Stmt xmlns="{ns}">
-              <Id>{name}</Id>
-              <CreDtTm>2026-02-11T00:00:00</CreDtTm>
-              <Acct>
-                <Id>
-                  <IBAN>{iban}</IBAN>
-                </Id>
-              </Acct>
-              {string.Join("\n", ntries)}
-            </Stmt>
+            <Document xmlns="{ns}">
+                <BkToCstmrStmt>
+                    <Stmt>
+                      <Id>{name}</Id>
+                      <CreDtTm>2026-02-11T00:00:00</CreDtTm>
+                      <Acct>
+                        <Id>
+                          <IBAN>{iban}</IBAN>
+                        </Id>
+                      </Acct>
+                      {string.Join("\n", ntries)}
+                    </Stmt>
+                </BkToCstmrStmt>
+            </Document>
             """;
 
     /// <summary>One Ntry with exactly one TxDtls, the shape the ZKB eBanking sends.</summary>
