@@ -41,7 +41,7 @@ export function AnnualFeesDialog({
 		<dialog
 			ref={dialogRef}
 			onClose={() => run.reset()}
-			className="m-auto w-[32rem] rounded border border-neutral-300 p-6 backdrop:bg-black/40"
+			className="m-auto w-2xl rounded border border-neutral-300 p-6 backdrop:bg-black/40"
 		>
 			<form onSubmit={submit}>
 				<h2 className="text-xl font-bold">Jahresbeiträge</h2>
