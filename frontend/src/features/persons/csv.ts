@@ -12,9 +12,8 @@ const exportColumns: { header: string; value: (p: Person) => string | null }[] =
   { header: 'E-Mail', value: (p) => p.email },
   { header: 'Mobilfunknummer', value: (p) => p.mobilePhone },
   { header: 'Festnetznummer', value: (p) => p.landlinePhone },
-  // Street and house number go out as one "Adresse" line, so the backend's split
-  // of that column reconstructs the two fields when the file is re-imported.
-  { header: 'Adresse', value: (p) => [p.street, p.number].filter(Boolean).join(' ') || null },
+  { header: 'Strasse', value: (p) => p.street },
+  { header: 'Hausnummer', value: (p) => p.number },
   { header: 'PLZ', value: (p) => p.postalCode },
   { header: 'Ort', value: (p) => p.city },
   { header: 'Land', value: (p) => p.country },
