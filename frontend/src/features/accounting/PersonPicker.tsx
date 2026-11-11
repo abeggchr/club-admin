@@ -7,11 +7,13 @@ import type { Person } from '../persons/types'
 type Props = {
   value: number | null
   onChange: (id: number | null) => void
+  /** When true the picker shows the selected Person but does not open or report changes. */
+  readOnly?: boolean
   className?: string
 }
 
 /** Person autocomplete: type part of a name to filter. Persons who have left are not offered. */
-export function PersonPicker({ value, onChange, className }: Props) {
+export function PersonPicker({ value, onChange, readOnly = false, className }: Props) {
   const { data: persons } = useSuspenseQuery(personsQueryOptions)
   const listId = useId()
   const [query, setQuery] = useState<string | null>(null) // null = not editing
@@ -33,6 +35,7 @@ export function PersonPicker({ value, onChange, className }: Props) {
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if (readOnly) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setOpen(true)
@@ -60,14 +63,17 @@ export function PersonPicker({ value, onChange, className }: Props) {
         aria-autocomplete="list"
         aria-activedescendant={open && options[highlight] ? `${listId}-${options[highlight].id}` : undefined}
         autoComplete="off"
-        placeholder="Person wählen…"
+        readOnly={readOnly}
+        placeholder={readOnly ? undefined : 'Person wählen…'}
         className={className}
         value={text}
         onFocus={(e) => {
+          if (readOnly) return
           setOpen(true)
           e.target.select()
         }}
         onChange={(e) => {
+          if (readOnly) return
           setQuery(e.target.value)
           setHighlight(0)
           setOpen(true)
