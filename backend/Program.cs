@@ -99,7 +99,7 @@ api.MapPut(
         person.MobilePhone = update.MobilePhone;
         person.LandlinePhone = update.LandlinePhone;
         person.Street = update.Street;
-        person.HouseNumber = update.HouseNumber;
+        person.Number = update.Number;
         person.PostalCode = update.PostalCode;
         person.City = update.City;
         person.Country = update.Country;
@@ -761,7 +761,7 @@ record PersonUpdate(
     string? MobilePhone,
     string? LandlinePhone,
     string? Street,
-    string? HouseNumber,
+    string? Number,
     string? PostalCode,
     string? City,
     string? Country,

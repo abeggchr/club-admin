@@ -14,7 +14,7 @@ const textFields: { key: keyof Person; label: string; type?: string; multiline?:
   { key: 'mobilePhone', label: 'Mobilfunknummer', type: 'tel' },
   { key: 'landlinePhone', label: 'Festnetznummer', type: 'tel' },
   { key: 'street', label: 'Strasse' },
-  { key: 'houseNumber', label: 'Hausnummer' },
+  { key: 'number', label: 'Hausnummer' },
   { key: 'postalCode', label: 'PLZ' },
   { key: 'city', label: 'Ort' },
   { key: 'country', label: 'Land' },

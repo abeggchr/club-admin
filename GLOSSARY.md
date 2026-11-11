@@ -47,7 +47,7 @@ The IBAN of the club's bank account (CH or LI, 21 characters, valid mod-97 check
 The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen whose Bewegung is dated up to that date. The user compares it by eye against the bank statement.
 
 **Person** (code: _Person_):
-A club member or contact: a name, membership dates and contact data. The address is stored as Strasse plus Hausnummer (code: _Street_ and _HouseNumber_), not as one line, so that imported bank addresses can be matched against it.
+A club member or contact: a name, membership dates and contact data. The address is stored as Strasse plus Hausnummer (code: _Street_ and _Number_), not as one line, so that imported bank addresses can be matched against it.
 
 **Textvorlage** (code: _TextTemplate_):
 A reusable set of Betreff, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. Zero Textvorlagen is a valid state.

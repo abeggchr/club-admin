@@ -152,7 +152,7 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("HouseNumber")
+                    b.Property<string>("Number")
                         .HasColumnType("text");
 
                     b.Property<DateOnly?>("JoinedOn")

@@ -9,7 +9,7 @@ export type Person = {
   mobilePhone: string | null
   landlinePhone: string | null
   street: string | null
-  houseNumber: string | null
+  number: string | null
   postalCode: string | null
   city: string | null
   country: string | null

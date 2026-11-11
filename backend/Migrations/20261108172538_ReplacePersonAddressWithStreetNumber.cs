@@ -5,44 +5,41 @@
 namespace backend.Migrations
 {
     /// <inheritdoc />
-    public partial class ReplacePersonAddressWithStreetAndHouseNumber : Migration
+    public partial class ReplacePersonAddressWithStreetAndNumber : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "Address",
-                table: "Persons");
+            migrationBuilder.DropColumn(name: "Address", table: "Persons");
 
             migrationBuilder.AddColumn<string>(
                 name: "Street",
                 table: "Persons",
                 type: "text",
-                nullable: true);
+                nullable: true
+            );
 
             migrationBuilder.AddColumn<string>(
-                name: "HouseNumber",
+                name: "Number",
                 table: "Persons",
                 type: "text",
-                nullable: true);
+                nullable: true
+            );
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "HouseNumber",
-                table: "Persons");
+            migrationBuilder.DropColumn(name: "HouseNumber", table: "Persons");
 
-            migrationBuilder.DropColumn(
-                name: "Street",
-                table: "Persons");
+            migrationBuilder.DropColumn(name: "Street", table: "Persons");
 
             migrationBuilder.AddColumn<string>(
                 name: "Address",
                 table: "Persons",
                 type: "text",
-                nullable: true);
+                nullable: true
+            );
         }
     }
 }

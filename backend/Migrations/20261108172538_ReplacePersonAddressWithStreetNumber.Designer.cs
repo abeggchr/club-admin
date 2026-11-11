@@ -11,8 +11,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261108172538_ReplacePersonAddressWithStreetAndHouseNumber")]
-    partial class ReplacePersonAddressWithStreetAndHouseNumber
+    [Migration("20261108172538_ReplacePersonAddressWithStreetAndNumber")]
+    partial class ReplacePersonAddressWithStreetAndNumber
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -145,7 +145,7 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("HouseNumber")
+                    b.Property<string>("Number")
                         .HasColumnType("text");
 
                     b.Property<DateOnly?>("JoinedOn")
