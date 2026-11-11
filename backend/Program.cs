@@ -258,6 +258,48 @@ api.MapGet(
     }
 );
 
+api.MapGet(
+    "/jubilees",
+    async (AppDbContext db) =>
+    {
+        var settings = await db.Settings.FindAsync(Settings.SingletonId);
+        if (settings is null)
+        {
+            return Results.NotFound();
+        }
+
+        var persons = await db.Persons.ToListAsync();
+        var now = System.DateTime.Now;
+        var jubilees = JubileeRules.Compute(
+            persons,
+            settings.StartDate,
+            new DateOnly(now.Year, now.Month, now.Day)
+        );
+        return Results.Ok(
+            new
+            {
+                clubYearStartYear = jubilees.ClubYearStartYear,
+                anniversaries = jubilees.Anniversaries.Select(a => new
+                {
+                    personId = a.PersonId,
+                    years = a.Years,
+                    firstName = a.FirstName,
+                    lastName = a.LastName,
+                    birthdate = a.Birthdate,
+                }),
+                jubilees = jubilees.JubileesRows.Select(j => new
+                {
+                    personId = j.PersonId,
+                    years = j.Years,
+                    firstName = j.FirstName,
+                    lastName = j.LastName,
+                    entryDate = j.EntryDate,
+                }),
+            }
+        );
+    }
+);
+
 api.MapPost(
     "/transactions",
     async (TransactionInput input, AppDbContext db, ChartOfAccounts chart) =>
