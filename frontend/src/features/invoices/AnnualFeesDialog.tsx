@@ -30,7 +30,7 @@ export function AnnualFeesDialog({
 		if (selected === null) return;
 		if (
 			!window.confirm(
-				"Es werden Rechnungen für alle aktiven Mitglieder erstellt. Fortfahren?",
+				"Es werden Rechnungen für alle aktiven Mitglieder erstellt. Das kann zu Duplikaten führen. Fortfahren?",
 			)
 		)
 			return;
