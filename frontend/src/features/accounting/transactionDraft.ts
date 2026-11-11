@@ -214,9 +214,15 @@ export function validateDraft(
 	let any = false;
 
 	const dateError = entryDateError(draft.date, openingStartDate);
-	if (dateError) (errors.date = dateError), (any = true);
+	if (dateError) {
+		errors.date = dateError;
+		any = true;
+	}
 	const total = parseAmount(draft.amount);
-	if (!total.ok) (errors.amount = total.error), (any = true);
+	if (!total.ok) {
+		errors.amount = total.error;
+		any = true;
+	}
 
 	draft.entries.forEach((row, i) => {
 		const rowErrors: DraftErrors["entries"][number] = {};
@@ -256,10 +262,11 @@ export function toTransactionInput(
 		const amount = signedEntryAmount(draft, i, accounts);
 		if (amount === null) return null;
 		const row = draft.entries[i];
+		if (row.accountNumber === null) return null;
 		entries.push({
 			id: row.id,
 			text: row.text.trim(),
-			accountNumber: row.accountNumber!,
+			accountNumber: row.accountNumber,
 			amount,
 		});
 	}

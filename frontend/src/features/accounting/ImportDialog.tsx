@@ -72,6 +72,7 @@ export function ImportDialog({
 				{errors && (
 					<ul className="mt-3 list-disc pl-5 text-sm text-red-600">
 						{errors.map((e, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: read-only error list without ids
 							<li key={i}>{e.file ? `${e.file}: ${e.message}` : e.message}</li>
 						))}
 					</ul>

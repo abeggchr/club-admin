@@ -95,19 +95,20 @@ export function PersonPicker({
 				onKeyDown={onKeyDown}
 			/>
 			{open && (
-				<ul
+				<div
 					id={listId}
 					role="listbox"
 					className="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-auto rounded border border-slate-300 bg-white shadow"
 				>
 					{options.length === 0 && (
-						<li className="p-2 text-slate-500">Keine Person gefunden</li>
+						<div className="p-2 text-slate-500">Keine Person gefunden</div>
 					)}
 					{options.map((p, i) => (
-						<li
+						<div
 							key={p.id}
 							id={`${listId}-${p.id}`}
 							role="option"
+							tabIndex={-1}
 							aria-selected={p.id === value}
 							// mousedown (not click) so it fires before the input's blur closes the list
 							onMouseDown={(e) => {
@@ -119,9 +120,9 @@ export function PersonPicker({
 						>
 							{personLabel(p)}
 							{p.leftOn !== null ? " (ausgetreten)" : ""}
-						</li>
+						</div>
 					))}
-				</ul>
+				</div>
 			)}
 		</div>
 	);

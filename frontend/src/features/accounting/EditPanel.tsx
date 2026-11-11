@@ -191,6 +191,7 @@ export function EditPanel({
 
 			{draft.entries.map((row, i) => (
 				<fieldset
+					// biome-ignore lint/suspicious/noArrayIndexKey: draft rows have no id; the index is their identity (patchRow, removeEntry)
 					key={i}
 					className="flex flex-col gap-2 rounded border border-slate-200 p-3"
 				>

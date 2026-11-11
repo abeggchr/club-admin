@@ -101,6 +101,7 @@ export function CreatePanel({ onDone }: { onDone: () => void }) {
 
 			{draft.lines.map((line, i) => (
 				<fieldset
+					// biome-ignore lint/suspicious/noArrayIndexKey: draft rows have no id; the index is their identity (patchLine, removeLine)
 					key={i}
 					className="flex flex-col gap-2 rounded border border-slate-200 p-3"
 				>

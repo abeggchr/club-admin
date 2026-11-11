@@ -111,19 +111,20 @@ export function KontoPicker({ value, onChange, id, className }: Props) {
 				</span>
 			)}
 			{open && (
-				<ul
+				<div
 					id={listId}
 					role="listbox"
 					className="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-auto rounded border border-slate-300 bg-white shadow"
 				>
 					{options.length === 0 && (
-						<li className="p-2 text-slate-500">Kein Konto gefunden</li>
+						<div className="p-2 text-slate-500">Kein Konto gefunden</div>
 					)}
 					{options.map((a, i) => (
-						<li
+						<div
 							key={a.number}
 							id={`${listId}-${a.number}`}
 							role="option"
+							tabIndex={-1}
 							aria-selected={a.number === value}
 							aria-disabled={!a.active}
 							// mousedown (not click) so it fires before the input's blur closes the list
@@ -145,9 +146,9 @@ export function KontoPicker({ value, onChange, id, className }: Props) {
 							>
 								{categoryLabel[a.category]}
 							</span>
-						</li>
+						</div>
 					))}
-				</ul>
+				</div>
 			)}
 		</div>
 	);

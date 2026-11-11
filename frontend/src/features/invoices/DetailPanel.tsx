@@ -80,6 +80,7 @@ export function DetailPanel({
 						</thead>
 						<tbody>
 							{invoice.lines.map((l, i) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: read-only lines have no id
 								<tr key={i} className="border-b border-slate-100">
 									<td className="py-1">{accountOf(l.accountNumber)}</td>
 									<td className="py-1">{l.text}</td>
@@ -100,8 +101,8 @@ export function DetailPanel({
 					<div className="text-sm">
 						<p className="text-slate-500">Status</p>
 						<ul>
-							{invoice.statusHistory.map((s, i) => (
-								<li key={i}>
+							{invoice.statusHistory.map((s) => (
+								<li key={`${s.status}-${s.timestamp}`}>
 									{statusLabel(s.status)} – {formatDateTime(s.timestamp)}
 								</li>
 							))}

@@ -27,7 +27,8 @@ export function PersonsToolbar({
 				onChange={(e) => onFilterChange(e.target.value)}
 				className="w-96 rounded border border-neutral-300 px-3 py-2 text-sm"
 			/>
-			<div role="group" aria-label="Ansicht" className="inline-flex">
+			<fieldset className="inline-flex">
+				<legend className="sr-only">Ansicht</legend>
 				{Object.entries(views).map(([key, v]) => (
 					<button
 						key={key}
@@ -43,7 +44,7 @@ export function PersonsToolbar({
 						{v.label}
 					</button>
 				))}
-			</div>
+			</fieldset>
 			<div className="ml-auto flex gap-2">
 				<button
 					type="button"
