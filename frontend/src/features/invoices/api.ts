@@ -51,6 +51,19 @@ export function createInvoice(input: InvoiceInput): Promise<unknown> {
 	return requestJson("/api/invoices", "POST", input);
 }
 
+export type AnnualFeesSummary = {
+	created: number;
+	failed: string[];
+	warnings: string[];
+};
+
+/** Creates the Jahresbeitrag Rechnungen for all active members (no preview, no duplicate check). */
+export function createAnnualFeeInvoices(
+	templateId: number,
+): Promise<AnnualFeesSummary> {
+	return requestJson("/api/invoices/annual-fees", "POST", { templateId });
+}
+
 export function invalidateInvoices(queryClient: QueryClient) {
 	return queryClient.invalidateQueries({
 		queryKey: invoicesQueryOptions.queryKey,
