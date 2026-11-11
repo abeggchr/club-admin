@@ -70,8 +70,7 @@ public class InvoiceDocumentTests
     {
         var text = Text(InvoiceDocument.Render(Data()));
 
-        Assert.Contains("Rechnung Nr. 0042", text);
-        Assert.Contains("Rechnungsdatum: 08.11.2026", text);
+        Assert.Contains("Rechnung: #0042 / 08.11.2026", text);
         Assert.Contains("CHF 1'334.50", text);
     }
 
@@ -95,8 +94,7 @@ public class InvoiceDocumentTests
         var text = Text(InvoiceDocument.Render(Data(address: [])));
 
         Assert.Contains("Muster Hans", text);
-        Assert.Contains("Rechnung Nr. 0042", text);
-        Assert.Contains("Rechnungsdatum: 08.11.2026", text);
+        Assert.Contains("Rechnung: #0042 / 08.11.2026", text);
         Assert.Contains("CHF 1'334.50", text);
         Assert.DoesNotContain("Dorfstrasse", text);
     }
