@@ -117,6 +117,9 @@ public class InvoiceDocumentTests
 
     private const double PointsPerMm = 72 / 25.4;
 
+    /// <summary>Rounding slack in PDF coordinates, in points.</summary>
+    private const double PositionTolerance = 0.5;
+
     [Fact]
     public void Short_Rechnung_has_the_payment_part_at_the_bottom_of_its_only_page()
     {
@@ -126,8 +129,8 @@ public class InvoiceDocumentTests
         var slip = Assert.Single(page.GetImages(), i => i.Bounds.Width > 100 * PointsPerMm);
         Assert.InRange(slip.Bounds.Width, 594, 596); // QuestPDF A4 is 595 x 842 pt
         Assert.InRange(slip.Bounds.Height, 296.5, 298.5);
-        Assert.InRange(slip.Bounds.Left, -0.5, 0.5);
-        Assert.InRange(slip.Bounds.Bottom, -0.5, 0.5); // PDF origin is bottom left
+        Assert.InRange(slip.Bounds.Left, -PositionTolerance, PositionTolerance);
+        Assert.InRange(slip.Bounds.Bottom, -PositionTolerance, PositionTolerance); // PDF origin is bottom left
     }
 
     [Fact]
@@ -140,9 +143,9 @@ public class InvoiceDocumentTests
             var pages = doc.GetPages().ToList();
             var last = pages[^1];
             var slip = Assert.Single(last.GetImages(), i => i.Bounds.Width > 100 * PointsPerMm);
-            Assert.InRange(slip.Bounds.Bottom, -0.5, 0.5); // PDF origin is bottom left
+            Assert.InRange(slip.Bounds.Bottom, -PositionTolerance, PositionTolerance); // PDF origin is bottom left
             // No text on the last page reaches into the payment part.
-            Assert.All(last.Letters, l => Assert.True(l.GlyphRectangle.Bottom >= slip.Bounds.Top - 0.5));
+            Assert.All(last.Letters, l => Assert.True(l.GlyphRectangle.Bottom >= slip.Bounds.Top - PositionTolerance));
             // Every page except the last carries no payment part.
             Assert.All(pages.SkipLast(1), p => Assert.DoesNotContain(p.GetImages(), i => i.Bounds.Width > 100 * PointsPerMm));
         }

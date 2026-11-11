@@ -109,10 +109,45 @@ public class QrBillSlipTests
 
         Assert.Null(QrBillCreditor.From(settings));
         Assert.Null(QrBillCreditor.From(null));
-        Assert.Equal(
-            "Bitte zuerst die Klubadresse in den Einstellungen erfassen",
-            QrBillCreditor.MissingAddressError
-        );
+        // POST /invoices answers 400 with this error before InvoiceCreator is called, so no Rechnung is created.
+        // (The endpoint needs PostgreSQL, so the decision is tested through Resolve.)
+        foreach (var s in new backend.Accounting.Settings?[] { settings, null })
+        {
+            var (creditor, error) = QrBillCreditor.Resolve(s);
+            Assert.Null(creditor);
+            Assert.Equal("Bitte zuerst die Klubadresse in den Einstellungen erfassen", error);
+        }
+    }
+
+    [Fact]
+    public void Complete_Klubadresse_resolves_to_the_creditor_without_error()
+    {
+        var settings = new backend.Accounting.Settings
+        {
+            Iban = Club.Iban,
+            Name = Club.Name,
+            Address = Club.Address,
+            PostalCode = Club.PostalCode,
+            City = Club.City,
+        };
+
+        Assert.Equal((Club, (string?)null), QrBillCreditor.Resolve(settings));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(42)]
+    [InlineData(2147483647)] // int.MaxValue: the longest Rechnungsnummer (10 digits)
+    public void Reference_building_never_throws_for_any_Rechnungsnummer_the_system_produces(int id)
+    {
+        // Rechnungsnummer is InvoiceRules.FormatNumber(id): the ID zero-padded to at least 4 digits, so always
+        // numeric and at most 10 characters; "RF" + 2 check digits + that is far below the SCOR limit of 25.
+        var number = InvoiceRules.FormatNumber(id);
+
+        var bill = QrBillSlip.Build(Club, number, 100m, null);
+
+        Assert.StartsWith("RF", bill.Reference);
+        Assert.EndsWith(number, bill.Reference);
     }
 
     [Fact]

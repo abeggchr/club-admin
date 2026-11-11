@@ -576,9 +576,10 @@ api.MapPost(
         }
 
         var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
-        if (QrBillCreditor.From(settings) is not { } creditor)
+        var (creditor, creditorError) = QrBillCreditor.Resolve(settings);
+        if (creditor is null)
         {
-            return Results.BadRequest(new { error = QrBillCreditor.MissingAddressError });
+            return Results.BadRequest(new { error = creditorError });
         }
 
         var result = await creator.CreateAsync(person, template, lines, creditor, input.OpenAmount, ct);

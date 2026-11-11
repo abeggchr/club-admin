@@ -178,15 +178,24 @@ public static class InvoiceDocument
     /// </summary>
     private sealed class PaymentPartComponent(byte[] png) : IDynamicComponent<int>
     {
+        /// <summary>Points by which the free space may fall short of the payment part height and still count as fitting.</summary>
+        private const float FitTolerance = 0.5f;
+
+        /// <summary>Points left unused so that float rounding never overflows the page.</summary>
+        private const float RoundingReserve = 0.1f;
+
         public int State { get; set; }
 
         public DynamicComponentComposeResult Compose(DynamicContext context)
         {
-            var height = QrBillSlip.HeightMm * (72f / 25.4f);            if (context.AvailableSize.Height < height - 0.5f)
+            var height = QrBillSlip.HeightMm * (72f / 25.4f);
+            if (context.AvailableSize.Height < height - FitTolerance)
                 return new DynamicComponentComposeResult
                 {
                     // Fill the rest of this page so that the payment part starts on the next one.
-                    Content = context.CreateElement(e => e.Height(Math.Max(0, context.AvailableSize.Height - 0.1f))),
+                    Content = context.CreateElement(e =>
+                        e.Height(Math.Max(0, context.AvailableSize.Height - RoundingReserve))
+                    ),
                     HasMoreContent = true,
                 };
 
@@ -195,8 +204,8 @@ public static class InvoiceDocument
                 Content = context.CreateElement(e =>
                     e.Column(c =>
                     {
-                        // A spacer pushes the image to the bottom; the tiny reserve avoids float rounding overflow.
-                        c.Item().Height(Math.Max(0, context.AvailableSize.Height - height - 0.1f));
+                        // A spacer pushes the image to the bottom; the reserve avoids float rounding overflow.
+                        c.Item().Height(Math.Max(0, context.AvailableSize.Height - height - RoundingReserve));
                         c.Item().Height(QrBillSlip.HeightMm, Unit.Millimetre).Image(png).FitArea();
                     })
                 ),
