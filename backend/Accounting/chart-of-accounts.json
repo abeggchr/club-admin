@@ -5,7 +5,6 @@
     { "number": 3510, "name": "Getränkeeinnahmen" },
     { "number": 3600, "name": "Spenden" },
     { "number": 3610, "name": "Diverse Einnahmen" },
-    { "number": 3620, "name": "Vorschüsse" },
     { "number": 6950, "name": "Zinsertrag" }
   ],
   "expense": [
