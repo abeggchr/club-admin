@@ -6,6 +6,7 @@ import {
 import { useState } from "react";
 import { textTemplatesQueryOptions } from "../settings/textTemplateApi";
 import { createAnnualFeeInvoices, invalidateInvoices } from "./api";
+import { DiscountsSection } from "./DiscountsSection";
 
 /** Jahresbeiträge: creates the Rechnungen for all active members with one Textvorlage. */
 export function AnnualFeesDialog({
@@ -60,6 +61,7 @@ export function AnnualFeesDialog({
 						))}
 					</select>
 				</label>
+				<DiscountsSection disabled={busy} />
 				{run.error && (
 					<p className="mt-3 text-sm text-red-600">{run.error.message}</p>
 				)}

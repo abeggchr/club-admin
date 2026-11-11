@@ -661,13 +661,60 @@ api.MapPost(
         }
 
         var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
-        var plan = MembershipFeeRules.Plan(persons, settings!.StartDate);
+        var discounts = await db.MembershipDiscounts.AsNoTracking().ToDictionaryAsync(d => d.PersonId, ct);
+        var plan = MembershipFeeRules.Plan(persons, settings!.StartDate, discounts);
         var summary = await BulkInvoiceRunner.RunAsync(
             plan,
             (invoice, token) => creator.CreateAsync(invoice.Recipient, template, invoice.Lines, creditor, false, token),
             ct
         );
         return Results.Ok(summary);
+    }
+);
+
+api.MapGet(
+    "/membership-discounts",
+    async (AppDbContext db) => await db.MembershipDiscounts.AsNoTracking().OrderBy(d => d.PersonId).ToListAsync()
+);
+
+// Saves (adds or replaces) the one Ermässigung of a Person.
+api.MapPut(
+    "/membership-discounts",
+    async (MembershipDiscountInput input, AppDbContext db, CancellationToken ct) =>
+    {
+        if (MembershipDiscountRules.Validate(input.PersonId, input.Percent, input.Text) is { } error)
+        {
+            return Results.BadRequest(new { error });
+        }
+        if (!await db.Persons.AnyAsync(p => p.Id == input.PersonId, ct))
+        {
+            return Results.BadRequest(new { error = "Die Person existiert nicht." });
+        }
+        var discount = await db.MembershipDiscounts.FindAsync([input.PersonId!.Value], ct);
+        if (discount is null)
+        {
+            discount = new MembershipDiscount { PersonId = input.PersonId.Value };
+            db.MembershipDiscounts.Add(discount);
+        }
+        discount.Percent = input.Percent!.Value;
+        discount.Text = input.Text!.Trim();
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(discount);
+    }
+);
+
+api.MapDelete(
+    "/membership-discounts/{personId:int}",
+    async (int personId, AppDbContext db, CancellationToken ct) =>
+    {
+        var discount = await db.MembershipDiscounts.FindAsync([personId], ct);
+        if (discount is null)
+        {
+            return Results.NotFound();
+        }
+        db.MembershipDiscounts.Remove(discount);
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
     }
 );
 
@@ -839,6 +886,8 @@ record SettingsUpdate(
     string? PostalCode,
     string? City
 );
+
+record MembershipDiscountInput(int? PersonId, int? Percent, string? Text);
 
 record TextTemplateInput(string? Subject, string? Text, string? Greetings);
 

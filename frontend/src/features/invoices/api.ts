@@ -1,5 +1,5 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
-import { getJson, requestJson } from "../accounting/api";
+import { ensureOk, getJson, requestJson } from "../accounting/api";
 import type { InvoiceInput } from "./invoiceDraft";
 
 export type InvoiceListItem = {
@@ -62,6 +62,33 @@ export function createAnnualFeeInvoices(
 	templateId: number,
 ): Promise<AnnualFeesSummary> {
 	return requestJson("/api/invoices/annual-fees", "POST", { templateId });
+}
+
+/** Ermässigung: a Person's percentage discount on the Jahresbeitrag. */
+export type MembershipDiscount = {
+	personId: number;
+	percent: number;
+	text: string;
+};
+
+export const membershipDiscountsQueryOptions = queryOptions({
+	queryKey: ["membership-discounts"],
+	queryFn: () => getJson<MembershipDiscount[]>("/api/membership-discounts"),
+});
+
+/** Adds or replaces the Ermässigung of a Person; rejects with the backend's message. */
+export function saveMembershipDiscount(
+	discount: MembershipDiscount,
+): Promise<MembershipDiscount> {
+	return requestJson("/api/membership-discounts", "PUT", discount);
+}
+
+export async function deleteMembershipDiscount(
+	personId: number,
+): Promise<void> {
+	await ensureOk(
+		await fetch(`/api/membership-discounts/${personId}`, { method: "DELETE" }),
+	);
 }
 
 export function invalidateInvoices(queryClient: QueryClient) {
