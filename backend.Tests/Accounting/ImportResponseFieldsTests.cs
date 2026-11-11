@@ -33,8 +33,8 @@ public class ImportResponseFieldsTests
         );
         var invoices = new[]
         {
-            new ImportInvoice(42, "RF340042", 100m, 0m, [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]),
-            new ImportInvoice(43, "RF340043", 50m, 0m, [new ImportInvoiceLine("Beitrag", 3400, 50m)]),
+            new ImportInvoice(42, "RF340042", 100m, 0m, false, [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]),
+            new ImportInvoice(43, "RF340043", 50m, 0m, false, [new ImportInvoiceLine("Beitrag", 3400, 50m)]),
         };
         var zip = CamtTestFiles.Zip(
             (
@@ -76,7 +76,7 @@ public class ImportResponseFieldsTests
         );
         var invoices = new[]
         {
-            new ImportInvoice(42, "RF340042", 100m, 0m, [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]),
+            new ImportInvoice(42, "RF340042", 100m, 0m, false, [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]),
         };
         var zip = CamtTestFiles.Zip(
             (
