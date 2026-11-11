@@ -19,8 +19,8 @@ public class InvoiceDocumentTests
             TemplateGreetings: "Freundliche Grüsse",
             Lines:
             [
-                new InvoiceLineDraft("Jahresbeitrag", 100m),
-                new InvoiceLineDraft("Spende", 1234.50m),
+                new InvoiceLineDraft("Jahresbeitrag", 100m, 3400),
+                new InvoiceLineDraft("Spende", 1234.50m, 3600),
             ]
         );
 

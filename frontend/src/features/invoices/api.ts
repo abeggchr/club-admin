@@ -30,7 +30,7 @@ export type InvoiceDetail = {
     city: string | null
     country: string | null
   }
-  lines: { text: string; amount: number }[]
+  lines: { text: string; amount: number; accountNumber: number }[]
   total: number
   status: string
   statusHistory: { status: string; timestamp: string }[]

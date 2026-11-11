@@ -1,0 +1,9 @@
+# A Rechnungsposition carries the account of its later Buchung as a hint
+
+A Rechnung bills a Person, but nothing tells the Kassier where the money belongs once it arrives: Buchungen are only created on Bewegungen, and a Bewegung is not linked to the invoice it settles. Every Rechnungsposition therefore carries a required Konto from the Kontoplan — the account its amount will be booked to when the matching Zahlung comes in.
+
+The Konto is a booking hint, not a booking. Creating a Rechnung writes no Buchung; when the payment arrives, the Kassier books the Bewegung and uses the invoice's positions to decide the Buchungen (one per position, with that position's Konto and amount). The CAMT import is later intended to create those Buchungen automatically once an imported Bewegung matches an open Rechnung; the stored Konto is the data that matching will consume.
+
+We chose the whole Kontoplan over income accounts only: a Bewegung's Buchungen can be a combination of Einnahmen and Ausgaben, so a position's account must not be constrained by the Rechnung's direction. Only active Konten are selectable, and the server re-checks every position's account against the Kontoplan file (exists and active), so a Rechnung can never reference a deleted or retired account.
+
+The column is not nullable: positions that predate this rule are backfilled with 3400 (Jahresbeiträge), an approximation chosen by the club rather than inventing per-invoice history. The account is internal — it is shown in the app's detail view but not on the rendered PDF — and a position's Konto does not count as a "use" for the Kontoplan-vs-Buchungen startup check (ADR 0001, ADR 0002), which stays scoped to Buchungen: a hint feeds no calculation, and a position pointing at a later-deleted account is reported when the future auto-booking tries to use it.

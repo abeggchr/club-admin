@@ -53,10 +53,10 @@ A club member or contact: a name, membership dates and contact data. The address
 A reusable set of Betreff, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. Zero Textvorlagen is a valid state.
 
 **Rechnung** (code: _Invoice_):
-A bill to one Person, created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Textvorlage texts live only in that PDF. It has no link to a Textvorlage and none to the Buchhaltung.
+A bill to one Person, created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Textvorlage texts live only in that PDF. It has no link to a Textvorlage and no link to the Buchhaltung either: creating it writes no Buchung — each position's Konto is only a booking hint for the later Buchung (ADR 0004).
 
 **Rechnungsposition** (code: _InvoiceLine_):
-One line of a Rechnung: a text and an amount greater than 0. The total of a Rechnung is the sum of its Rechnungspositionen and is not stored.
+One line of a Rechnung: a text, an amount greater than 0 and a required Konto from the Kontoplan, which is the booking hint for the later Buchung. The total of a Rechnung is the sum of its Rechnungspositionen and is not stored.
 
 **Rechnungsnummer**:
 The ID of a Rechnung with at least four digits (0042, 12345). Gaps are possible when a creation fails.
@@ -74,3 +74,4 @@ A lifecycle step of a Rechnung, recorded as an append-only status change with a 
 - A Bewegung can optionally be linked to one Person; a Buchung is not linked to a Person.
 - There is one bank account only; cash is not tracked.
 - A Rechnung belongs to exactly one Person, has one or more Rechnungspositionen and one or more status changes.
+- A Rechnungsposition belongs to exactly one Konto of the Kontoplan (its booking hint).

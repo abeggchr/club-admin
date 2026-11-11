@@ -547,12 +547,12 @@ api.MapGet(
 
 api.MapPost(
     "/invoices",
-    async (InvoiceInput input, AppDbContext db, InvoiceCreator creator, CancellationToken ct) =>
+    async (InvoiceInput input, AppDbContext db, InvoiceCreator creator, ChartOfAccounts chart, CancellationToken ct) =>
     {
         var lines = (input.Lines ?? [])
-            .Select(l => new InvoiceLineDraft(l.Text, l.Amount))
+            .Select(l => new InvoiceLineDraft(l.Text, l.Amount, l.AccountNumber))
             .ToList();
-        if (InvoiceRules.Validate(input.PersonId, input.TemplateId, lines) is { } error)
+        if (InvoiceRules.Validate(input.PersonId, input.TemplateId, lines, chart) is { } error)
         {
             return Results.BadRequest(new { error });
         }
@@ -745,7 +745,7 @@ record SettingsUpdate(decimal OpeningBalance, DateOnly StartDate, string? Iban);
 
 record TextTemplateInput(string? Subject, string? Text, string? Greetings);
 
-record InvoiceLineInput(string? Text, decimal Amount);
+record InvoiceLineInput(string? Text, decimal Amount, int AccountNumber);
 
 record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines);
 

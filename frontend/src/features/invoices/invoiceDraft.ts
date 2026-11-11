@@ -1,6 +1,6 @@
 import { parseAmount } from '../accounting/amount'
 
-export type InvoiceLineRow = { text: string; amount: string }
+export type InvoiceLineRow = { text: string; amount: string; account: number | null }
 
 /** The Rechnung form's field values as the user sees them. */
 export type InvoiceDraft = {
@@ -13,16 +13,16 @@ export type InvoiceDraftErrors = {
   person?: string
   template?: string
   lines?: string
-  rows: { text?: string; amount?: string }[]
+  rows: { text?: string; amount?: string; account?: string }[]
 }
 
 export type InvoiceInput = {
   personId: number
   templateId: number
-  lines: { text: string; amount: number }[]
+  lines: { text: string; amount: number; accountNumber: number }[]
 }
 
-const emptyLine = (): InvoiceLineRow => ({ text: '', amount: '' })
+const emptyLine = (): InvoiceLineRow => ({ text: '', amount: '', account: null })
 
 export function emptyInvoiceDraft(): InvoiceDraft {
   return { personId: null, templateId: null, lines: [emptyLine()] }
@@ -62,12 +62,13 @@ export function validateInvoiceDraft(draft: InvoiceDraft): InvoiceDraftErrors | 
     any = true
   }
   for (const line of draft.lines) {
-    const row: { text?: string; amount?: string } = {}
+    const row: { text?: string; amount?: string; account?: string } = {}
     if (!line.text.trim()) row.text = 'Text ist erforderlich.'
     const parsed = parseAmount(line.amount, { allowZero: true })
     if (!parsed.ok) row.amount = parsed.error
     else if (parsed.value <= 0) row.amount = 'Betrag muss grösser als 0 sein.'
-    if (row.text || row.amount) any = true
+    if (line.account === null) row.account = 'Konto ist erforderlich.'
+    if (row.text || row.amount || row.account) any = true
     errors.rows.push(row)
   }
   return any ? errors : null
@@ -76,12 +77,15 @@ export function validateInvoiceDraft(draft: InvoiceDraft): InvoiceDraftErrors | 
 /** The request body for POST /api/invoices, or null while the draft is invalid. */
 export function toInvoiceInput(draft: InvoiceDraft): InvoiceInput | null {
   if (validateInvoiceDraft(draft) || draft.personId === null || draft.templateId === null) return null
+  const lines: InvoiceInput['lines'] = []
+  for (const line of draft.lines) {
+    if (line.account === null) return null
+    const parsed = parseAmount(line.amount)
+    lines.push({ text: line.text.trim(), amount: parsed.ok ? parsed.value : 0, accountNumber: line.account })
+  }
   return {
     personId: draft.personId,
     templateId: draft.templateId,
-    lines: draft.lines.map((l) => {
-      const parsed = parseAmount(l.amount)
-      return { text: l.text.trim(), amount: parsed.ok ? parsed.value : 0 }
-    }),
+    lines,
   }
 }

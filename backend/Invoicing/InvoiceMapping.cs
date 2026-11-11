@@ -14,7 +14,7 @@ public record InvoiceListItemDto(
     string Status
 );
 
-public record InvoiceLineDto(string Text, decimal Amount);
+public record InvoiceLineDto(string Text, decimal Amount, int AccountNumber);
 
 public record InvoiceStatusChangeDto(string Status, DateTime Timestamp);
 
@@ -86,7 +86,7 @@ public static class InvoiceMapping
                 p.Country
             ),
             i.Lines.OrderBy(l => l.Position)
-                .Select(l => new InvoiceLineDto(l.Text, l.Amount))
+                .Select(l => new InvoiceLineDto(l.Text, l.Amount, l.AccountNumber))
                 .ToList(),
             i.Lines.Sum(l => l.Amount),
             CurrentStatus(i).Status.ToString(),

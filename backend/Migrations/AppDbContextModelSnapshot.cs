@@ -151,6 +151,9 @@ namespace backend.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AccountNumber")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("Amount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -248,9 +251,6 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Number")
-                        .HasColumnType("text");
-
                     b.Property<DateOnly?>("JoinedOn")
                         .HasColumnType("date");
 
@@ -268,6 +268,9 @@ namespace backend.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Number")
                         .HasColumnType("text");
 
                     b.Property<string>("PostalCode")

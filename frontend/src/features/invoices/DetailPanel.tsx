@@ -2,12 +2,20 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { MdClose } from 'react-icons/md'
 import { formatChf } from '../accounting/amount'
+import { accountsQueryOptions } from '../accounting/api'
+import { accountLabel } from '../accounting/KontoPicker'
 import { formatDate, invoiceDetailQueryOptions, invoicePdfUrl, statusLabel } from './api'
 import { addressLines, formatDateTime } from './invoiceDetail'
 
 /** Read-only detail of a Rechnung. Nothing here is editable or deletable. */
 export function DetailPanel({ id, onClose }: { id: number; onClose: () => void }) {
   const { data: invoice, isPending, isError } = useQuery(invoiceDetailQueryOptions(id))
+  const { data: accounts = [] } = useQuery(accountsQueryOptions)
+
+  const accountOf = (accountNumber: number) => {
+    const account = accounts.find((a) => a.number === accountNumber)
+    return account ? accountLabel(account) : accountNumber
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -43,6 +51,7 @@ export function DetailPanel({ id, onClose }: { id: number; onClose: () => void }
             <thead className="border-b border-slate-200">
               <tr>
                 <th className="py-1 font-medium">Text</th>
+                <th className="py-1 font-medium">Konto</th>
                 <th className="py-1 text-right font-medium">Betrag</th>
               </tr>
             </thead>
@@ -50,6 +59,7 @@ export function DetailPanel({ id, onClose }: { id: number; onClose: () => void }
               {invoice.lines.map((l, i) => (
                 <tr key={i} className="border-b border-slate-100">
                   <td className="py-1">{l.text}</td>
+                  <td className="py-1">{accountOf(l.accountNumber)}</td>
                   <td className="py-1 text-right tabular-nums">{formatChf(l.amount)}</td>
                 </tr>
               ))}

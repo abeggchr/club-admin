@@ -19,6 +19,8 @@ public class InvoiceLine
     public int InvoiceId { get; set; }
     public string Text { get; set; } = "";
     public decimal Amount { get; set; }
+    /// <summary>The Kontoplan account the amount will be booked to; a booking hint, not a Buchung (ADR 0004).</summary>
+    public int AccountNumber { get; set; }
     /// <summary>Zero-based position within the Rechnung.</summary>
     public int Position { get; set; }
 }

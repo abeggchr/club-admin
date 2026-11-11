@@ -13,7 +13,7 @@ function filled(overrides: Partial<InvoiceDraft> = {}): InvoiceDraft {
   return {
     personId: 7,
     templateId: 3,
-    lines: [{ text: 'Jahresbeitrag', amount: '120' }],
+    lines: [{ text: 'Jahresbeitrag', amount: '120', account: 3400 }],
     ...overrides,
   }
 }
@@ -36,42 +36,50 @@ describe('validateInvoiceDraft', () => {
   })
 
   it('refuses a position with an empty text', () => {
-    const errors = validateInvoiceDraft(filled({ lines: [{ text: '  ', amount: '10' }] }))
+    const errors = validateInvoiceDraft(filled({ lines: [{ text: '  ', amount: '10', account: 3400 }] }))
     expect(errors?.rows[0].text).toBe('Text ist erforderlich.')
   })
 
   it('refuses a position with an amount of 0 or less', () => {
-    expect(validateInvoiceDraft(filled({ lines: [{ text: 'a', amount: '0' }] }))?.rows[0].amount).toBeDefined()
-    expect(validateInvoiceDraft(filled({ lines: [{ text: 'a', amount: '-5' }] }))?.rows[0].amount).toBe(
-      'Betrag muss grösser als 0 sein.',
-    )
+    expect(
+      validateInvoiceDraft(filled({ lines: [{ text: 'a', amount: '0', account: 3400 }] }))?.rows[0].amount,
+    ).toBeDefined()
+    expect(
+      validateInvoiceDraft(filled({ lines: [{ text: 'a', amount: '-5', account: 3400 }] }))?.rows[0].amount,
+    ).toBe('Betrag muss grösser als 0 sein.')
   })
 
   it('refuses a position with an unparsable amount', () => {
-    expect(validateInvoiceDraft(filled({ lines: [{ text: 'a', amount: 'abc' }] }))?.rows[0].amount).toBe(
-      'Ungültiger Betrag.',
-    )
+    expect(
+      validateInvoiceDraft(filled({ lines: [{ text: 'a', amount: 'abc', account: 3400 }] }))?.rows[0].amount,
+    ).toBe('Ungültiger Betrag.')
+  })
+
+  it('refuses a position without a Konto', () => {
+    const errors = validateInvoiceDraft(filled({ lines: [{ text: 'a', amount: '1', account: null }] }))
+    expect(errors?.rows[0].account).toBe('Konto ist erforderlich.')
   })
 
   it('reports errors per position', () => {
     const errors = validateInvoiceDraft(
       filled({
         lines: [
-          { text: 'ok', amount: '1' },
-          { text: '', amount: '1' },
+          { text: 'ok', amount: '1', account: 3400 },
+          { text: '', amount: '1', account: null },
         ],
       }),
     )
     expect(errors?.rows[0]).toEqual({})
     expect(errors?.rows[1].text).toBeDefined()
+    expect(errors?.rows[1].account).toBeDefined()
   })
 })
 
 describe('totalOf', () => {
   it('sums the amounts exactly in cents', () => {
     const lines = [
-      { text: 'a', amount: '0.10' },
-      { text: 'b', amount: "1'000.20" },
+      { text: 'a', amount: '0.10', account: 3400 },
+      { text: 'b', amount: "1'000.20", account: 3400 },
     ]
     expect(totalOf(lines)).toBe(1000.3)
   })
@@ -79,9 +87,9 @@ describe('totalOf', () => {
   it('ignores positions whose amount is not (yet) valid', () => {
     expect(
       totalOf([
-        { text: 'a', amount: '10' },
-        { text: 'b', amount: 'x' },
-        { text: 'c', amount: '' },
+        { text: 'a', amount: '10', account: 3400 },
+        { text: 'b', amount: 'x', account: 3400 },
+        { text: 'c', amount: '', account: null },
       ]),
     ).toBe(10)
   })
@@ -93,31 +101,33 @@ describe('totalOf', () => {
 
 describe('addLine / removeLine', () => {
   it('starts with one empty position', () => {
-    expect(emptyInvoiceDraft().lines).toEqual([{ text: '', amount: '' }])
+    expect(emptyInvoiceDraft().lines).toEqual([{ text: '', amount: '', account: null }])
   })
 
   it('appends an empty position', () => {
     expect(addLine(filled()).lines).toHaveLength(2)
-    expect(addLine(filled()).lines[1]).toEqual({ text: '', amount: '' })
+    expect(addLine(filled()).lines[1]).toEqual({ text: '', amount: '', account: null })
   })
 
   it('removes the position at the index', () => {
     const draft = filled({
       lines: [
-        { text: 'a', amount: '1' },
-        { text: 'b', amount: '2' },
+        { text: 'a', amount: '1', account: 3400 },
+        { text: 'b', amount: '2', account: 3400 },
       ],
     })
-    expect(removeLine(draft, 0).lines).toEqual([{ text: 'b', amount: '2' }])
+    expect(removeLine(draft, 0).lines).toEqual([{ text: 'b', amount: '2', account: 3400 }])
   })
 })
 
 describe('toInvoiceInput', () => {
   it('builds the request body with parsed amounts', () => {
-    expect(toInvoiceInput(filled({ lines: [{ text: ' Beitrag ', amount: '1’250.5' }] }))).toEqual({
+    expect(
+      toInvoiceInput(filled({ lines: [{ text: ' Beitrag ', amount: '1’250.5', account: 3400 }] })),
+    ).toEqual({
       personId: 7,
       templateId: 3,
-      lines: [{ text: 'Beitrag', amount: 1250.5 }],
+      lines: [{ text: 'Beitrag', amount: 1250.5, accountNumber: 3400 }],
     })
   })
 

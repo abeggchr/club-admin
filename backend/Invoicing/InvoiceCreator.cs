@@ -33,6 +33,7 @@ public class InvoiceCreator(
                             {
                                 Text = l.Text!.Trim(),
                                 Amount = l.Amount,
+                                AccountNumber = l.AccountNumber,
                                 Position = i,
                             }
                     )
@@ -60,7 +61,7 @@ public class InvoiceCreator(
                     template.Subject,
                     template.Text,
                     template.Greetings,
-                    invoice.Lines.Select(l => new InvoiceLineDraft(l.Text, l.Amount)).ToList()
+                    invoice.Lines.Select(l => new InvoiceLineDraft(l.Text, l.Amount, l.AccountNumber)).ToList()
                 )
             );
             await storage.PutAsync(invoice.Id, pdf, ct);

@@ -1,12 +1,19 @@
+using backend.Accounting;
+
 namespace backend.Invoicing;
 
 /// <summary>One Rechnungsposition as supplied by the client.</summary>
-public record InvoiceLineDraft(string? Text, decimal Amount);
+public record InvoiceLineDraft(string? Text, decimal Amount, int AccountNumber);
 
 /// <summary>Pure rules for creating a Rechnung. Errors are German messages, or null when valid.</summary>
 public static class InvoiceRules
 {
-    public static string? Validate(int? personId, int? templateId, IReadOnlyList<InvoiceLineDraft> lines)
+    public static string? Validate(
+        int? personId,
+        int? templateId,
+        IReadOnlyList<InvoiceLineDraft> lines,
+        ChartOfAccounts chart
+    )
     {
         if (personId is null) return "Die Person ist erforderlich.";
         if (templateId is null) return "Die Textvorlage ist erforderlich.";
@@ -17,6 +24,15 @@ public static class InvoiceRules
             if (line.Amount <= 0) return "Der Betrag einer Rechnungsposition muss grösser als 0 sein.";
             if (line.Amount != decimal.Round(line.Amount, 2))
                 return "Der Betrag darf höchstens zwei Dezimalstellen haben.";
+            var account = chart.Find(line.AccountNumber);
+            if (account is null)
+            {
+                return $"Das Konto {line.AccountNumber} existiert nicht.";
+            }
+            if (!account.Active)
+            {
+                return $"Das Konto {account.Number} {account.Name} ist inaktiv.";
+            }
         }
         return null;
     }

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { MdClose } from 'react-icons/md'
 import { formatChf } from '../accounting/amount'
+import { KontoPicker } from '../accounting/KontoPicker'
 import { PersonPicker } from '../persons/PersonPicker'
 import { textTemplatesQueryOptions } from '../settings/textTemplateApi'
 import { createInvoice, invalidateInvoices } from './api'
@@ -100,6 +101,11 @@ export function CreatePanel({ onDone }: { onDone: () => void }) {
               Text
               <input value={line.text} onChange={(e) => patchLine(i, { text: e.target.value })} className={input} />
               {errors?.rows[i]?.text && <span className="text-red-600">{errors.rows[i].text}</span>}
+            </label>
+            <label className="flex flex-[2] flex-col text-sm">
+              Konto
+              <KontoPicker value={line.account} onChange={(account) => patchLine(i, { account })} className={input} />
+              {errors?.rows[i]?.account && <span className="text-red-600">{errors.rows[i].account}</span>}
             </label>
             <label className="flex flex-1 flex-col text-sm">
               Betrag
