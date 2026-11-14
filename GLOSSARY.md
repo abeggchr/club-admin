@@ -52,6 +52,9 @@ The amount the bank account should hold on a given date: the Anfangssaldo plus a
 **Person** (code: _Person_):
 A club member or contact: a name, membership dates and contact data. The address is stored as Strasse plus Hausnummer (code: _Street_ and _Number_), not as one line, so that imported bank addresses can be matched against it.
 
+**Zahler** (code: _Payer_, _Person.PayerId_):
+The Person who pays for another Person. Optional, set on the paid-for Person; the Zahler needs no active membership. There are no chains and no cycles: a Person cannot be their own Zahler, a Zahler has no Zahler, and a Person who is a Zahler cannot get one. A Person who is someone's Zahler cannot be deleted.
+
 **Textvorlage** (code: _TextTemplate_):
 A reusable set of Betreff, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. The texts may contain Platzhalter, which are replaced when a Rechnung is created; an unknown Platzhalter is rejected on save. Zero Textvorlagen is a valid state.
 
@@ -97,5 +100,6 @@ When an imported payment exceeds the outstanding amount of its Rechnung, the exc
 - A Buchung belongs to exactly one Konto.
 - A Bewegung can optionally be linked to one Person; a Buchung is not linked to a Person.
 - There is one bank account only; cash is not tracked.
+- A Person has at most one Zahler (another Person) and can be the Zahler of several Personen ("Zahler für"), but not both at once.
 - A Rechnung belongs to exactly one Person, has one or more Rechnungspositionen and one or more status changes.
 - A Rechnungsposition belongs to exactly one Konto of the Kontoplan (its booking hint).

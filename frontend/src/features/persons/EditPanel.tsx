@@ -1,8 +1,14 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+	useMutation,
+	useQueryClient,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
 import { useState } from "react";
 import { FiX } from "react-icons/fi";
 import { personsQueryOptions, updatePerson } from "./api";
 import { membershipLabels, membershipTypes } from "./membership";
+import { PersonPicker } from "./PersonPicker";
+import { payerCandidates, payingFor, personLabel } from "./personFilter";
 import type { Person } from "./types";
 
 const textFields: {
@@ -35,6 +41,8 @@ export function EditPanel({
 	onClose: () => void;
 }) {
 	const queryClient = useQueryClient();
+	const { data: persons } = useSuspenseQuery(personsQueryOptions);
+	const paidFor = payingFor(persons, person);
 	const [draft, setDraft] = useState(person);
 	const [error, setError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
@@ -151,6 +159,27 @@ export function EditPanel({
 							: [renderField(f)],
 					)}
 				</div>
+				<div className="mt-3">
+					<label htmlFor="person-payer" className="text-sm font-medium">
+						Zahler
+					</label>
+					<PersonPicker
+						value={paidFor.length > 0 ? null : draft.payerId}
+						readOnly={paidFor.length > 0}
+						includeFormer
+						accept={(p) => payerCandidates([p], person).length > 0}
+						onChange={(id) => {
+							setDraft({ ...draft, payerId: id });
+							setSaved(false);
+						}}
+						className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+					/>
+				</div>
+				{paidFor.length > 0 && (
+					<p className="mt-3 text-sm">
+						Zahler für: {paidFor.map(personLabel).join(", ")}
+					</p>
+				)}
 				{error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 				{saved && <p className="mt-3 text-sm text-green-700">Gespeichert.</p>}
 				<div className="mt-4 flex justify-end gap-2">

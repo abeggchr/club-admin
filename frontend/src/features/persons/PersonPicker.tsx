@@ -12,6 +12,8 @@ type Props = {
 	className?: string;
 	/** Also offer Persons who have left (marked "(ausgetreten)"). */
 	includeFormer?: boolean;
+	/** Restricts the offered Persons (the current value is always kept). */
+	accept?: (p: Person) => boolean;
 };
 
 /** Person autocomplete: type part of a name to filter. Persons who have left are not offered. */
@@ -21,6 +23,7 @@ export function PersonPicker({
 	readOnly = false,
 	className,
 	includeFormer,
+	accept,
 }: Props) {
 	const { data: persons } = useSuspenseQuery(personsQueryOptions);
 	const listId = useId();
@@ -30,7 +33,12 @@ export function PersonPicker({
 
 	const selected = persons.find((p) => p.id === value) ?? null;
 	const text = query ?? (selected ? personLabel(selected) : "");
-	const options = filterPersons(persons, query ?? "", value, { includeFormer });
+	const options = filterPersons(
+		accept ? persons.filter((p) => p.id === value || accept(p)) : persons,
+		query ?? "",
+		value,
+		{ includeFormer },
+	);
 
 	const close = () => {
 		setOpen(false);

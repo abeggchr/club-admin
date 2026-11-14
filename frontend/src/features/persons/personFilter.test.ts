@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterPersons } from "./personFilter";
+import { filterPersons, payerCandidates, payingFor } from "./personFilter";
 import type { Person } from "./types";
 
 function person(
@@ -26,6 +26,7 @@ function person(
 		country: null,
 		isMainPayer: false,
 		notes: null,
+		payerId: null,
 	};
 }
 
@@ -54,5 +55,21 @@ describe("filterPersons", () => {
 			1,
 		]);
 		expect(filterPersons(persons, "mü", null).map((p) => p.id)).toEqual([3]);
+	});
+});
+
+describe("Zahler", () => {
+	const anna = person(1, "Anna", "A");
+	const ben = person(2, "Ben", "B");
+	const cleo = { ...person(3, "Cleo", "C"), payerId: 2 };
+	const all = [anna, ben, cleo];
+
+	it("candidates exclude the Person themselves and Persons who have a Zahler", () => {
+		expect(payerCandidates(all, anna).map((p) => p.id)).toEqual([2]);
+	});
+
+	it("lists the Persons a Zahler pays for", () => {
+		expect(payingFor(all, ben).map((p) => p.id)).toEqual([3]);
+		expect(payingFor(all, anna)).toEqual([]);
 	});
 });

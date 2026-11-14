@@ -30,3 +30,13 @@ export function filterPersons(
 				a.firstName.localeCompare(b.firstName, "de"),
 		);
 }
+
+/** Persons who can be the Zahler of `person`: not the Person themselves, and nobody who already has a Zahler. */
+export function payerCandidates(persons: Person[], person: Person): Person[] {
+	return persons.filter((p) => p.id !== person.id && p.payerId === null);
+}
+
+/** The Persons for whom `payer` is the Zahler. */
+export function payingFor(persons: Person[], payer: Person): Person[] {
+	return persons.filter((p) => p.payerId === payer.id);
+}
