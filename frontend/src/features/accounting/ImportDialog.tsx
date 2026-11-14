@@ -7,6 +7,7 @@ import {
 	TransactionImportFailed,
 	type TransactionImportResult,
 } from "./api";
+import { importResultLines } from "./importResult";
 
 export function ImportDialog({
 	dialogRef,
@@ -78,10 +79,11 @@ export function ImportDialog({
 					</ul>
 				)}
 				{result && (
-					<p className="mt-3 text-sm text-green-700">
-						{result.imported} importiert, {result.skippedDuplicates} als
-						Duplikat übersprungen.
-					</p>
+					<ul className="mt-3 list-none text-sm text-green-700">
+						{importResultLines(result).map((line) => (
+							<li key={line}>{line}</li>
+						))}
+					</ul>
 				)}
 				<div className="mt-6 flex justify-end gap-2 text-sm">
 					<button

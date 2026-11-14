@@ -477,6 +477,27 @@ api.MapPost(
                 .Select(t => t.BankReference!)
                 .ToListAsync();
             var persons = await db.Persons.ToListAsync();
+
+            // Rechnungen for matching: QR-bill reference, total, and positions. A Rechnung that already
+            // has a Paid status change is terminal (once Paid, always Paid) and is flagged so the matcher
+            // never re-books or re-sets PaidBy, e.g. when the paying movement was deleted and re-imported.
+            // existingPaid is 0 here: re-imports of the same movement are skipped via BankReference, so
+            // the Buchungen of an already-imported movement are attributed to the Rechnung by its Paid
+            // status change, not by a foreign key.
+            var invoices = await db
+                .Invoices.Include(i => i.Lines).Include(i => i.StatusChanges)
+                .ToListAsync();
+            var importInvoices = invoices
+                .Where(i => !string.IsNullOrEmpty(i.Reference))
+                .Select(i => new ImportInvoice(
+                    i.Id,
+                    i.Reference,
+                    i.Lines.Sum(l => l.Amount),
+                    0m,
+                    i.StatusChanges.Any(s => s.Status == InvoiceStatus.Paid),
+                    i.Lines.OrderBy(l => l.Position).Select(l => new ImportInvoiceLine(l.Text, l.AccountNumber, l.Amount)).ToList()
+                ))
+                .ToList();
             byte[] zip;
             await using (var upload = file.OpenReadStream())
             using (var memory = new MemoryStream())
@@ -487,7 +508,7 @@ api.MapPost(
 
             var result = BankImport.Import(
                 zip,
-                new ImportSnapshot(settings, existingReferences, persons)
+                new ImportSnapshot(settings, existingReferences, persons, importInvoices, chart)
             );
             if (result.Errors.Count > 0)
             {
@@ -502,14 +523,45 @@ api.MapPost(
                     Text = t.Text,
                     BankReference = t.BankReference,
                     PersonId = t.PersonId,
+                    Entries = t.AutoEntries.Select(e => new Entry
+                    {
+                        Text = e.Text,
+                        AccountNumber = e.AccountNumber,
+                        Amount = e.Amount,
+                    }).ToList(),
                 })
             );
+
+            // The first fully-covering credit Bewegung marks the Rechnung Bezahlt: append the Paid status
+            // change and record the Bewegung's id as PaidBy before the save, so the Bewegung and its
+            // AutoEntries are created and the Paid status change + PaidBy are all persisted in the same
+            // SaveEntryChangeAsync save. The newly added Bewegungen are still in the context, so their ids
+            // are resolved as part of the save below.
+            foreach (var t in result.Transactions.Where(t => t.PaidAt is not null && t.MatchedInvoiceId is not null))
+            {
+                var invoice = db.Invoices.Single(i => i.Id == t.MatchedInvoiceId);
+                var movement = db.Transactions.Single(x => x.BankReference == t.BankReference);
+                invoice.StatusChanges.Add(
+                    new InvoiceStatusChange { Status = InvoiceStatus.Paid, Timestamp = t.PaidAt!.Value }
+                );
+                if (invoice.PaidBy is null)
+                {
+                    invoice.PaidBy = movement.Id;
+                }
+            }
             await SaveEntryChangeAsync(db, chart);
+
+            // Ticket #62: the response reports which Rechnungen were auto-booked (in import order) and how
+            // many of the imported movements still have no Buchungen (credits and debits alike).
+            var bookedInvoices = BankImport.BookedInvoiceIds(result);
+            var unmatched = BankImport.UnmatchedCount(result);
             return Results.Ok(
                 new
                 {
                     imported = result.Transactions.Count,
                     skippedDuplicates = result.SkippedDuplicates,
+                    bookedInvoices,
+                    unmatched,
                 }
             );
         }

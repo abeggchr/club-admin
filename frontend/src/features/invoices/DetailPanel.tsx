@@ -56,6 +56,10 @@ export function DetailPanel({
 				<>
 					<p className="text-sm">Rechnungsdatum: {formatDate(invoice.date)}</p>
 
+					{invoice.reference !== "" && (
+						<p className="text-sm">Gläubigerreferenz: {invoice.reference}</p>
+					)}
+
 					<div className="text-sm">
 						<p className="text-slate-500">Person</p>
 						<Link
@@ -108,6 +112,10 @@ export function DetailPanel({
 							))}
 						</ul>
 					</div>
+
+					{invoice.paidBy && (
+						<p className="text-sm">Bezahlt mit Bewegung Nr. {invoice.paidBy}</p>
+					)}
 
 					<a
 						href={invoicePdfUrl(invoice.id)}

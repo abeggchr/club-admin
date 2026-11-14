@@ -153,8 +153,16 @@ namespace backend.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("PaidBy")
+                        .HasColumnType("integer");
+
                     b.Property<int>("PersonId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(35)
+                        .HasColumnType("character varying(35)");
 
                     b.HasKey("Id");
 

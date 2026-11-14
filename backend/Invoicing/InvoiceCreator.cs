@@ -25,6 +25,15 @@ public class InvoiceCreator(
         try
         {
             var now = DateTime.UtcNow;
+            var debtor = QrBillSlip.DebtorFor(
+                person.FirstName,
+                person.LastName,
+                person.Street,
+                person.Number,
+                person.PostalCode,
+                person.City,
+                person.Country
+            );
             var invoice = new Invoice
             {
                 PersonId = person.Id,
@@ -48,6 +57,22 @@ public class InvoiceCreator(
             db.Invoices.Add(invoice);
             await db.SaveChangesAsync(ct);
 
+            // The Gläubigerreferenz derives from the Rechnungsnummer, so it is known as soon as the ID
+            // is. It is persisted in its own save, before the PDF rendering: a rendering failure (e.g.
+            // missing native graphics in a headless environment) must never leave a Rechnung without its
+            // reference.
+            var bill = QrBillSlip.Build(
+                creditor,
+                InvoiceRules.FormatNumber(invoice.Id),
+                openAmount ? null : invoice.Lines.Sum(l => l.Amount),
+                debtor
+            );
+            invoice.Reference = bill.Reference;
+            // Persist the Gläubigerreferenz in its own save, before the PDF rendering: the reference is
+            // known as soon as the Rechnungsnummer is, and a rendering failure (e.g. missing native
+            // graphics in a headless environment) must never leave a Rechnung without its reference.
+            await db.SaveChangesAsync(ct);
+
             var addressLines = InvoiceDocument.AddressLines(
                 person.Street,
                 person.Number,
@@ -66,17 +91,11 @@ public class InvoiceCreator(
                     template.Subject,
                     template.Text,
                     template.Greetings,
-                    invoice.Lines.Select(l => new InvoiceLineDraft(l.Text, l.Amount, l.AccountNumber)).ToList(),
+                    invoice
+                        .Lines.Select(l => new InvoiceLineDraft(l.Text, l.Amount, l.AccountNumber))
+                        .ToList(),
                     creditor,
-                    QrBillSlip.DebtorFor(
-                        person.FirstName,
-                        person.LastName,
-                        person.Street,
-                        person.Number,
-                        person.PostalCode,
-                        person.City,
-                        person.Country
-                    ),
+                    debtor,
                     openAmount
                 )
             );
