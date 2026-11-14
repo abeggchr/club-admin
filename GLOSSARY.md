@@ -70,9 +70,6 @@ The date a Rechnung was created: the date of its Erstellt status change.
 **Rechnungsstatus** (code: _InvoiceStatus_):
 A lifecycle step of a Rechnung, recorded as an append-only status change with a timestamp. Currently only Erstellt (_Created_) exists.
 
-**Platzhalter** (code: _TextTemplatePlaceholders_):
-A marker such as {{name}} in a Textvorlage's Betreff, Text or Grüsse. Valid are name, address, amount, invoiceNumber and invoiceDate; they are replaced by the values of the Rechnung when it is created, and the resolved text is what the PDF holds.
-
 **Mitgliedschaft** (code: _MembershipType_):
 The kind of membership of a Person (Familie, Einzel, Junior, Ehren, Frei, Gönner, or Unbekannt), which decides the Jahresbeitrag. Unbekannt is never invoiced.
 

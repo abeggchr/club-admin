@@ -57,23 +57,15 @@ public class InvoiceCreator(
             );
             var date = InvoiceTime.ZurichDate(now);
             var number = InvoiceRules.FormatNumber(invoice.Id);
-            var values = new PlaceholderValues(
-                person.FullName,
-                string.Join(", ", addressLines),
-                InvoiceDocument.FormatAmount(invoice.Lines.Sum(l => l.Amount)),
-                number,
-                date.ToString("dd.MM.yyyy")
-            );
-
             var pdf = InvoiceDocument.Render(
                 new InvoiceDocumentData(
                     number,
                     date,
                     person.FullName,
                     addressLines,
-                    TextTemplatePlaceholders.Resolve(template.Subject, values),
-                    TextTemplatePlaceholders.Resolve(template.Text, values),
-                    TextTemplatePlaceholders.Resolve(template.Greetings, values),
+                    template.Subject,
+                    template.Text,
+                    template.Greetings,
                     invoice.Lines.Select(l => new InvoiceLineDraft(l.Text, l.Amount, l.AccountNumber)).ToList(),
                     creditor,
                     QrBillSlip.DebtorFor(
