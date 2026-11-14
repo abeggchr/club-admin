@@ -10,6 +10,7 @@ public class Person
     public DateOnly? JoinedOn { get; set; }
     public DateOnly? LeftOn { get; set; }
     public string? Email { get; set; }
+    public bool IsMainPayer { get; set; }
     public string? MobilePhone { get; set; }
     public string? LandlinePhone { get; set; }
     public string? Street { get; set; }
@@ -18,4 +19,7 @@ public class Person
     public string? City { get; set; }
     public string? Country { get; set; }
     public string? Notes { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string FullName => $"{FirstName} {LastName}";
 }

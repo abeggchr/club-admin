@@ -48,18 +48,21 @@ public class InvoiceCreator(
             db.Invoices.Add(invoice);
             await db.SaveChangesAsync(ct);
 
+            var addressLines = InvoiceDocument.AddressLines(
+                person.Street,
+                person.Number,
+                person.PostalCode,
+                person.City,
+                person.Country
+            );
+            var date = InvoiceTime.ZurichDate(now);
+            var number = InvoiceRules.FormatNumber(invoice.Id);
             var pdf = InvoiceDocument.Render(
                 new InvoiceDocumentData(
-                    InvoiceRules.FormatNumber(invoice.Id),
-                    InvoiceTime.ZurichDate(now),
-                    $"{person.FirstName} {person.LastName}",
-                    InvoiceDocument.AddressLines(
-                        person.Street,
-                        person.Number,
-                        person.PostalCode,
-                        person.City,
-                        person.Country
-                    ),
+                    number,
+                    date,
+                    person.FullName,
+                    addressLines,
                     template.Subject,
                     template.Text,
                     template.Greetings,

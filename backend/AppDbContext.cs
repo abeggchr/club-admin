@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AccountUsage> AccountUsages => Set<AccountUsage>();
     public DbSet<TextTemplate> TextTemplates => Set<TextTemplate>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<MembershipDiscount> MembershipDiscounts => Set<MembershipDiscount>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,6 +37,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Subject).IsRequired().HasMaxLength(200);
             e.Property(x => x.Text).IsRequired();
             e.Property(x => x.Greetings).IsRequired();
+        });
+        modelBuilder.Entity<MembershipDiscount>(e =>
+        {
+            e.HasKey(d => d.PersonId);
+            e.Property(d => d.PersonId).ValueGeneratedNever();
+            e.Property(d => d.Text).IsRequired();
+            e.HasOne<Person>().WithMany().HasForeignKey(d => d.PersonId).OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<Invoice>(e =>
         {

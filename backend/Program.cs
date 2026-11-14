@@ -97,6 +97,7 @@ api.MapPut(
         person.JoinedOn = update.JoinedOn;
         person.LeftOn = update.LeftOn;
         person.Email = update.Email;
+        person.IsMainPayer = update.IsMainPayer;
         person.MobilePhone = update.MobilePhone;
         person.LandlinePhone = update.LandlinePhone;
         person.Street = update.Street;
@@ -640,6 +641,103 @@ api.MapPost(
     }
 );
 
+// How many Personen the Jahresbeiträge run considers and how many Rechnungen it would create.
+api.MapGet(
+    "/invoices/annual-fees/preview",
+    async (AppDbContext db, CancellationToken ct) =>
+    {
+        var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
+        var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
+        var discounts = await db.MembershipDiscounts.AsNoTracking().ToDictionaryAsync(d => d.PersonId, ct);
+        var plan = MembershipFeeRules.Plan(persons, settings!.StartDate, discounts);
+        return Results.Ok(
+            new
+            {
+                consideredPersons = persons.Count(p => MembershipFeeRules.IsActive(p, settings.StartDate)),
+                plannedInvoices = plan.Invoices.Count,
+            }
+        );
+    }
+);
+
+api.MapPost(
+    "/invoices/annual-fees",
+    async (AnnualFeesInput input, AppDbContext db, InvoiceCreator creator, CancellationToken ct) =>
+    {
+        if (input.TemplateId is null)
+        {
+            return Results.BadRequest(new { error = "Die Textvorlage ist erforderlich." });
+        }
+        var template = await db.TextTemplates.FindAsync([input.TemplateId.Value], ct);
+        if (template is null)
+        {
+            return Results.BadRequest(new { error = "Die Textvorlage existiert nicht." });
+        }
+        var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
+        var (creditor, creditorError) = QrBillCreditor.Resolve(settings);
+        if (creditor is null)
+        {
+            return Results.BadRequest(new { error = creditorError });
+        }
+
+        var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
+        var discounts = await db.MembershipDiscounts.AsNoTracking().ToDictionaryAsync(d => d.PersonId, ct);
+        var plan = MembershipFeeRules.Plan(persons, settings!.StartDate, discounts);
+        var summary = await BulkInvoiceRunner.RunAsync(
+            plan,
+            (invoice, token) => creator.CreateAsync(invoice.Recipient, template, invoice.Lines, creditor, false, token),
+            ct
+        );
+        return Results.Ok(summary);
+    }
+);
+
+api.MapGet(
+    "/membership-discounts",
+    async (AppDbContext db) => await db.MembershipDiscounts.AsNoTracking().OrderBy(d => d.PersonId).ToListAsync()
+);
+
+// Saves (adds or replaces) the one Ermässigung of a Person.
+api.MapPut(
+    "/membership-discounts",
+    async (MembershipDiscountInput input, AppDbContext db, CancellationToken ct) =>
+    {
+        if (MembershipDiscountRules.Validate(input.PersonId, input.Percent, input.Text) is { } error)
+        {
+            return Results.BadRequest(new { error });
+        }
+        if (!await db.Persons.AnyAsync(p => p.Id == input.PersonId, ct))
+        {
+            return Results.BadRequest(new { error = "Die Person existiert nicht." });
+        }
+        var discount = await db.MembershipDiscounts.FindAsync([input.PersonId!.Value], ct);
+        if (discount is null)
+        {
+            discount = new MembershipDiscount { PersonId = input.PersonId.Value };
+            db.MembershipDiscounts.Add(discount);
+        }
+        discount.Percent = input.Percent!.Value;
+        discount.Text = input.Text!.Trim();
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(discount);
+    }
+);
+
+api.MapDelete(
+    "/membership-discounts/{personId:int}",
+    async (int personId, AppDbContext db, CancellationToken ct) =>
+    {
+        var discount = await db.MembershipDiscounts.FindAsync([personId], ct);
+        if (discount is null)
+        {
+            return Results.NotFound();
+        }
+        db.MembershipDiscounts.Remove(discount);
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
+    }
+);
+
 api.MapGet(
     "/invoices/{id:int}/pdf",
     async (
@@ -809,9 +907,13 @@ record SettingsUpdate(
     string? City
 );
 
+record MembershipDiscountInput(int? PersonId, int? Percent, string? Text);
+
 record TextTemplateInput(string? Subject, string? Text, string? Greetings);
 
 record InvoiceLineInput(string? Text, decimal Amount, int AccountNumber);
+
+record AnnualFeesInput(int? TemplateId);
 
 record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines, bool OpenAmount = false);
 
@@ -825,6 +927,7 @@ record PersonUpdate(
     DateOnly? JoinedOn,
     DateOnly? LeftOn,
     string? Email,
+    bool IsMainPayer,
     string? MobilePhone,
     string? LandlinePhone,
     string? Street,

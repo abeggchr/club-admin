@@ -1,9 +1,10 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { MdAdd } from "react-icons/md";
 import { formatChf } from "../accounting/amount";
 import { textTemplatesQueryOptions } from "../settings/textTemplateApi";
+import { AnnualFeesDialog } from "./AnnualFeesDialog";
 import { formatDate, invoicesQueryOptions, statusLabel } from "./api";
 import { CreatePanel } from "./CreatePanel";
 import { DetailPanel } from "./DetailPanel";
@@ -12,6 +13,7 @@ import { DetailPanel } from "./DetailPanel";
 export function InvoicesPage() {
 	const { data: invoices } = useSuspenseQuery(invoicesQueryOptions);
 	const { data: templates } = useSuspenseQuery(textTemplatesQueryOptions);
+	const annualFeesDialog = useRef<HTMLDialogElement>(null);
 	const [creating, setCreating] = useState(false);
 	const [selectedId, setSelectedId] = useState<number | null>(null);
 	const noTemplates = templates.length === 0;
@@ -37,6 +39,14 @@ export function InvoicesPage() {
 					className="rounded bg-sky-600 p-2 text-white enabled:hover:bg-sky-700 disabled:opacity-40"
 				>
 					<MdAdd className="size-5" />
+				</button>
+				<button
+					type="button"
+					onClick={() => annualFeesDialog.current?.showModal()}
+					disabled={noTemplates}
+					className="rounded border border-sky-600 px-3 py-2 text-sm text-sky-700 enabled:hover:bg-sky-50 disabled:opacity-40"
+				>
+					Jahresbeiträge
 				</button>
 				{noTemplates && (
 					<p className="text-sm text-slate-600">
@@ -112,6 +122,7 @@ export function InvoicesPage() {
 					</aside>
 				)}
 			</div>
+			<AnnualFeesDialog dialogRef={annualFeesDialog} />
 		</div>
 	);
 }

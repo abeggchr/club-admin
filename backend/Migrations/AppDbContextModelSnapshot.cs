@@ -221,6 +221,23 @@ namespace backend.Migrations
                     b.ToTable("InvoiceStatusChange");
                 });
 
+            modelBuilder.Entity("backend.Invoicing.MembershipDiscount", b =>
+                {
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Percent")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("PersonId");
+
+                    b.ToTable("MembershipDiscounts");
+                });
+
             modelBuilder.Entity("backend.Invoicing.TextTemplate", b =>
                 {
                     b.Property<int>("Id")
@@ -270,6 +287,9 @@ namespace backend.Migrations
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsMainPayer")
+                        .HasColumnType("boolean");
 
                     b.Property<DateOnly?>("JoinedOn")
                         .HasColumnType("date");
@@ -349,6 +369,15 @@ namespace backend.Migrations
                     b.HasOne("backend.Invoicing.Invoice", null)
                         .WithMany("StatusChanges")
                         .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("backend.Invoicing.MembershipDiscount", b =>
+                {
+                    b.HasOne("backend.Person.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

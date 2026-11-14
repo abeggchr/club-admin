@@ -53,10 +53,10 @@ The amount the bank account should hold on a given date: the Anfangssaldo plus a
 A club member or contact: a name, membership dates and contact data. The address is stored as Strasse plus Hausnummer (code: _Street_ and _Number_), not as one line, so that imported bank addresses can be matched against it.
 
 **Textvorlage** (code: _TextTemplate_):
-A reusable set of Betreff, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. Zero Textvorlagen is a valid state.
+A reusable set of Betreff, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. The texts may contain Platzhalter, which are replaced when a Rechnung is created; an unknown Platzhalter is rejected on save. Zero Textvorlagen is a valid state.
 
 **Rechnung** (code: _Invoice_):
-A bill to one Person, created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Textvorlage texts live only in that PDF. It has no link to a Textvorlage and no link to the Buchhaltung either: creating it writes no Buchung — each position's Konto is only a booking hint for the later Buchung (ADR 0004). The last page of the PDF ends with the QR-Rechnung payment part (210×105 mm): Klub-IBAN, Klubadresse, the Rechnung total, a SCOR reference (RF + check digits + Rechnungsnummer) and the message "Rechnung #0042"; the Person is the debtor only when their address is complete. "Betrag offen lassen" leaves the amount out of the QR code, so the payer enters it. If less than 105 mm is free on the last page, the payment part gets a page of its own.
+A bill to one Person, created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Textvorlage texts are stored resolved (Platzhalter already replaced) and live only in that PDF. It has no link to a Textvorlage and no link to the Buchhaltung either: creating it writes no Buchung — each position's Konto is only a booking hint for the later Buchung (ADR 0004). The last page of the PDF ends with the QR-Rechnung payment part (210×105 mm): Klub-IBAN, Klubadresse, the Rechnung total, a SCOR reference (RF + check digits + Rechnungsnummer) and the message "Rechnung #0042"; the Person is the debtor only when their address is complete. "Betrag offen lassen" leaves the amount out of the QR code, so the payer enters it. If less than 105 mm is free on the last page, the payment part gets a page of its own.
 
 **Rechnungsposition** (code: _InvoiceLine_):
 One line of a Rechnung: a text, an amount greater than 0 and a required Konto from the Kontoplan, which is the booking hint for the later Buchung. The total of a Rechnung is the sum of its Rechnungspositionen and is not stored.
@@ -69,6 +69,15 @@ The date a Rechnung was created: the date of its Erstellt status change.
 
 **Rechnungsstatus** (code: _InvoiceStatus_):
 A lifecycle step of a Rechnung, recorded as an append-only status change with a timestamp. Currently only Erstellt (_Created_) exists.
+
+**Mitgliedschaft** (code: _MembershipType_):
+The kind of membership of a Person (Familie, Einzel, Junior, Ehren, Frei, Gönner, or Unbekannt), which decides the Jahresbeitrag. Unbekannt is never invoiced.
+
+**Jahresbeitrag** (code: _MembershipFeeRules_), plural **Jahresbeiträge**:
+The yearly membership fee of a Person, set per Mitgliedschaft (a constant in the code) and booked to Konto 3400. "Jahresbeiträge" is also the run that creates the Rechnungen for all active Personen at once: one Rechnung per address with one Rechnungsposition per Person, where a Familie pays once per address (ADR 0005). A Rechnungsposition of 0 (an Ehren member, a further Familie member of the address, or a 100 % Ermässigung) is kept, but no Rechnung is created when its total is 0.
+
+**Ermässigung** (code: _MembershipDiscount_):
+A percentage (1-100) with a text that reduces one Person's Jahresbeitrag in the Jahresbeiträge run. It is stored per Person until removed, and its text is printed on the Rechnungsposition.
 
 ## Relationships
 

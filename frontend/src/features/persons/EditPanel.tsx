@@ -16,9 +16,9 @@ const textFields: {
 	{ key: "dateOfBirth", label: "Geburtstag", type: "date" },
 	{ key: "joinedOn", label: "Eintritt", type: "date" },
 	{ key: "leftOn", label: "Austritt", type: "date" },
-	{ key: "email", label: "E-Mail", type: "email" },
 	{ key: "mobilePhone", label: "Mobilfunknummer", type: "tel" },
 	{ key: "landlinePhone", label: "Festnetznummer", type: "tel" },
+	{ key: "email", label: "E-Mail", type: "email" },
 	{ key: "street", label: "Strasse" },
 	{ key: "number", label: "Hausnummer" },
 	{ key: "postalCode", label: "PLZ" },
@@ -62,6 +62,34 @@ export function EditPanel({
 		update.mutate(payload);
 	}
 
+	function renderField(f: (typeof textFields)[number]) {
+		const common = {
+			id: `person-${f.key}`,
+			value: (draft[f.key] as string | null) ?? "",
+			required: f.key === "firstName" || f.key === "lastName",
+			onChange: (
+				e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+			) => {
+				setDraft({ ...draft, [f.key]: e.target.value });
+				setSaved(false);
+			},
+			className:
+				"mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm",
+		};
+		return (
+			<div key={f.key} className={f.multiline ? "col-span-2" : undefined}>
+				<label htmlFor={common.id} className="text-sm font-medium">
+					{f.label}
+				</label>
+				{f.multiline ? (
+					<textarea rows={4} {...common} />
+				) : (
+					<input type={f.type ?? "text"} {...common} />
+				)}
+			</div>
+		);
+	}
+
 	return (
 		<aside className="w-[50%] shrink-0 rounded border border-neutral-200 p-4">
 			<form onSubmit={submit}>
@@ -77,36 +105,7 @@ export function EditPanel({
 					</button>
 				</div>
 				<div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
-					{textFields.map((f) => {
-						const common = {
-							id: `person-${f.key}`,
-							value: (draft[f.key] as string | null) ?? "",
-							required: f.key === "firstName" || f.key === "lastName",
-							onChange: (
-								e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-							) => {
-								setDraft({ ...draft, [f.key]: e.target.value });
-								setSaved(false);
-							},
-							className:
-								"mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm",
-						};
-						return (
-							<div
-								key={f.key}
-								className={f.multiline ? "col-span-2" : undefined}
-							>
-								<label htmlFor={common.id} className="text-sm font-medium">
-									{f.label}
-								</label>
-								{f.multiline ? (
-									<textarea rows={4} {...common} />
-								) : (
-									<input type={f.type ?? "text"} {...common} />
-								)}
-							</div>
-						);
-					})}
+					{textFields.slice(0, 2).map(renderField)}
 					<div>
 						<label htmlFor="person-membership" className="text-sm font-medium">
 							Mitgliedschaft
@@ -130,6 +129,27 @@ export function EditPanel({
 							))}
 						</select>
 					</div>
+					{textFields.slice(2).flatMap((f) =>
+						f.key === "email"
+							? [
+									renderField(f),
+									<label
+										key="main-payer"
+										className="flex items-end gap-2 pb-1 text-sm font-medium"
+									>
+										<input
+											type="checkbox"
+											checked={draft.isMainPayer}
+											onChange={(e) => {
+												setDraft({ ...draft, isMainPayer: e.target.checked });
+												setSaved(false);
+											}}
+										/>
+										Hauptzahler
+									</label>,
+								]
+							: [renderField(f)],
+					)}
 				</div>
 				{error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 				{saved && <p className="mt-3 text-sm text-green-700">Gespeichert.</p>}

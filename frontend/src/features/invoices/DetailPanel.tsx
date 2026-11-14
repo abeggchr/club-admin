@@ -91,7 +91,7 @@ export function DetailPanel({
 							))}
 							<tr className="font-medium">
 								<td className="py-1">Total</td>
-								<td className="py-1 text-right tabular-nums">
+								<td className="py-1 text-right tabular-nums" colSpan={2}>
 									{formatChf(invoice.total)}
 								</td>
 							</tr>

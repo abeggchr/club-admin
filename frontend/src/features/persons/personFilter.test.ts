@@ -24,6 +24,7 @@ function person(
 		postalCode: null,
 		city: null,
 		country: null,
+		isMainPayer: false,
 		notes: null,
 	};
 }
