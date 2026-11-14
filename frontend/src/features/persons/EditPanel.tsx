@@ -33,6 +33,13 @@ const textFields: {
 	{ key: "notes", label: "Notizen", multiline: true },
 ];
 
+const REGULAR = "regular";
+const MAIN_PAYER = "main-payer";
+const payerChoices = [
+	{ key: REGULAR, label: "Regulär" },
+	{ key: MAIN_PAYER, label: "Hauptzahler" },
+];
+
 export function EditPanel({
 	person,
 	onClose,
@@ -142,39 +149,31 @@ export function EditPanel({
 							))}
 						</select>
 					</div>
-					{textFields.slice(2).flatMap((f) =>
-						f.key === "email"
-							? [
-									renderField(f),
-									<label
-										key="main-payer"
-										className="flex items-end gap-2 pb-1 text-sm font-medium"
-									>
-										<input
-											type="checkbox"
-											checked={draft.isMainPayer}
-											onChange={(e) => {
-												setDraft({ ...draft, isMainPayer: e.target.checked });
-												setSaved(false);
-											}}
-										/>
-										Hauptzahler
-									</label>,
-								]
-							: [renderField(f)],
-					)}
+					{textFields.slice(2).map(renderField)}
 				</div>
 				<div className="mt-3">
 					<label htmlFor="person-payer" className="text-sm font-medium">
 						Zahler
 					</label>
 					<PersonPicker
-						value={paidPersons.length > 0 || payerStale ? null : draft.payerId}
-						readOnly={paidPersons.length > 0}
+						value={payerStale ? null : draft.payerId}
+						choices={payerChoices}
+						choice={draft.isMainPayer ? MAIN_PAYER : REGULAR}
+						onChoice={(key) => {
+							setDraft({
+								...draft,
+								payerId: null,
+								isMainPayer: key === MAIN_PAYER,
+							});
+							setSaved(false);
+						}}
 						includeFormer
-						selectable={(p) => canBePayerOf(p, person)}
+						selectable={(p) =>
+							paidPersons.length === 0 && canBePayerOf(p, person)
+						}
 						onChange={(id) => {
-							setDraft({ ...draft, payerId: id });
+							// A named Zahler replaces Hauptzahler; clearing the field falls back to Regulär.
+							setDraft({ ...draft, payerId: id, isMainPayer: false });
 							setSaved(false);
 						}}
 						className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm"
