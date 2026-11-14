@@ -3,7 +3,9 @@ import { type FormEvent, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { formatChf } from "../accounting/amount";
 import { KontoPicker } from "../accounting/KontoPicker";
+import { personsQueryOptions } from "../persons/api";
 import { PersonPicker } from "../persons/PersonPicker";
+import { personLabel } from "../persons/personFilter";
 import { textTemplatesQueryOptions } from "../settings/textTemplateApi";
 import { createInvoice, invalidateInvoices } from "./api";
 import {
@@ -16,12 +18,16 @@ import {
 	totalOf,
 	validateInvoiceDraft,
 } from "./invoiceDraft";
+import { pickRecipient } from "./recipient";
 
 const input = "rounded border border-slate-300 p-2";
 
 export function CreatePanel({ onDone }: { onDone: () => void }) {
 	const queryClient = useQueryClient();
 	const { data: templates } = useSuspenseQuery(textTemplatesQueryOptions);
+	const { data: persons } = useSuspenseQuery(personsQueryOptions);
+	const [payerOf, setPayerOf] = useState<number | null>(null);
+	const payerOfPerson = persons.find((p) => p.id === payerOf);
 	const [draft, setDraft] = useState<InvoiceDraft>(emptyInvoiceDraft);
 	const [errors, setErrors] = useState<InvoiceDraftErrors | null>(null);
 	const [serverError, setServerError] = useState<string>();
@@ -66,10 +72,29 @@ export function CreatePanel({ onDone }: { onDone: () => void }) {
 				Person
 				<PersonPicker
 					value={draft.personId}
-					onChange={(personId) => setDraft((d) => ({ ...d, personId }))}
+					onChange={(picked) => {
+						const { recipientId, payerOf } = pickRecipient(persons, picked);
+						setPayerOf(payerOf);
+						setDraft((d) => ({ ...d, personId: recipientId }));
+					}}
 					className={input}
 					includeFormer
 				/>
+				{payerOfPerson && (
+					<span className="text-slate-500">
+						Zahler von {personLabel(payerOfPerson)}{" "}
+						<button
+							type="button"
+							className="underline"
+							onClick={() => {
+								setPayerOf(null);
+								setDraft((d) => ({ ...d, personId: payerOfPerson.id }));
+							}}
+						>
+							Stattdessen {personLabel(payerOfPerson)} wählen
+						</button>
+					</span>
+				)}
 				{errors?.person && (
 					<span className="text-red-600">{errors.person}</span>
 				)}
