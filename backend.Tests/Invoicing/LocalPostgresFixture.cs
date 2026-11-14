@@ -72,10 +72,13 @@ public sealed class LocalPostgresFixture : IAsyncLifetime
             await _connection.DisposeAsync();
         if (_databaseName is not null)
         {
+            // Pooled connections from the tests' DbContexts keep the database "in use"; close them and
+            // force the drop so cleanup doesn't fail with 55006 (object_in_use).
+            NpgsqlConnection.ClearAllPools();
             await using var admin = new NpgsqlConnection($"{_server};Database=postgres");
             await admin.OpenAsync();
             await using var cmd = admin.CreateCommand();
-            cmd.CommandText = $"DROP DATABASE IF EXISTS \"{_databaseName}\"";
+            cmd.CommandText = $"DROP DATABASE IF EXISTS \"{_databaseName}\" WITH (FORCE)";
             await cmd.ExecuteNonQueryAsync();
         }
     }
