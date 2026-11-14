@@ -113,7 +113,7 @@ export function DetailPanel({
 						</ul>
 					</div>
 
-					{invoice.paidBy !== null && (
+					{invoice.paidBy && (
 						<p className="text-sm">Bezahlt mit Bewegung Nr. {invoice.paidBy}</p>
 					)}
 
