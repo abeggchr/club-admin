@@ -43,12 +43,26 @@ public static class MembershipFeeRules
     {
         discounts ??= new Dictionary<int, MembershipDiscount>();
         var warnings = new List<string>();
-        var members = ActiveInvoicedMembers(persons, at, warnings);
+        var allPersons = persons.ToList();
+        var byId = allPersons.ToDictionary(p => p.Id);
+        var invoiced = ActiveInvoicedMembers(allPersons, at, warnings);
+        // A member with a Zahler pays on the Zahler's Rechnung and is otherwise out of grouping.
+        var dependents = invoiced
+            .Where(p => p.PayerId is { } id && byId.ContainsKey(id))
+            .ToList();
+        var members = invoiced.Except(dependents).ToList();
+        var dependentsByPayer = dependents.ToLookup(p => p.PayerId!.Value);
+        // A Zahler who is no paying member still takes part in grouping, as the recipient only.
+        var silentPayers = dependentsByPayer
+            .Select(g => byId[g.Key])
+            .Where(payer => !members.Contains(payer))
+            .ToList();
         var invoices = new List<PlannedInvoice>();
-        foreach (var group in GroupByAddress(members, warnings))
+        foreach (var group in GroupByAddress([.. members, .. silentPayers], warnings))
         {
-            var payerFamily = SelectFamilyPayer(group);
-            var ordered = group.OrderBy(Seniority, SeniorityComparer).ToList();
+            var payingMembers = group.Except(silentPayers).ToList();
+            var payerFamily = SelectFamilyPayer(payingMembers);
+            var ordered = payingMembers.OrderBy(Seniority, SeniorityComparer).ToList();
             foreach (
                 var p in ordered.Where(p =>
                     FeeOf(p, payerFamily) == 0 && discounts.ContainsKey(p.Id)
@@ -58,9 +72,23 @@ public static class MembershipFeeRules
             var lines = ordered
                 .Select(p => BuildLine(p, FeeOf(p, payerFamily), discounts.GetValueOrDefault(p.Id)))
                 .ToList();
+            var zahler = group
+                .Where(p => dependentsByPayer.Contains(p.Id))
+                .OrderBy(Seniority, SeniorityComparer)
+                .ToList();
+            foreach (var z in zahler)
+                lines.AddRange(
+                    dependentsByPayer[z.Id]
+                        .OrderBy(Seniority, SeniorityComparer)
+                        .Select(d =>
+                            BuildLine(d, FeeFor(d.Membership)!.Value, discounts.GetValueOrDefault(d.Id))
+                        )
+                );
             if (lines.Sum(l => l.Amount) <= 0)
                 continue;
-            invoices.Add(new PlannedInvoice(payerFamily ?? ordered[0], lines));
+            invoices.Add(
+                new PlannedInvoice(zahler.FirstOrDefault() ?? payerFamily ?? ordered[0], lines)
+            );
         }
         return new BulkInvoicePlan(invoices, warnings);
     }
