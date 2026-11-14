@@ -57,7 +57,7 @@ export function DetailPanel({
 					<p className="text-sm">Rechnungsdatum: {formatDate(invoice.date)}</p>
 
 					{invoice.reference !== "" && (
-						<p className="text-sm">Gläubigerreferenz: {invoice.reference}</p>
+						<p className="text-sm">Referenz: {invoice.reference}</p>
 					)}
 
 					<div className="text-sm">
