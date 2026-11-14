@@ -37,7 +37,7 @@ const REGULAR = "regular";
 const MAIN_PAYER = "main-payer";
 const payerChoices = [
 	{ key: REGULAR, label: "Regulär" },
-	{ key: MAIN_PAYER, label: "Hauptzahler" },
+	{ key: MAIN_PAYER, label: "Hauptzahler (Rechnungsempfänger für diese Adresse)" },
 ];
 
 export function EditPanel({
