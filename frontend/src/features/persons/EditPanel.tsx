@@ -149,47 +149,56 @@ export function EditPanel({
 							))}
 						</select>
 					</div>
-					{textFields.slice(2).map(renderField)}
+					{textFields.slice(2).flatMap((f) =>
+						f.key === "email"
+							? [
+									renderField(f),
+									<div key="payer">
+										<label
+											htmlFor="person-payer"
+											className="text-sm font-medium"
+										>
+											Zahler
+										</label>
+										<PersonPicker
+											value={payerStale ? null : draft.payerId}
+											choices={payerChoices}
+											choice={draft.isMainPayer ? MAIN_PAYER : REGULAR}
+											onChoice={(key) => {
+												setDraft({
+													...draft,
+													payerId: null,
+													isMainPayer: key === MAIN_PAYER,
+												});
+												setSaved(false);
+											}}
+											includeFormer
+											selectable={(p) =>
+												paidPersons.length === 0 && canBePayerOf(p, person)
+											}
+											onChange={(id) => {
+												// A named Zahler replaces Hauptzahler; clearing the field falls back to Regulär.
+												setDraft({ ...draft, payerId: id, isMainPayer: false });
+												setSaved(false);
+											}}
+											className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+										/>
+										{payerStale && (
+											<p className="mt-1 text-sm text-red-600">
+												Der bisherige Zahler hat inzwischen selbst einen Zahler
+												und wird beim Speichern entfernt.
+											</p>
+										)}
+										{paidPersons.length > 0 && (
+											<p className="mt-1 text-sm">
+												Zahler für: {paidPersons.map(personLabel).join(", ")}
+											</p>
+										)}
+									</div>,
+								]
+							: [renderField(f)],
+					)}
 				</div>
-				<div className="mt-3">
-					<label htmlFor="person-payer" className="text-sm font-medium">
-						Zahler
-					</label>
-					<PersonPicker
-						value={payerStale ? null : draft.payerId}
-						choices={payerChoices}
-						choice={draft.isMainPayer ? MAIN_PAYER : REGULAR}
-						onChoice={(key) => {
-							setDraft({
-								...draft,
-								payerId: null,
-								isMainPayer: key === MAIN_PAYER,
-							});
-							setSaved(false);
-						}}
-						includeFormer
-						selectable={(p) =>
-							paidPersons.length === 0 && canBePayerOf(p, person)
-						}
-						onChange={(id) => {
-							// A named Zahler replaces Hauptzahler; clearing the field falls back to Regulär.
-							setDraft({ ...draft, payerId: id, isMainPayer: false });
-							setSaved(false);
-						}}
-						className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm"
-					/>
-				</div>
-				{payerStale && (
-					<p className="mt-3 text-sm text-red-600">
-						Der bisherige Zahler hat inzwischen selbst einen Zahler und wird
-						beim Speichern entfernt.
-					</p>
-				)}
-				{paidPersons.length > 0 && (
-					<p className="mt-3 text-sm">
-						Zahler für: {paidPersons.map(personLabel).join(", ")}
-					</p>
-				)}
 				{error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 				{saved && <p className="mt-3 text-sm text-green-700">Gespeichert.</p>}
 				<div className="mt-4 flex justify-end gap-2">
