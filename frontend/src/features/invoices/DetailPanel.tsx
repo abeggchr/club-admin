@@ -10,7 +10,7 @@ import {
 	invoicePdfUrl,
 	statusLabel,
 } from "./api";
-import { addressLines, formatDateTime } from "./invoiceDetail";
+import { formatDateTime } from "./invoiceDetail";
 
 /** Read-only detail of a Rechnung. Nothing here is editable or deletable. */
 export function DetailPanel({
@@ -54,14 +54,20 @@ export function DetailPanel({
 			)}
 			{invoice && (
 				<>
-					<p className="text-sm">Rechnungsdatum: {formatDate(invoice.date)}</p>
+					<p className="text-sm">
+						<span className="text-slate-500">Rechnungsdatum:</span>{" "}
+						{formatDate(invoice.date)}
+					</p>
 
 					{invoice.reference !== "" && (
-						<p className="text-sm">Referenz: {invoice.reference}</p>
+						<p className="text-sm">
+							<span className="text-slate-500">Referenz:</span>{" "}
+							{invoice.reference}
+						</p>
 					)}
 
 					<div className="text-sm">
-						<p className="text-slate-500">Person</p>
+						<span className="text-slate-500">Empfänger: </span>
 						<Link
 							to="/persons"
 							search={{ person: invoice.person.id }}
@@ -69,11 +75,9 @@ export function DetailPanel({
 						>
 							{invoice.person.name}
 						</Link>
-						{addressLines(invoice.person).map((line) => (
-							<p key={line}>{line}</p>
-						))}
 					</div>
 
+					<span className="text-sm text-slate-500">Positionen: </span>
 					<table className="w-full text-left text-sm">
 						<thead className="border-b border-slate-200">
 							<tr>

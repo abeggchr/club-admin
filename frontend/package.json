@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "format": "biome format",
+    "format:write": "biome format --write",
     "lint": "biome lint",
     "check": "biome check"
   },
