@@ -35,3 +35,16 @@ export async function updatePerson(person: Person): Promise<Person> {
 	}
 	return res.json();
 }
+
+export async function downloadMailingList() {
+	const res = await fetch("/api/persons/mailing-list");
+	if (!res.ok) throw new Error(`Backend returned ${res.status}`);
+	const blob = await res.blob();
+	const url = URL.createObjectURL(blob);
+	const a = Object.assign(document.createElement("a"), {
+		href: url,
+		download: "versandliste.csv",
+	});
+	a.click();
+	URL.revokeObjectURL(url);
+}

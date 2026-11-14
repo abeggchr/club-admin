@@ -330,6 +330,9 @@ namespace backend.Migrations
                     b.Property<string>("PostalCode")
                         .HasColumnType("text");
 
+                    b.Property<bool>("ReceivesClubNews")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Street")
                         .HasColumnType("text");
 

@@ -11,6 +11,8 @@ public class Person
     public DateOnly? LeftOn { get; set; }
     public string? Email { get; set; }
     public bool IsMainPayer { get; set; }
+    /// <summary>Receives the club news by snail mail even though the Person is not active.</summary>
+    public bool ReceivesClubNews { get; set; }
     public string? MobilePhone { get; set; }
     public string? LandlinePhone { get; set; }
     public string? Street { get; set; }

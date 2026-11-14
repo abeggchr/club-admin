@@ -3,7 +3,7 @@ import { getRouteApi } from "@tanstack/react-router";
 import type { SortingState } from "@tanstack/react-table";
 import { useTable } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { personsQueryOptions } from "./api";
+import { downloadMailingList, personsQueryOptions } from "./api";
 import { features } from "./columns";
 import { downloadPersonCsv } from "./csv";
 import { EditPanel } from "./EditPanel";
@@ -65,6 +65,7 @@ export function PersonsPage() {
 						table.getFilteredRowModel().rows.map((r) => r.original),
 					)
 				}
+				onMailingList={() => downloadMailingList().catch(console.error)}
 				onImport={() => importDialog.current?.showModal()}
 			/>
 			<ImportDialog dialogRef={importDialog} />

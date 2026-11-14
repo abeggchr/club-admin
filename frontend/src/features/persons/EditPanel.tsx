@@ -204,6 +204,23 @@ export function EditPanel({
 											</p>
 										)}
 									</div>,
+									<label
+										key="club-news"
+										className="flex items-end gap-2 pb-1 text-sm font-medium"
+									>
+										<input
+											type="checkbox"
+											checked={draft.receivesClubNews}
+											onChange={(e) => {
+												setDraft({
+													...draft,
+													receivesClubNews: e.target.checked,
+												});
+												setSaved(false);
+											}}
+										/>
+										Newsletter
+									</label>,
 								]
 							: [renderField(f)],
 					)}
