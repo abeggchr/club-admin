@@ -204,25 +204,29 @@ export function EditPanel({
 											</p>
 										)}
 									</div>,
-									<label
-										key="club-news"
-										className="flex items-end gap-2 pb-1 text-sm font-medium"
-									>
-										<input
-											type="checkbox"
-											checked={draft.receivesClubNews}
-											onChange={(e) => {
-												setDraft({
-													...draft,
-													receivesClubNews: e.target.checked,
-												});
-												setSaved(false);
-											}}
-										/>
-										Newsletter
-									</label>,
 								]
-							: [renderField(f)],
+							: f.key === "country"
+								? [
+										renderField(f),
+										<label
+											key="club-news"
+											className="flex items-end gap-2 pb-1 text-sm font-medium"
+										>
+											<input
+												type="checkbox"
+												checked={draft.receivesClubNews}
+												onChange={(e) => {
+													setDraft({
+														...draft,
+														receivesClubNews: e.target.checked,
+													});
+													setSaved(false);
+												}}
+											/>
+											Newsletter (Club-News)
+										</label>,
+									]
+								: [renderField(f)],
 					)}
 				</div>
 				{error && <p className="mt-3 text-sm text-red-600">{error}</p>}
