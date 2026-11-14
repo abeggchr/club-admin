@@ -51,11 +51,14 @@ export function AnnualFeesDialog({
 			<form onSubmit={submit}>
 				<h2 className="text-xl font-bold">Jahresbeiträge</h2>
 				<p className="mt-4 text-sm">
-					Es werden <b>{preview.plannedInvoices}</b> Rechnungen für <b>{preview.consideredPersons}</b> aktive Personen erstellt.
+					Es werden <b>{preview.plannedInvoices}</b> Rechnungen für{" "}
+					<b>{preview.consideredPersons}</b> aktive Personen erstellt.
 					<br />
 				</p>
 				<label className="mt-4 block text-sm">
-					<a href="/settings" className="text-sky-700 underline">Textvorlage </a>
+					<a href="/settings" className="text-sky-700 underline">
+						Textvorlage{" "}
+					</a>
 					<select
 						required
 						value={selected ?? ""}
