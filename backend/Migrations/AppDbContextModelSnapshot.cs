@@ -324,6 +324,9 @@ namespace backend.Migrations
                     b.Property<string>("Number")
                         .HasColumnType("text");
 
+                    b.Property<int?>("PayerId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("PostalCode")
                         .HasColumnType("text");
 
@@ -331,6 +334,8 @@ namespace backend.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PayerId");
 
                     b.ToTable("Persons");
                 });
@@ -388,6 +393,14 @@ namespace backend.Migrations
                         .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("backend.Person.Person", b =>
+                {
+                    b.HasOne("backend.Person.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PayerId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("backend.Accounting.Transaction", b =>

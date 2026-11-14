@@ -18,4 +18,5 @@ export type Person = {
 	city: string | null;
 	country: string | null;
 	notes: string | null;
+	payerId: number | null;
 };

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { filterPersons } from "./personFilter";
+import {
+	canBePayerOf,
+	canHavePayer,
+	filterPersons,
+	payerCandidates,
+	personsPaidBy,
+} from "./personFilter";
 import type { Person } from "./types";
 
 function person(
@@ -26,6 +32,7 @@ function person(
 		country: null,
 		isMainPayer: false,
 		notes: null,
+		payerId: null,
 	};
 }
 
@@ -54,5 +61,41 @@ describe("filterPersons", () => {
 			1,
 		]);
 		expect(filterPersons(persons, "mü", null).map((p) => p.id)).toEqual([3]);
+	});
+});
+
+describe("Zahler", () => {
+	const anna = person(1, "Anna", "A");
+	const ben = person(2, "Ben", "B");
+	const cleo = { ...person(3, "Cleo", "C"), payerId: 2 };
+	const all = [anna, ben, cleo];
+
+	it("candidates exclude the Person themselves and Persons who have a Zahler", () => {
+		expect(payerCandidates(all, anna).map((p) => p.id)).toEqual([2]);
+	});
+
+	it("a Person with their own Zahler cannot be a Zahler", () => {
+		expect(canBePayerOf(cleo, anna)).toBe(false);
+		expect(canBePayerOf(ben, anna)).toBe(true);
+		expect(canBePayerOf(anna, anna)).toBe(false);
+	});
+
+	it("a Person who is already someone's Zahler may be chosen as Zahler", () => {
+		const dora = person(4, "Dora", "D");
+		expect(canBePayerOf(ben, dora)).toBe(true);
+		expect(payerCandidates([...all, dora], dora).map((p) => p.id)).toEqual([
+			1, 2,
+		]);
+	});
+
+	it("a Person who is a Zahler cannot get a Zahler", () => {
+		expect(canHavePayer(all, ben)).toBe(false);
+		expect(canHavePayer(all, anna)).toBe(true);
+		expect(canHavePayer(all, cleo)).toBe(true);
+	});
+
+	it("lists the Persons a Zahler pays for", () => {
+		expect(personsPaidBy(all, ben).map((p) => p.id)).toEqual([3]);
+		expect(personsPaidBy(all, anna)).toEqual([]);
 	});
 });

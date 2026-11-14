@@ -43,12 +43,26 @@ public static class MembershipFeeRules
     {
         discounts ??= new Dictionary<int, MembershipDiscount>();
         var warnings = new List<string>();
-        var members = ActiveInvoicedMembers(persons, at, warnings);
+        var allPersons = persons.ToList();
+        var byId = allPersons.ToDictionary(p => p.Id);
+        var invoiced = ActiveInvoicedMembers(allPersons, at, warnings);
+        // A member with a Zahler pays on the Zahler's Rechnung and is otherwise out of grouping.
+        var dependents = invoiced
+            .Where(p => p.PayerId is { } id && byId.ContainsKey(id))
+            .ToList();
+        var members = invoiced.Except(dependents).ToList();
+        var dependentsByPayer = dependents.ToLookup(p => p.PayerId!.Value);
+        // A Zahler who is no paying member still takes part in grouping, as the recipient only.
+        var silentPayers = dependentsByPayer
+            .Select(g => byId[g.Key])
+            .Where(payer => !members.Contains(payer))
+            .ToList();
         var invoices = new List<PlannedInvoice>();
-        foreach (var group in GroupByAddress(members, warnings))
+        foreach (var group in GroupByAddress([.. members, .. silentPayers], warnings))
         {
-            var payerFamily = SelectFamilyPayer(group);
-            var ordered = group.OrderBy(Seniority, SeniorityComparer).ToList();
+            var payingMembers = group.Except(silentPayers).ToList();
+            var payerFamily = SelectFamilyPayer(payingMembers);
+            var ordered = BySeniority(payingMembers);
             foreach (
                 var p in ordered.Where(p =>
                     FeeOf(p, payerFamily) == 0 && discounts.ContainsKey(p.Id)
@@ -56,11 +70,19 @@ public static class MembershipFeeRules
             )
                 warnings.Add($"{p.FullName} zahlt nichts; die Ermässigung wird ignoriert.");
             var lines = ordered
-                .Select(p => BuildLine(p, FeeOf(p, payerFamily), discounts.GetValueOrDefault(p.Id)))
+                .Select(p => BuildLine(p, FeeOf(p, payerFamily), discounts))
                 .ToList();
+            var payers = BySeniority(group.Where(p => dependentsByPayer.Contains(p.Id)));
+            lines.AddRange(
+                payers
+                    .SelectMany(z => BySeniority(dependentsByPayer[z.Id]))
+                    .Select(d => BuildLine(d, FeeFor(d.Membership)!.Value, discounts))
+            );
             if (lines.Sum(l => l.Amount) <= 0)
                 continue;
-            invoices.Add(new PlannedInvoice(payerFamily ?? ordered[0], lines));
+            invoices.Add(
+                new PlannedInvoice(payers.FirstOrDefault() ?? payerFamily ?? ordered[0], lines)
+            );
         }
         return new BulkInvoicePlan(invoices, warnings);
     }
@@ -138,9 +160,10 @@ public static class MembershipFeeRules
     private static InvoiceLineDraft BuildLine(
         backend.Person.Person p,
         decimal fee,
-        MembershipDiscount? discount
+        IReadOnlyDictionary<int, MembershipDiscount> discounts
     )
     {
+        var discount = discounts.GetValueOrDefault(p.Id);
         var text = $"{p.FullName} ({p.Membership.Label()})";
         var amount = fee;
         if (discount is not null && fee > 0)
@@ -154,6 +177,10 @@ public static class MembershipFeeRules
         }
         return new InvoiceLineDraft(text, amount, AccountNumber);
     }
+
+    private static List<backend.Person.Person> BySeniority(
+        IEnumerable<backend.Person.Person> persons
+    ) => persons.OrderBy(Seniority, SeniorityComparer).ToList();
 
     private static (DateOnly, int) Seniority(backend.Person.Person p) =>
         (p.JoinedOn ?? DateOnly.MaxValue, p.Id);

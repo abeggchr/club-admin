@@ -1,8 +1,19 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+	useMutation,
+	useQueryClient,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
 import { useState } from "react";
 import { FiX } from "react-icons/fi";
 import { personsQueryOptions, updatePerson } from "./api";
 import { membershipLabels, membershipTypes } from "./membership";
+import { PersonPicker } from "./PersonPicker";
+import {
+	canBePayerOf,
+	canHavePayer,
+	personLabel,
+	personsPaidBy,
+} from "./personFilter";
 import type { Person } from "./types";
 
 const textFields: {
@@ -27,6 +38,16 @@ const textFields: {
 	{ key: "notes", label: "Notizen", multiline: true },
 ];
 
+const REGULAR = "regular";
+const MAIN_PAYER = "main-payer";
+const payerChoices = [
+	{ key: REGULAR, label: "Regulär" },
+	{
+		key: MAIN_PAYER,
+		label: "Hauptzahler (Rechnungsempfänger für diese Adresse)",
+	},
+];
+
 export function EditPanel({
 	person,
 	onClose,
@@ -35,7 +56,15 @@ export function EditPanel({
 	onClose: () => void;
 }) {
 	const queryClient = useQueryClient();
+	const { data: persons } = useSuspenseQuery(personsQueryOptions);
+	const paidPersons = personsPaidBy(persons, person);
+	// A Person who is someone's Zahler cannot get a Zahler (nor be Hauptzahler): the picker is locked.
+	const payerLocked = !canHavePayer(persons, person);
 	const [draft, setDraft] = useState(person);
+	// A chosen Zahler may have gained a Zahler of their own since: then they are no longer valid.
+	const chosenPayer = persons.find((p) => p.id === draft.payerId);
+	const payerStale =
+		chosenPayer !== undefined && !canBePayerOf(chosenPayer, person);
 	const [error, setError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
 	const update = useMutation({
@@ -59,6 +88,7 @@ export function EditPanel({
 		const payload = Object.fromEntries(
 			Object.entries(draft).map(([k, v]) => [k, v === "" ? null : v]),
 		) as Person;
+		if (payerStale) payload.payerId = null;
 		update.mutate(payload);
 	}
 
@@ -133,20 +163,47 @@ export function EditPanel({
 						f.key === "email"
 							? [
 									renderField(f),
-									<label
-										key="main-payer"
-										className="flex items-end gap-2 pb-1 text-sm font-medium"
-									>
-										<input
-											type="checkbox"
-											checked={draft.isMainPayer}
-											onChange={(e) => {
-												setDraft({ ...draft, isMainPayer: e.target.checked });
+									<div key="payer">
+										<label
+											htmlFor="person-payer"
+											className="text-sm font-medium"
+										>
+											Zahler
+										</label>
+										<PersonPicker
+											value={payerStale ? null : draft.payerId}
+											choices={payerChoices}
+											choice={draft.isMainPayer ? MAIN_PAYER : REGULAR}
+											onChoice={(key) => {
+												setDraft({
+													...draft,
+													payerId: null,
+													isMainPayer: key === MAIN_PAYER,
+												});
 												setSaved(false);
 											}}
+											includeFormer
+											readOnly={payerLocked}
+											selectable={(p) => canBePayerOf(p, person)}
+											onChange={(id) => {
+												// A named Zahler replaces Hauptzahler; clearing the field falls back to Regulär.
+												setDraft({ ...draft, payerId: id, isMainPayer: false });
+												setSaved(false);
+											}}
+											className={`mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm ${payerLocked ? "bg-neutral-100 text-neutral-500" : ""}`}
 										/>
-										Hauptzahler
-									</label>,
+										{payerStale && (
+											<p className="mt-1 text-sm text-red-600">
+												Der bisherige Zahler hat inzwischen selbst einen Zahler
+												und wird beim Speichern entfernt.
+											</p>
+										)}
+										{paidPersons.length > 0 && (
+											<p className="mt-1 text-sm">
+												Zahler für: {paidPersons.map(personLabel).join(", ")}
+											</p>
+										)}
+									</div>,
 								]
 							: [renderField(f)],
 					)}

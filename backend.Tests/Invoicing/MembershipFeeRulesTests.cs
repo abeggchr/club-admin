@@ -193,4 +193,107 @@ public class MembershipFeeRulesTests
 
         Assert.Equal("A", Assert.Single(plan.Invoices).Recipient.FirstName);
     }
+
+    private static backend.Person.Person WithPayer(backend.Person.Person p, backend.Person.Person payer)
+    {
+        p.PayerId = payer.Id;
+        return p;
+    }
+
+    [Fact]
+    public void A_member_with_a_Zahler_pays_their_own_fee_on_the_Zahlers_Rechnung_with_the_Zahler_as_recipient()
+    {
+        var payer = P("Paul", MembershipType.Single, street: "Zahlweg");
+        var x = WithPayer(P("Xaver", MembershipType.Junior, street: "Kinderweg"), payer);
+
+        var plan = MembershipFeeRules.Plan([x, payer], Start);
+
+        var invoice = Assert.Single(plan.Invoices);
+        Assert.Equal(payer.Id, invoice.Recipient.Id);
+        Assert.Equal([90m, 35m], invoice.Lines.Select(l => l.Amount));
+        Assert.Contains(invoice.Lines, l => l.Text == "Xaver Muster (Junior:innen)");
+    }
+
+    [Fact]
+    public void The_Zahler_need_not_be_an_active_member()
+    {
+        var payer = P("Paul", MembershipType.Single, joined: null, street: "Zahlweg");
+        var x = WithPayer(P("Xaver", MembershipType.Single), payer);
+
+        var plan = MembershipFeeRules.Plan([x, payer], Start);
+
+        var invoice = Assert.Single(plan.Invoices);
+        Assert.Equal(payer.Id, invoice.Recipient.Id);
+        var line = Assert.Single(invoice.Lines);
+        Assert.Equal("Xaver Muster (Einzelmitglied)", line.Text);
+    }
+
+    [Fact]
+    public void A_member_with_a_Zahler_is_ignored_by_the_Familienmitglied_rule_at_their_own_address()
+    {
+        var payer = P("Paul", MembershipType.Single, street: "Zahlweg");
+        var x = WithPayer(P("Xaver", MembershipType.Family, joined: "2010-01-01"), payer);
+        var anna = P("Anna", MembershipType.Family, joined: "2021-01-01");
+        var ben = P("Ben", MembershipType.Family, joined: "2022-01-01");
+
+        var plan = MembershipFeeRules.Plan([x, anna, ben, payer], Start);
+
+        var home = Assert.Single(plan.Invoices, i => i.Recipient.Id == anna.Id);
+        Assert.Equal([135m], home.Lines.Where(l => l.Amount > 0).Select(l => l.Amount));
+        Assert.DoesNotContain(home.Lines, l => l.Text.StartsWith("Xaver"));
+        var paul = Assert.Single(plan.Invoices, i => i.Recipient.Id == payer.Id);
+        Assert.Contains(paul.Lines, l => l.Text.StartsWith("Xaver") && l.Amount == 135m);
+    }
+
+    [Fact]
+    public void A_Zahler_with_an_incomplete_address_gets_one_ungrouped_Rechnung_and_a_warning()
+    {
+        var payer = P("Paul", MembershipType.Single, street: null);
+        var x = WithPayer(P("Xaver", MembershipType.Junior), payer);
+        var y = WithPayer(P("Yvo", MembershipType.Junior), payer);
+        var other = P("Otto", MembershipType.Single, street: null);
+
+        var plan = MembershipFeeRules.Plan([x, y, payer, other], Start);
+
+        Assert.Equal(2, plan.Invoices.Count);
+        var invoice = Assert.Single(plan.Invoices, i => i.Recipient.Id == payer.Id);
+        Assert.Equal(3, invoice.Lines.Count);
+        Assert.Contains(plan.Warnings, w => w.Contains("Paul Muster") && w.Contains("unvollständige Adresse"));
+    }
+
+    [Fact]
+    public void An_inactive_Zahler_with_an_incomplete_address_still_gets_one_Rechnung_and_a_warning()
+    {
+        var payer = P("Paul", MembershipType.Single, joined: null, street: null);
+        var x = WithPayer(P("Xaver", MembershipType.Single), payer);
+
+        var plan = MembershipFeeRules.Plan([x, payer], Start);
+
+        var invoice = Assert.Single(plan.Invoices);
+        Assert.Equal(payer.Id, invoice.Recipient.Id);
+        Assert.Contains(plan.Warnings, w => w.Contains("Paul Muster") && w.Contains("unvollständige Adresse"));
+    }
+
+    [Fact]
+    public void An_inactive_Zahler_sharing_an_address_with_members_is_grouped_with_them_as_recipient()
+    {
+        var payer = P("Paul", MembershipType.Single, joined: null);
+        var anna = P("Anna", MembershipType.Single);
+        var x = WithPayer(P("Xaver", MembershipType.Junior, street: "Kinderweg"), payer);
+
+        var plan = MembershipFeeRules.Plan([x, anna, payer], Start);
+
+        var invoice = Assert.Single(plan.Invoices);
+        Assert.Equal(payer.Id, invoice.Recipient.Id);
+        Assert.Equal([90m, 35m], invoice.Lines.Select(l => l.Amount).OrderByDescending(a => a));
+    }
+
+    [Fact]
+    public void A_Zahlers_dependent_with_total_zero_creates_no_Rechnung()
+    {
+        var payer = P("Paul", MembershipType.Honorary);
+        var x = WithPayer(P("Xaver", MembershipType.Honorary, street: "Kinderweg"), payer);
+
+        Assert.Empty(MembershipFeeRules.Plan([x, payer], Start).Invoices);
+    }
 }

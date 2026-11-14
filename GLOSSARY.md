@@ -52,11 +52,17 @@ The amount the bank account should hold on a given date: the Anfangssaldo plus a
 **Person** (code: _Person_):
 A club member or contact: a name, membership dates and contact data. The address is stored as Strasse plus Hausnummer (code: _Street_ and _Number_), not as one line, so that imported bank addresses can be matched against it.
 
+**Zahler** (code: _Payer_, _Person.PayerId_):
+The Person who pays for another Person. Optional, set on the paid-for Person; the Zahler needs no active membership. There are no chains and no cycles: a Person cannot be their own Zahler, a Zahler has no Zahler, and a Person who is a Zahler cannot get one. A Person who is someone's Zahler cannot be deleted.
+
+**Hauptzahler** (code: _IsMainPayer_ on _Person_):
+A flag on a Person without Zahler: they are the Rechnungsempfänger of their address and pay the Familie fee in the Jahresbeiträge run, ahead of the longest-standing Familie member. In the UI it is one choice of the Zahler picker, next to "Regulär" and the Personen. Choosing a named Zahler clears the flag. A Person who is someone's Zahler cannot get a Zahler or the flag: the picker is locked for them.
+
 **Textvorlage** (code: _TextTemplate_):
 A reusable set of Betreff, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. The texts may contain Platzhalter, which are replaced when a Rechnung is created; an unknown Platzhalter is rejected on save. Zero Textvorlagen is a valid state.
 
 **Rechnung** (code: _Invoice_):
-A bill to one Person, created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Textvorlage texts are stored resolved (Platzhalter already replaced) and live only in that PDF. It has no link to a Textvorlage and no link to the Buchhaltung either: creating it writes no Buchung — each position's Konto is only a booking hint for the later Buchung (ADR 0004). The last page of the PDF ends with the QR-Rechnung payment part (210×105 mm): Klub-IBAN, Klubadresse, the Rechnung total, a SCOR reference (RF + check digits + Rechnungsnummer) and the message "Rechnung #0042"; the Person is the debtor only when their address is complete. "Betrag offen lassen" leaves the amount out of the QR code, so the payer enters it. If less than 105 mm is free on the last page, the payment part gets a page of its own.
+A bill to one Person (the recipient; in the Jahresbeiträge run the Zahler of the Personen it covers), created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Textvorlage texts are stored resolved (Platzhalter already replaced) and live only in that PDF. It has no link to a Textvorlage and no link to the Buchhaltung either: creating it writes no Buchung — each position's Konto is only a booking hint for the later Buchung (ADR 0004). The last page of the PDF ends with the QR-Rechnung payment part (210×105 mm): Klub-IBAN, Klubadresse, the Rechnung total, a SCOR reference (RF + check digits + Rechnungsnummer) and the message "Rechnung #0042"; the Person is the debtor only when their address is complete. "Betrag offen lassen" leaves the amount out of the QR code, so the payer enters it. If less than 105 mm is free on the last page, the payment part gets a page of its own.
 
 **Rechnungsposition** (code: _InvoiceLine_):
 One line of a Rechnung: a text, an amount greater than 0 and a required Konto from the Kontoplan, which is the booking hint for the later Buchung. The total of a Rechnung is the sum of its Rechnungspositionen and is not stored.
@@ -80,7 +86,7 @@ The id of the Bewegung that first covered a Rechnung's total (null while open).
 The kind of membership of a Person (Familie, Einzel, Junior, Ehren, Frei, Gönner, or Unbekannt), which decides the Jahresbeitrag. Unbekannt is never invoiced.
 
 **Jahresbeitrag** (code: _MembershipFeeRules_), plural **Jahresbeiträge**:
-The yearly membership fee of a Person, set per Mitgliedschaft (a constant in the code) and booked to Konto 3400. "Jahresbeiträge" is also the run that creates the Rechnungen for all active Personen at once: one Rechnung per address with one Rechnungsposition per Person, where a Familie pays once per address (ADR 0005). A Rechnungsposition of 0 (an Ehren member, a further Familie member of the address, or a 100 % Ermässigung) is kept, but no Rechnung is created when its total is 0.
+The yearly membership fee of a Person, set per Mitgliedschaft (a constant in the code) and booked to Konto 3400. "Jahresbeiträge" is also the run that creates the Rechnungen for all active Personen at once: one Rechnung per address with one Rechnungsposition per Person, where a Familie pays once per address and a Person with a Zahler is billed on the Zahler's Rechnung (ADR 0005). A Rechnungsposition of 0 (an Ehren member, a further Familie member of the address, or a 100 % Ermässigung) is kept, but no Rechnung is created when its total is 0.
 
 **Ermässigung** (code: _MembershipDiscount_):
 A percentage (1-100) with a text that reduces one Person's Jahresbeitrag in the Jahresbeiträge run. It is stored per Person until removed, and its text is printed on the Rechnungsposition.
@@ -97,5 +103,6 @@ When an imported payment exceeds the outstanding amount of its Rechnung, the exc
 - A Buchung belongs to exactly one Konto.
 - A Bewegung can optionally be linked to one Person; a Buchung is not linked to a Person.
 - There is one bank account only; cash is not tracked.
+- A Person has at most one Zahler (another Person) and can be the Zahler of several Personen ((shown in the UI as "Zahler für"), but not both at once.
 - A Rechnung belongs to exactly one Person, has one or more Rechnungspositionen and one or more status changes.
 - A Rechnungsposition belongs to exactly one Konto of the Kontoplan (its booking hint).

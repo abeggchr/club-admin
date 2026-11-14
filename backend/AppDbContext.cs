@@ -38,6 +38,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Text).IsRequired();
             e.Property(x => x.Greetings).IsRequired();
         });
+        modelBuilder.Entity<Person>(e =>
+        {
+            e.HasOne<Person>().WithMany().HasForeignKey(x => x.PayerId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<MembershipDiscount>(e =>
         {
             e.HasKey(d => d.PersonId);
