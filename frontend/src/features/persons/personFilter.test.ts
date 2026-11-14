@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	canBePayerOf,
+	canHavePayer,
 	filterPersons,
 	payerCandidates,
 	personsPaidBy,
@@ -77,6 +78,20 @@ describe("Zahler", () => {
 		expect(canBePayerOf(cleo, anna)).toBe(false);
 		expect(canBePayerOf(ben, anna)).toBe(true);
 		expect(canBePayerOf(anna, anna)).toBe(false);
+	});
+
+	it("a Person who is already someone's Zahler may be chosen as Zahler", () => {
+		const dora = person(4, "Dora", "D");
+		expect(canBePayerOf(ben, dora)).toBe(true);
+		expect(payerCandidates([...all, dora], dora).map((p) => p.id)).toEqual([
+			1, 2,
+		]);
+	});
+
+	it("a Person who is a Zahler cannot get a Zahler", () => {
+		expect(canHavePayer(all, ben)).toBe(false);
+		expect(canHavePayer(all, anna)).toBe(true);
+		expect(canHavePayer(all, cleo)).toBe(true);
 	});
 
 	it("lists the Persons a Zahler pays for", () => {

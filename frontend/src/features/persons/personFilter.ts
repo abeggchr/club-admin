@@ -41,6 +41,11 @@ export function payerCandidates(persons: Person[], person: Person): Person[] {
 	return persons.filter((p) => canBePayerOf(p, person));
 }
 
+/** Whether `person` may have a Zahler: a Person who is someone's Zahler may not. */
+export function canHavePayer(persons: Person[], person: Person): boolean {
+	return personsPaidBy(persons, person).length === 0;
+}
+
 /** The Persons for whom `payer` is the Zahler. */
 export function personsPaidBy(persons: Person[], payer: Person): Person[] {
 	return persons.filter((p) => p.payerId === payer.id);

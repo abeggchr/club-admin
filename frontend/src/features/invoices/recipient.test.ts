@@ -39,13 +39,6 @@ describe("pickRecipient", () => {
 		});
 	});
 
-	it("lets the user pick X deliberately", () => {
-		expect(pickRecipient(persons, 1, { deliberate: true })).toEqual({
-			recipientId: 1,
-			payerOf: null,
-		});
-	});
-
 	it("handles clearing the recipient", () => {
 		expect(pickRecipient(persons, null)).toEqual({
 			recipientId: null,

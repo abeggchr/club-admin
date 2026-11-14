@@ -8,7 +8,12 @@ import { FiX } from "react-icons/fi";
 import { personsQueryOptions, updatePerson } from "./api";
 import { membershipLabels, membershipTypes } from "./membership";
 import { PersonPicker } from "./PersonPicker";
-import { canBePayerOf, personLabel, personsPaidBy } from "./personFilter";
+import {
+	canBePayerOf,
+	canHavePayer,
+	personLabel,
+	personsPaidBy,
+} from "./personFilter";
 import type { Person } from "./types";
 
 const textFields: {
@@ -37,7 +42,10 @@ const REGULAR = "regular";
 const MAIN_PAYER = "main-payer";
 const payerChoices = [
 	{ key: REGULAR, label: "Regulär" },
-	{ key: MAIN_PAYER, label: "Hauptzahler (Rechnungsempfänger für diese Adresse)" },
+	{
+		key: MAIN_PAYER,
+		label: "Hauptzahler (Rechnungsempfänger für diese Adresse)",
+	},
 ];
 
 export function EditPanel({
@@ -50,6 +58,8 @@ export function EditPanel({
 	const queryClient = useQueryClient();
 	const { data: persons } = useSuspenseQuery(personsQueryOptions);
 	const paidPersons = personsPaidBy(persons, person);
+	// A Person who is someone's Zahler cannot get a Zahler (nor be Hauptzahler): the picker is locked.
+	const payerLocked = !canHavePayer(persons, person);
 	const [draft, setDraft] = useState(person);
 	// A chosen Zahler may have gained a Zahler of their own since: then they are no longer valid.
 	const chosenPayer = persons.find((p) => p.id === draft.payerId);
@@ -173,15 +183,14 @@ export function EditPanel({
 												setSaved(false);
 											}}
 											includeFormer
-											selectable={(p) =>
-												paidPersons.length === 0 && canBePayerOf(p, person)
-											}
+											readOnly={payerLocked}
+											selectable={(p) => canBePayerOf(p, person)}
 											onChange={(id) => {
 												// A named Zahler replaces Hauptzahler; clearing the field falls back to Regulär.
 												setDraft({ ...draft, payerId: id, isMainPayer: false });
 												setSaved(false);
 											}}
-											className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+											className={`mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm ${payerLocked ? "bg-neutral-100 text-neutral-500" : ""}`}
 										/>
 										{payerStale && (
 											<p className="mt-1 text-sm text-red-600">

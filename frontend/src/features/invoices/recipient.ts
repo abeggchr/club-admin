@@ -8,15 +8,14 @@ export type RecipientPick = {
 
 /**
  * Picking Person X as recipient switches to X's Zahler. A Hauptzahler has no Zahler of their own
- * (payerId is null), so they stay the recipient. `deliberate` skips the switch (user insists on X).
+ * (payerId is null), so they stay the recipient.
  */
 export function pickRecipient(
 	persons: Person[],
 	pickedId: number | null,
-	options: { deliberate?: boolean } = {},
 ): RecipientPick {
 	const picked = persons.find((p) => p.id === pickedId);
-	if (!picked || picked.payerId === null || options.deliberate)
+	if (!picked || picked.payerId === null)
 		return { recipientId: pickedId, payerOf: null };
 	return { recipientId: picked.payerId, payerOf: picked.id };
 }
