@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { filterPersons, payerCandidates, payingFor } from "./personFilter";
+import {
+	canBePayerOf,
+	filterPersons,
+	payerCandidates,
+	personsPaidBy,
+} from "./personFilter";
 import type { Person } from "./types";
 
 function person(
@@ -68,8 +73,14 @@ describe("Zahler", () => {
 		expect(payerCandidates(all, anna).map((p) => p.id)).toEqual([2]);
 	});
 
+	it("a Person with their own Zahler cannot be a Zahler", () => {
+		expect(canBePayerOf(cleo, anna)).toBe(false);
+		expect(canBePayerOf(ben, anna)).toBe(true);
+		expect(canBePayerOf(anna, anna)).toBe(false);
+	});
+
 	it("lists the Persons a Zahler pays for", () => {
-		expect(payingFor(all, ben).map((p) => p.id)).toEqual([3]);
-		expect(payingFor(all, anna)).toEqual([]);
+		expect(personsPaidBy(all, ben).map((p) => p.id)).toEqual([3]);
+		expect(personsPaidBy(all, anna)).toEqual([]);
 	});
 });

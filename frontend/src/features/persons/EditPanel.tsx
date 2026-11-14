@@ -8,7 +8,7 @@ import { FiX } from "react-icons/fi";
 import { personsQueryOptions, updatePerson } from "./api";
 import { membershipLabels, membershipTypes } from "./membership";
 import { PersonPicker } from "./PersonPicker";
-import { payerCandidates, payingFor, personLabel } from "./personFilter";
+import { canBePayerOf, personLabel, personsPaidBy } from "./personFilter";
 import type { Person } from "./types";
 
 const textFields: {
@@ -42,8 +42,12 @@ export function EditPanel({
 }) {
 	const queryClient = useQueryClient();
 	const { data: persons } = useSuspenseQuery(personsQueryOptions);
-	const paidFor = payingFor(persons, person);
+	const paidPersons = personsPaidBy(persons, person);
 	const [draft, setDraft] = useState(person);
+	// A chosen Zahler may have gained a Zahler of their own since: then they are no longer valid.
+	const chosenPayer = persons.find((p) => p.id === draft.payerId);
+	const payerStale =
+		chosenPayer !== undefined && !canBePayerOf(chosenPayer, person);
 	const [error, setError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
 	const update = useMutation({
@@ -67,6 +71,7 @@ export function EditPanel({
 		const payload = Object.fromEntries(
 			Object.entries(draft).map(([k, v]) => [k, v === "" ? null : v]),
 		) as Person;
+		if (payerStale) payload.payerId = null;
 		update.mutate(payload);
 	}
 
@@ -164,10 +169,10 @@ export function EditPanel({
 						Zahler
 					</label>
 					<PersonPicker
-						value={paidFor.length > 0 ? null : draft.payerId}
-						readOnly={paidFor.length > 0}
+						value={paidPersons.length > 0 || payerStale ? null : draft.payerId}
+						readOnly={paidPersons.length > 0}
 						includeFormer
-						accept={(p) => payerCandidates([p], person).length > 0}
+						selectable={(p) => canBePayerOf(p, person)}
 						onChange={(id) => {
 							setDraft({ ...draft, payerId: id });
 							setSaved(false);
@@ -175,9 +180,15 @@ export function EditPanel({
 						className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm"
 					/>
 				</div>
-				{paidFor.length > 0 && (
+				{payerStale && (
+					<p className="mt-3 text-sm text-red-600">
+						Der bisherige Zahler hat inzwischen selbst einen Zahler und wird
+						beim Speichern entfernt.
+					</p>
+				)}
+				{paidPersons.length > 0 && (
 					<p className="mt-3 text-sm">
-						Zahler für: {paidFor.map(personLabel).join(", ")}
+						Zahler für: {paidPersons.map(personLabel).join(", ")}
 					</p>
 				)}
 				{error && <p className="mt-3 text-sm text-red-600">{error}</p>}

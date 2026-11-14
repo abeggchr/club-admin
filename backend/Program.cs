@@ -72,74 +72,9 @@ api.MapGet(
     async (AppDbContext db) => await db.Persons.OrderBy(p => p.Id).ToListAsync()
 );
 
-api.MapPut(
-    "/persons/{id:int}",
-    async (int id, PersonUpdate update, AppDbContext db) =>
-    {
-        if (
-            string.IsNullOrWhiteSpace(update.FirstName)
-            || string.IsNullOrWhiteSpace(update.LastName)
-        )
-        {
-            return Results.BadRequest(new { error = "Vorname und Nachname sind erforderlich." });
-        }
+api.MapPut("/persons/{id:int}", PersonEndpoints.UpdateAsync);
 
-        var person = await db.Persons.FindAsync(id);
-        if (person is null)
-        {
-            return Results.NotFound();
-        }
-
-        var links = await db.Persons.AsNoTracking().Select(p => new PayerLink(p.Id, p.PayerId)).ToListAsync();
-        if (PayerRules.ValidateSet(id, update.PayerId, links) is { } payerError)
-        {
-            return Results.BadRequest(new { error = payerError });
-        }
-
-        person.FirstName = update.FirstName.Trim();
-        person.LastName = update.LastName.Trim();
-        person.Membership = update.Membership;
-        person.DateOfBirth = update.DateOfBirth;
-        person.JoinedOn = update.JoinedOn;
-        person.LeftOn = update.LeftOn;
-        person.Email = update.Email;
-        person.IsMainPayer = update.IsMainPayer;
-        person.MobilePhone = update.MobilePhone;
-        person.LandlinePhone = update.LandlinePhone;
-        person.Street = update.Street;
-        person.Number = update.Number;
-        person.PostalCode = update.PostalCode;
-        person.City = update.City;
-        person.Country = update.Country;
-        person.Notes = update.Notes;
-        person.PayerId = update.PayerId;
-
-        await db.SaveChangesAsync();
-        return Results.Ok(person);
-    }
-);
-
-api.MapDelete(
-    "/persons/{id:int}",
-    async (int id, AppDbContext db) =>
-    {
-        var person = await db.Persons.FindAsync(id);
-        if (person is null)
-        {
-            return Results.NotFound();
-        }
-
-        var links = await db.Persons.AsNoTracking().Select(p => new PayerLink(p.Id, p.PayerId)).ToListAsync();
-        if (PayerRules.ValidateDelete(id, links) is { } error)
-        {
-            return Results.BadRequest(new { error });
-        }
-
-        db.Persons.Remove(person);
-        await db.SaveChangesAsync();
-        return Results.NoContent();
-    }
-);
+api.MapDelete("/persons/{id:int}", PersonEndpoints.DeleteAsync);
 
 api.MapPost(
         "/persons/import",
@@ -999,23 +934,3 @@ record AnnualFeesInput(int? TemplateId);
 record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines, bool OpenAmount = false);
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
-
-record PersonUpdate(
-    string FirstName,
-    string LastName,
-    MembershipType Membership,
-    DateOnly? DateOfBirth,
-    DateOnly? JoinedOn,
-    DateOnly? LeftOn,
-    string? Email,
-    bool IsMainPayer,
-    string? MobilePhone,
-    string? LandlinePhone,
-    string? Street,
-    string? Number,
-    string? PostalCode,
-    string? City,
-    string? Country,
-    string? Notes,
-    int? PayerId = null
-);
