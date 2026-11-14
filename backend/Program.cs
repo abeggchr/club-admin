@@ -641,6 +641,25 @@ api.MapPost(
     }
 );
 
+// How many Personen the Jahresbeiträge run considers and how many Rechnungen it would create.
+api.MapGet(
+    "/invoices/annual-fees/preview",
+    async (AppDbContext db, CancellationToken ct) =>
+    {
+        var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
+        var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
+        var discounts = await db.MembershipDiscounts.AsNoTracking().ToDictionaryAsync(d => d.PersonId, ct);
+        var plan = MembershipFeeRules.Plan(persons, settings!.StartDate, discounts);
+        return Results.Ok(
+            new
+            {
+                consideredPersons = persons.Count(p => MembershipFeeRules.IsActive(p, settings.StartDate)),
+                plannedInvoices = plan.Invoices.Count,
+            }
+        );
+    }
+);
+
 api.MapPost(
     "/invoices/annual-fees",
     async (AnnualFeesInput input, AppDbContext db, InvoiceCreator creator, CancellationToken ct) =>

@@ -57,6 +57,16 @@ export type AnnualFeesSummary = {
 	warnings: string[];
 };
 
+/** Prefixed with the discounts key so that changing an Ermässigung refreshes it. */
+export const annualFeesPreviewQueryOptions = queryOptions({
+	queryKey: ["membership-discounts", "annual-fees-preview"],
+	queryFn: () =>
+		getJson<{
+			consideredPersons: number;
+			plannedInvoices: number;
+		}>("/api/invoices/annual-fees/preview"),
+});
+
 /** Creates the Jahresbeitrag Rechnungen for all active members (no preview, no duplicate check). */
 export function createAnnualFeeInvoices(
 	templateId: number,

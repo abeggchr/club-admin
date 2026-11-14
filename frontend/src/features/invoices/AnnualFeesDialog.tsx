@@ -5,7 +5,11 @@ import {
 } from "@tanstack/react-query";
 import { useState } from "react";
 import { textTemplatesQueryOptions } from "../settings/textTemplateApi";
-import { createAnnualFeeInvoices, invalidateInvoices } from "./api";
+import {
+	annualFeesPreviewQueryOptions,
+	createAnnualFeeInvoices,
+	invalidateInvoices,
+} from "./api";
 import { DiscountsSection } from "./DiscountsSection";
 
 /** Jahresbeiträge: creates the Rechnungen for all active members with one Textvorlage. */
@@ -16,6 +20,7 @@ export function AnnualFeesDialog({
 }) {
 	const queryClient = useQueryClient();
 	const { data: templates } = useSuspenseQuery(textTemplatesQueryOptions);
+	const { data: preview } = useSuspenseQuery(annualFeesPreviewQueryOptions);
 	const [templateId, setTemplateId] = useState<number | null>(null);
 	const selected = templateId ?? templates[0]?.id ?? null;
 	const run = useMutation({
@@ -45,8 +50,12 @@ export function AnnualFeesDialog({
 		>
 			<form onSubmit={submit}>
 				<h2 className="text-xl font-bold">Jahresbeiträge</h2>
+				<p className="mt-4 text-sm">
+					Es werden <b>{preview.plannedInvoices}</b> Rechnungen für <b>{preview.consideredPersons}</b> aktive Personen erstellt.
+					<br />
+				</p>
 				<label className="mt-4 block text-sm">
-					Textvorlage
+					<a href="/settings" className="text-sky-700 underline">Textvorlage </a>
 					<select
 						required
 						value={selected ?? ""}
