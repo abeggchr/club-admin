@@ -1,6 +1,6 @@
 using System.Text.Json;
-using backend.Tests.Invoicing;
 using backend.Person;
+using backend.Tests.Invoicing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,27 +19,59 @@ public class PersonEndpointsTests : IClassFixture<LocalPostgresFixture>
     {
         if (_fixture.ConnectionString == "")
             throw new SkipException("No reachable PostgreSQL (see LocalPostgresFixture).");
-        return new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(_fixture.ConnectionString).Options);
+        return new AppDbContext(
+            new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(_fixture.ConnectionString).Options
+        );
     }
 
     private static PersonEntity Add(AppDbContext db, string name, int? payerId = null)
     {
-        var person = new PersonEntity { FirstName = name, LastName = "Test", PayerId = payerId };
+        var person = new PersonEntity
+        {
+            FirstName = name,
+            LastName = "Test",
+            PayerId = payerId,
+        };
         db.Persons.Add(person);
         db.SaveChanges();
         return person;
     }
 
     private static PersonUpdate Update(PersonEntity p, int? payerId) =>
-        new(p.FirstName, p.LastName, p.Membership, null, null, null, null, false, null, null, null, null, null, null, null, null, payerId);
+        new(
+            p.FirstName,
+            p.LastName,
+            p.Membership,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            payerId,
+            false
+        );
 
     private static async Task<(int Status, string Body)> Run(IResult result)
     {
-        var ctx = new DefaultHttpContext { RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider() };
+        var ctx = new DefaultHttpContext
+        {
+            RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider(),
+        };
         ctx.Response.Body = new MemoryStream();
         await result.ExecuteAsync(ctx);
         ctx.Response.Body.Position = 0;
-        return (ctx.Response.StatusCode, await new StreamReader(ctx.Response.Body).ReadToEndAsync());
+        return (
+            ctx.Response.StatusCode,
+            await new StreamReader(ctx.Response.Body).ReadToEndAsync()
+        );
     }
 
     private static int? StoredPayer(AppDbContext db, int id) =>
@@ -52,7 +84,9 @@ public class PersonEndpointsTests : IClassFixture<LocalPostgresFixture>
         var payer = Add(db, "Payer");
         var child = Add(db, "Child");
 
-        var (status, _) = await Run(await PersonEndpoints.UpdateAsync(child.Id, Update(child, payer.Id), db));
+        var (status, _) = await Run(
+            await PersonEndpoints.UpdateAsync(child.Id, Update(child, payer.Id), db)
+        );
 
         Assert.Equal(200, status);
         Assert.Equal(payer.Id, StoredPayer(Database(), child.Id));
@@ -65,7 +99,9 @@ public class PersonEndpointsTests : IClassFixture<LocalPostgresFixture>
         var payer = Add(db, "Payer");
         var child = Add(db, "Child", payer.Id);
 
-        var (status, _) = await Run(await PersonEndpoints.UpdateAsync(child.Id, Update(child, null), db));
+        var (status, _) = await Run(
+            await PersonEndpoints.UpdateAsync(child.Id, Update(child, null), db)
+        );
 
         Assert.Equal(200, status);
         Assert.Null(StoredPayer(Database(), child.Id));
@@ -77,7 +113,9 @@ public class PersonEndpointsTests : IClassFixture<LocalPostgresFixture>
         await using var db = Database();
         var person = Add(db, "Self");
 
-        var (status, body) = await Run(await PersonEndpoints.UpdateAsync(person.Id, Update(person, person.Id), db));
+        var (status, body) = await Run(
+            await PersonEndpoints.UpdateAsync(person.Id, Update(person, person.Id), db)
+        );
 
         Assert.Equal(400, status);
         Assert.Contains("error", body);
@@ -90,7 +128,16 @@ public class PersonEndpointsTests : IClassFixture<LocalPostgresFixture>
         await using var db = Database();
         var person = Add(db, "Name");
 
-        var (status, _) = await Run(await PersonEndpoints.UpdateAsync(person.Id, Update(person, null) with { FirstName = " " }, db));
+        var (status, _) = await Run(
+            await PersonEndpoints.UpdateAsync(
+                person.Id,
+                Update(person, null) with
+                {
+                    FirstName = " ",
+                },
+                db
+            )
+        );
 
         Assert.Equal(400, status);
     }
@@ -111,7 +158,9 @@ public class PersonEndpointsTests : IClassFixture<LocalPostgresFixture>
     {
         var json = """{"firstName":"A","lastName":"B","membership":0,"isMainPayer":false}""";
 
-        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<PersonUpdate>(json, JsonSerializerOptions.Web));
+        Assert.Throws<JsonException>(() =>
+            JsonSerializer.Deserialize<PersonUpdate>(json, JsonSerializerOptions.Web)
+        );
     }
 
     [Fact]

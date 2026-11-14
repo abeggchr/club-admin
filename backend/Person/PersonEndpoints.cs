@@ -20,7 +20,8 @@ public record PersonUpdate(
     string? City,
     string? Country,
     string? Notes,
-    [property: JsonRequired] int? PayerId
+    [property: JsonRequired] int? PayerId,
+    bool ReceivesClubNews
 );
 
 public static class PersonEndpoints
@@ -64,6 +65,7 @@ public static class PersonEndpoints
         person.Country = update.Country;
         person.Notes = update.Notes;
         person.PayerId = update.PayerId;
+        person.ReceivesClubNews = update.ReceivesClubNews;
 
         await db.SaveChangesAsync();
         return Results.Ok(person);

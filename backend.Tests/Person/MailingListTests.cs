@@ -19,12 +19,16 @@ public class MailingListTests : IClassFixture<LocalPostgresFixture>
 
     private static readonly DateOnly StartDate = new(2026, 1, 1);
 
+    private static AppDbContext Connect(LocalPostgresFixture fixture) =>
+        new(
+            new DbContextOptionsBuilder<AppDbContext>()
+                .UseNpgsql(fixture.ConnectionString, b => b.MigrationsAssembly(typeof(AppDbContext).Assembly))
+                .Options
+        );
+
     private static async Task<AppDbContext> DbAsync(LocalPostgresFixture fixture)
     {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(fixture.ConnectionString, b => b.MigrationsAssembly(typeof(AppDbContext).Assembly))
-            .Options;
-        var db = new AppDbContext(options);
+        var db = Connect(fixture);
         await db.Database.EnsureDeletedAsync();
         await db.Database.MigrateAsync();
         return db;
@@ -63,7 +67,7 @@ public class MailingListTests : IClassFixture<LocalPostgresFixture>
     // grouped and rendered to the Versandliste CSV.
     private static async Task<string> MailingListCsvAsync(LocalPostgresFixture fixture)
     {
-        await using var db = await DbAsync(fixture);
+        await using var db = Connect(fixture);
         var settings = await db.Settings.FindAsync(Settings.SingletonId);
         var persons = await db.Persons.AsNoTracking().ToListAsync();
         return MailingListCsv.Build(
@@ -96,12 +100,12 @@ public class MailingListTests : IClassFixture<LocalPostgresFixture>
             Seed(
                 db,
                 [
-                    P(1, "Anna"),
-                    P(2, "Ben", left: "2025-12-31"),
-                    P(3, "Clara", left: "2025-12-31", newsletter: true),
-                    P(4, "Dante", joined: null),
-                    P(5, "Elena", joined: null, newsletter: true),
-                    P(6, "Felix", MembershipType.Unknown),
+                    P(1, "Anna", number: "1"),
+                    P(2, "Ben", left: "2025-12-31", number: "2"),
+                    P(3, "Clara", left: "2025-12-31", newsletter: true, number: "3"),
+                    P(4, "Dante", joined: null, number: "4"),
+                    P(5, "Elena", joined: null, newsletter: true, number: "5"),
+                    P(6, "Felix", MembershipType.Unknown, number: "6"),
                 ]
             );
             await db.SaveChangesAsync();
@@ -110,10 +114,10 @@ public class MailingListTests : IClassFixture<LocalPostgresFixture>
         var csv = await MailingListCsvAsync(_fixture);
         Assert.Equal(
             "Empfänger;Adresse;Ort;Land\r\n"
-                + "Anna Muster;Sportweg 12;8000 Zürich;CH\r\n"
-                + "Clara Muster;Sportweg 12;8000 Zürich;CH\r\n"
-                + "Elena Muster;Sportweg 12;8000 Zürich;CH\r\n"
-                + "Felix Muster;Sportweg 12;8000 Zürich;CH",
+                + "\"Anna Muster\";Sportweg 1;8000 Zürich;CH\r\n"
+                + "\"Clara Muster\";Sportweg 3;8000 Zürich;CH\r\n"
+                + "\"Elena Muster\";Sportweg 5;8000 Zürich;CH\r\n"
+                + "\"Felix Muster\";Sportweg 6;8000 Zürich;CH",
             csv
         );
     }
@@ -138,7 +142,7 @@ public class MailingListTests : IClassFixture<LocalPostgresFixture>
         Assert.Equal(
             "Empfänger;Adresse;Ort;Land\r\n"
                 + "\"Anna Muster\nBen Muster\";Sportweg 12;8000 Zürich;CH\r\n"
-                + "Clara Muster;Sportweg 12;8000 Bern;CH",
+                + "\"Clara Muster\";Sportweg 12;8000 Bern;CH",
             csv
         );
     }
