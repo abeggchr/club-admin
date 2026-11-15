@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterAccounts } from "./kontoFilter";
+import { filterAccounts } from "./accountFilter";
 import type { Account } from "./types";
 
 const accounts: Account[] = [

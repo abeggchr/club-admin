@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
+import { filterAccounts } from "./accountFilter";
 import { accountsQueryOptions } from "./api";
-import { filterAccounts } from "./kontoFilter";
 import type { Account } from "./types";
 
 export function accountLabel(account: Account): string {
@@ -31,7 +31,7 @@ type Props = {
  * are not selectable; an inactive Account that is the current value stays shown
  * (disabled) so existing Entries remain resolvable.
  */
-export function KontoPicker({ value, onChange, id, className }: Props) {
+export function AccountPicker({ value, onChange, id, className }: Props) {
 	const { data: accounts } = useSuspenseQuery(accountsQueryOptions);
 	const listId = useId();
 	const [query, setQuery] = useState<string | null>(null); // null = not editing

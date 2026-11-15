@@ -2,6 +2,7 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { PersonPicker } from "../persons/PersonPicker";
+import { AccountPicker } from "./AccountPicker";
 import { formatChf } from "./amount";
 import {
 	accountsQueryOptions,
@@ -10,7 +11,6 @@ import {
 	saveTransaction,
 	settingsQueryOptions,
 } from "./api";
-import { KontoPicker } from "./KontoPicker";
 import {
 	addEntry,
 	canDelete,
@@ -224,7 +224,7 @@ export function EditPanel({
 					<div className="flex gap-3">
 						<label className="flex flex-[2] flex-col text-sm">
 							Konto
-							<KontoPicker
+							<AccountPicker
 								value={row.accountNumber}
 								onChange={(accountNumber) => patchRow(i, { accountNumber })}
 								className={input}

@@ -6,10 +6,10 @@ import {
 	useTable,
 } from "@tanstack/react-table";
 import { useMemo } from "react";
+import { accountLabel } from "./AccountPicker";
 import { formatChf } from "./amount";
 import { accountsQueryOptions } from "./api";
 import { rowTint, useScrollHighlightIntoView } from "./highlight";
-import { accountLabel } from "./KontoPicker";
 import type { JournalEntry } from "./types";
 
 const features = tableFeatures({});

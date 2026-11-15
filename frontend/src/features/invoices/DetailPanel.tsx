@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { MdClose } from "react-icons/md";
+import { accountLabel } from "../accounting/AccountPicker";
 import { formatChf } from "../accounting/amount";
 import { accountsQueryOptions } from "../accounting/api";
-import { accountLabel } from "../accounting/KontoPicker";
 import {
 	formatDate,
 	invoiceDetailQueryOptions,
