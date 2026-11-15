@@ -66,7 +66,17 @@ export function SettingsPage() {
 				noValidate
 				className="mt-6 flex max-w-sm flex-col gap-3"
 			>
-				<h3 className="font-medium">Anfangssaldo</h3>
+				<label className="flex flex-col text-sm">
+					Name
+					<input
+						required
+						maxLength={70}
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						className="rounded border border-slate-300 p-2"
+					/>
+				</label>
+				<h3 className="mt-2 font-medium">Anfangssaldo</h3>
 				<label className="flex flex-col text-sm">
 					Betrag
 					<input
@@ -96,16 +106,6 @@ export function SettingsPage() {
 					/>
 				</label>
 				<h3 className="mt-2 font-medium">Klubadresse</h3>
-				<label className="flex flex-col text-sm">
-					Name
-					<input
-						required
-						maxLength={70}
-						value={name}
-						onChange={(e) => setName(e.target.value)}
-						className="rounded border border-slate-300 p-2"
-					/>
-				</label>
 				<label className="flex flex-col text-sm">
 					Adresse
 					<input

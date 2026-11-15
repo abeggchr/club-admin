@@ -27,7 +27,7 @@ function RootComponent() {
 			<header className="px-4 pt-4">
 				<h1 className="text-2xl font-bold text-sky-900">
 					<Link to="/" aria-label="Übersicht">
-						{settings?.name.trim() || "SCW"}
+						{settings?.name.trim() || "Admin"}
 					</Link>
 				</h1>
 				<nav className="mt-2 flex gap-1 rounded-lg bg-sky-500 p-2 shadow">
