@@ -168,10 +168,8 @@ public class BankImporterTests : IClassFixture<LocalPostgresFixture>
         Assert.Single(invoice.StatusChanges, s => s.Status == InvoiceStatus.Paid);
     }
 
-    // Pins today's behaviour (issue #91): an overpayment books the excess to 3600 but does not mark the
-    // Rechnung Paid, so it stays open for a later payment.
     [Fact]
-    public async Task An_overpayment_books_the_excess_to_Spenden_and_leaves_the_Rechnung_open()
+    public async Task An_overpayment_books_the_excess_to_Spenden_and_marks_the_Rechnung_paid()
     {
         await using var db = Database();
         var invoiceId = await SeedOpenInvoice(db);
@@ -188,7 +186,7 @@ public class BankImporterTests : IClassFixture<LocalPostgresFixture>
             movement.Entries.OrderBy(e => e.AccountNumber).Select(e => (e.AccountNumber, e.Amount))
         );
         var invoice = await check.Invoices.Include(i => i.StatusChanges).SingleAsync();
-        Assert.DoesNotContain(invoice.StatusChanges, s => s.Status == InvoiceStatus.Paid);
-        Assert.Null(invoice.PaidBy);
+        Assert.Single(invoice.StatusChanges, s => s.Status == InvoiceStatus.Paid);
+        Assert.Equal(movement.Id, invoice.PaidBy);
     }
 }
