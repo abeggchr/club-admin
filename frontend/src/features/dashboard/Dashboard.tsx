@@ -140,9 +140,6 @@ export function JubilaeenSection() {
 
 	return (
 		<section className="mt-8">
-			<h2 className="text-xl font-semibold text-sky-900">
-				Jubiläen {jubilees.clubYearStartYear}
-			</h2>
 			<JubileesTable
 				title="Geburtstag"
 				rows={sortJubilees(jubilees.anniversaries)}
@@ -160,7 +157,6 @@ export function JubilaeenSection() {
 export function Dashboard() {
 	return (
 		<div className="px-8 pb-8">
-			<h2 className="mt-4 text-xl font-semibold text-sky-900">Übersicht</h2>
 			<div className="mt-4 grid gap-4 md:grid-cols-2">
 				<MembersTile />
 				<InvoicesTile />
