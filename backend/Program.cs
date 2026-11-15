@@ -1034,3 +1034,6 @@ record InvoiceInput(
 );
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
+
+// Makes the entry point visible to WebApplicationFactory in the tests.
+public partial class Program;
