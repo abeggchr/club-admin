@@ -7,7 +7,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # --- Backend build ---
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS backend
 WORKDIR /src
 COPY backend/backend.csproj ./
 RUN dotnet restore
@@ -15,7 +15,7 @@ COPY backend/ ./
 RUN dotnet publish -c Release -o /app --no-restore
 
 # --- Runtime ---
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:11.0
 WORKDIR /app
 # SwissQRBill.NET renders the payment part to PNG with SkiaSharp (self-contained native lib, no libfontconfig needed),
 # but the slim aspnet image ships no fonts at all: install Liberation (Arial/Helvetica metrics) for the slip text.
