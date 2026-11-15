@@ -10,7 +10,9 @@ describe("pieSlices", () => {
 	it("gives a single value the full circle", () => {
 		const [slice] = pieSlices([5]);
 		expect(slice.size).toBe(100);
-		expect(slice.points.split(" ")).toHaveLength(3);
+		expect(slice.path).toBe(
+			"M50,50 L50,2 A48,48 0 0 1 50,98 A48,48 0 0 1 50,2 Z",
+		);
 	});
 
 	it("splits equal values into equal arcs", () => {
@@ -25,18 +27,20 @@ describe("pieSlices", () => {
 		expect(small.size).toBe(25);
 	});
 
-	it("starts at 12 o'clock and goes clockwise: the first slice's edge is 50,2", () => {
+	it("starts at 12 o'clock and goes clockwise, closing with a circular arc", () => {
 		const [a] = pieSlices([1, 1]);
-		const [, start, end] = a.points.split(" ");
-		expect(start).toBe("50,2");
-		expect(end).toBe("50,98");
+		expect(a.path).toBe("M50,50 L50,2 A48,48 0 0 1 50,98 Z");
 	});
 
 	it("is seamless: the next slice starts where the previous one ends", () => {
 		const [a, b] = pieSlices([1, 1]);
-		const [, , endA] = a.points.split(" ");
-		const [, startB] = b.points.split(" ");
-		expect(startB).toBe(endA);
+		expect(a.path).toContain("50,98 Z");
+		expect(b.path).toContain("L50,98 ");
+	});
+
+	it("flags arcs wider than 180° as large", () => {
+		const [big] = pieSlices([3, 1]);
+		expect(big.path).toContain("A48,48 0 1 1");
 	});
 
 	it("returns one slice per value in the given order", () => {

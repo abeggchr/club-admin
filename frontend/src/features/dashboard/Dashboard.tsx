@@ -91,7 +91,7 @@ export function MembersTile() {
 						aria-label="Mitglieder nach Mitgliedschaft"
 					>
 						{slices.map((s) => (
-							<polygon key={s.membership} points={s.points} fill={s.color} />
+							<path key={s.membership} d={s.path} fill={s.color} />
 						))}
 					</svg>
 					<ul className="space-y-1 text-sm">
