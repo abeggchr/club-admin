@@ -11,6 +11,9 @@ const config = defineConfig({
 	server: {
 		proxy: {
 			"/api": "http://localhost:5210",
+			// Entra redirects back here. The original Host header is kept (no changeOrigin),
+			// so the backend builds http://localhost:3000/signin-oidc as the redirect URI.
+			"/signin-oidc": "http://localhost:5210",
 		},
 	},
 	plugins: [
