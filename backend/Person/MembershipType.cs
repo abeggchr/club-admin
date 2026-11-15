@@ -1,6 +1,14 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace backend.Person;
 
+/// <summary>Serializes a <see cref="MembershipType"/> as its camelCase name ("family"), as the frontend expects.</summary>
+public class MembershipTypeJsonConverter()
+    : JsonStringEnumConverter<MembershipType>(JsonNamingPolicy.CamelCase);
+
 /// <summary>The membership type of a Person ("Mitgliedschaft" in the UI).</summary>
+[JsonConverter(typeof(MembershipTypeJsonConverter))]
 public enum MembershipType
 {
     Unknown,

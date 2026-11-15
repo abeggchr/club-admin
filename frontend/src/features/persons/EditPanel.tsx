@@ -173,6 +173,9 @@ export function EditPanel({
 							}}
 							className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm"
 						>
+							{draft.membership === "unknown" && (
+								<option value="unknown">{membershipLabels.unknown}</option>
+							)}
 							{membershipTypes.map((type) => (
 								<option key={type} value={type}>
 									{membershipLabels[type]}
@@ -232,7 +235,7 @@ export function EditPanel({
 										<label
 											key="club-news"
 											className="flex items-end gap-2 pb-1 text-sm font-medium"
-										>
+										>	
 											<input
 												type="checkbox"
 												checked={draft.receivesClubNews}

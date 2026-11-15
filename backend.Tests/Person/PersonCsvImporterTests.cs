@@ -74,6 +74,13 @@ public class PersonCsvImporterTests
         Assert.Contains("Zuschauer", ex.Message);
     }
 
+    [Fact]
+    public void Membership_is_serialized_as_camel_case_name()
+    {
+        Assert.Equal("\"family\"", System.Text.Json.JsonSerializer.Serialize(MembershipType.Family));
+        Assert.Equal("\"unknown\"", System.Text.Json.JsonSerializer.Serialize(MembershipType.Unknown));
+    }
+
     // Parses a one-row member CSV with the given "Mitgliedschaft" value and returns the stored membership.
     static MembershipType ParseMembership(string membership)
     {
