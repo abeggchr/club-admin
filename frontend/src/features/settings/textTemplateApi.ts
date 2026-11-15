@@ -16,7 +16,9 @@ export function saveTextTemplate(
 	draft: TextTemplateDraft,
 ): Promise<TextTemplate> {
 	return requestJson(
-		id === null ? "/api/settings/text-templates" : `/api/settings/text-templates/${id}`,
+		id === null
+			? "/api/settings/text-templates"
+			: `/api/settings/text-templates/${id}`,
 		id === null ? "POST" : "PUT",
 		draft,
 	);

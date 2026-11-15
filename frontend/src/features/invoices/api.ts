@@ -88,7 +88,8 @@ export type MembershipDiscount = {
 
 export const membershipDiscountsQueryOptions = queryOptions({
 	queryKey: ["membership-discounts"],
-	queryFn: () => getJson<MembershipDiscount[]>("/api/invoices/membership-discounts"),
+	queryFn: () =>
+		getJson<MembershipDiscount[]>("/api/invoices/membership-discounts"),
 });
 
 /** Adds or replaces the Ermässigung of a Person; rejects with the backend's message. */

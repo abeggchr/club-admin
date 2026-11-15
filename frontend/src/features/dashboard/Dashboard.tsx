@@ -29,7 +29,7 @@ function JubileesTable({
 		<section className="mt-8">
 			<h3 className="text-lg font-semibold text-sky-900">{title}</h3>
 			<div className="mt-2 overflow-x-auto rounded border border-slate-200">
-				<table className="w-full text-left text-sm table-fixed" >
+				<table className="w-full text-left text-sm table-fixed">
 					<thead className="border-b border-slate-200 bg-slate-50">
 						<tr>
 							<th className="w-1/3 px-3 py-2 font-medium">Name</th>
