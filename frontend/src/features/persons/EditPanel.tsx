@@ -244,7 +244,7 @@ export function EditPanel({
 													setSaved(false);
 												}}
 											/>
-											Newsletter (Club-News)
+											Club-News
 										</label>,
 									]
 								: [renderField(f)],
