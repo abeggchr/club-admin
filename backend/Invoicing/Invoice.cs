@@ -34,6 +34,8 @@ public enum InvoiceStatus
     Created,
     /// <summary>Paid: terminal, recorded when a Transaction's signed amount covers the total; the paying Transaction's id is in <see cref="Invoice.PaidBy"/>.</summary>
     Paid,
+    /// <summary>Cancelled (German: storniert): terminal, set by hand on an Invoice that is not paid; the Invoice is kept.</summary>
+    Cancelled,
 }
 
 /// <summary>One lifecycle step of an Invoice. The Invoice Date is the date of the Created row.</summary>
