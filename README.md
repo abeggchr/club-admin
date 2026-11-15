@@ -51,7 +51,7 @@ Entra setup (once):
 5. Users and groups: assign users directly (free tier). Invite outside addresses (gmail, outlook.com) as guests first.
 6. Production: set `Authentication__Microsoft__TenantId`, `Authentication__Microsoft__ClientId` and `Authentication__Microsoft__ClientSecret` as Railway variables.
 
-Locally, browse via Vite on `http://localhost:3000`, not the backend port. Every restart of the backend logs you out. If port 3000 is taken, Vite moves to 3001 and the redirect URI `http://localhost:3001/signin-oidc` must be registered too (or free port 3000).
+Locally, browse via Vite on `http://localhost:3000`, not the backend port. Every restart of the backend logs you out.
 
 ### 4. Backend
 
