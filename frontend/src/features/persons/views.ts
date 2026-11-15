@@ -10,7 +10,7 @@ function hideColumns(...keys: string[]) {
 export const views = {
 	active: {
 		label: "Aktive",
-		filter: (p: Person) => !p.leftOn,
+		filter: (p: Person) => !!p.joinedOn && !p.leftOn,
 		columns: hideColumns(
 			"leftOn",
 			"dateOfBirth",
