@@ -85,7 +85,10 @@ export function PersonsPage() {
 					<EditPanel
 						key={selected.id}
 						person={selected}
-						onClose={() => setSelectedId(null)}
+						onClose={() =>
+							// Keep a newer selection made by the same click (e.g. another row).
+							setSelectedId((id) => (id === selected.id ? null : id))
+						}
 					/>
 				)}
 			</div>
