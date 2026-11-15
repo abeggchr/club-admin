@@ -103,14 +103,27 @@ public static class BankImport
         DtdProcessing = DtdProcessing.Prohibit,
     };
 
-    public static BankImportResult Import(byte[] zip, ImportSnapshot snapshot)
+    /// <summary>
+    /// Imports the eBanking zip or a single CAMT.053 XML file, told apart by the zip signature. A single
+    /// file is reported under fileName in errors.
+    /// </summary>
+    public static BankImportResult Import(
+        byte[] content,
+        ImportSnapshot snapshot,
+        string fileName = "CAMT.053.xml"
+    )
     {
         var context = new ImportContext(snapshot);
+
+        if (!IsZip(content))
+        {
+            return ImportSingleFile(content, fileName, context);
+        }
 
         ZipArchive archive;
         try
         {
-            archive = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read);
+            archive = new ZipArchive(new MemoryStream(content), ZipArchiveMode.Read);
         }
         catch (InvalidDataException)
         {
@@ -167,32 +180,68 @@ public static class BankImport
 
             foreach (var entry in xmlEntries)
             {
-                XDocument document;
-                try
-                {
-                    using var stream = entry.Open();
-                    using var reader = XmlReader.Create(stream, XmlReaderSettings);
-                    document = XDocument.Load(reader);
-                }
-                catch (Exception e) when (e is XmlException or InvalidDataException)
-                {
-                    context.Errors.Add(
-                        new ImportError(
-                            entry.FullName,
-                            e.Message.Contains("DTD", StringComparison.OrdinalIgnoreCase)
-                                ? "Die Datei enthält eine DTD und wird abgelehnt."
-                                : $"Die Datei konnte nicht als XML gelesen werden: {e.Message}"
-                        )
-                    );
-                    continue;
-                }
-                ParseStatement(document, entry.FullName, context);
+                using var stream = entry.Open();
+                ParseXmlFile(stream, entry.FullName, context);
             }
         }
 
-        return context.Errors.Count > 0
+        return ResultOf(context);
+    }
+
+    private static bool IsZip(byte[] content) =>
+        content.Length >= 2 && content[0] == (byte)'P' && content[1] == (byte)'K';
+
+    private static BankImportResult ImportSingleFile(
+        byte[] content,
+        string fileName,
+        ImportContext context
+    )
+    {
+        if (content.Length > MaxUncompressedBytes)
+        {
+            return new BankImportResult(
+                [],
+                0,
+                [
+                    new ImportError(
+                        fileName,
+                        $"Die Datei ist zu gross (maximal {MaxUncompressedBytes / 1024 / 1024} MB)."
+                    ),
+                ]
+            );
+        }
+
+        using var stream = new MemoryStream(content);
+        ParseXmlFile(stream, fileName, context);
+        return ResultOf(context);
+    }
+
+    private static BankImportResult ResultOf(ImportContext context) =>
+        context.Errors.Count > 0
             ? new BankImportResult([], 0, context.Errors)
             : new BankImportResult(context.Transactions, context.SkippedDuplicates, []);
+
+    private static void ParseXmlFile(Stream stream, string file, ImportContext context)
+    {
+        XDocument document;
+        try
+        {
+            using var reader = XmlReader.Create(stream, XmlReaderSettings);
+            document = XDocument.Load(reader);
+        }
+        catch (Exception e) when (e is XmlException or InvalidDataException)
+        {
+            context.Errors.Add(
+                new ImportError(
+                    file,
+                    e.Message.Contains("DTD", StringComparison.OrdinalIgnoreCase)
+                        ? "Die Datei enthält eine DTD und wird abgelehnt."
+                        : $"Die Datei konnte nicht als XML gelesen werden: {e.Message}"
+                )
+            );
+            return;
+        }
+        ParseStatement(document, file, context);
     }
 
     /// <summary>

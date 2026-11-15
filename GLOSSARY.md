@@ -42,7 +42,7 @@ A Transaction where money comes in (positive amount).
 A Transaction where money goes out (negative amount).
 
 **Imported Transaction** (German: _Importierte Bewegung_):
-A Transaction with a BankReference, imported from the eBanking zip (CAMT.053 statements): the bank's booking date, the signed amount, the text and the BankReference. If the counterparty matched, the matching Person is linked as well. The date, amount, text and Person of an Imported Transaction are read-only afterwards, in the UI and the API; only its Entries may be edited. If the QR-bill reference of the payment matches an open Invoice, the Transaction arrives already carrying its Entries, derived from the Invoice's Lines; otherwise it has no Entries (Unbooked). A re-import skips a transaction whose BankReference is already stored.
+A Transaction with a BankReference, imported from the eBanking zip or a single CAMT.053 XML file: the bank's booking date, the signed amount, the text and the BankReference. If the counterparty matched, the matching Person is linked as well. The date, amount, text and Person of an Imported Transaction are read-only afterwards, in the UI and the API; only its Entries may be edited. If the QR-bill reference of the payment matches an open Invoice, the Transaction arrives already carrying its Entries, derived from the Invoice's Lines; otherwise it has no Entries (Unbooked). A re-import skips a transaction whose BankReference is already stored.
 
 **BankReference** (German: _Bankreferenz_):
 The bank's account server reference (AcctSvcrRef) of an imported booking. Unique per Transaction and set only for imported ones, it is how the import recognizes a transaction that is already stored.

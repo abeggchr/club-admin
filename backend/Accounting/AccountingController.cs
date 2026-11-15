@@ -225,8 +225,8 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
         return NoContent();
     }
 
-    // Imports one Transaction per simple CAMT.053 entry of the eBanking zip (ticket #25); a re-import skips
-    // transactions whose BankReference is already stored.
+    // Imports one Transaction per simple CAMT.053 entry of the eBanking zip or a single CAMT.053 XML file
+    // (tickets #25, #88); a re-import skips transactions whose BankReference is already stored.
     [HttpPost("transactions/import")]
     public async Task<IActionResult> ImportTransactions(IFormFile file)
     {
@@ -270,17 +270,18 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
                     .ToList()
             ))
             .ToList();
-        byte[] zip;
+        byte[] content;
         await using (var upload = file.OpenReadStream())
         using (var memory = new MemoryStream())
         {
             await upload.CopyToAsync(memory);
-            zip = memory.ToArray();
+            content = memory.ToArray();
         }
 
         var result = BankImport.Import(
-            zip,
-            new ImportSnapshot(settings, existingReferences, persons, importInvoices, chart)
+            content,
+            new ImportSnapshot(settings, existingReferences, persons, importInvoices, chart),
+            file.FileName
         );
         if (result.Errors.Count > 0)
         {
