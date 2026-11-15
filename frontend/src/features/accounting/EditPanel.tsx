@@ -1,6 +1,8 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { MdClose } from "react-icons/md";
+import { invalidateInvoices } from "../invoices/api";
+import { InvoicePicker } from "../invoices/InvoicePicker";
 import { PersonPicker } from "../persons/PersonPicker";
 import { AccountPicker } from "./AccountPicker";
 import { formatChf } from "./amount";
@@ -15,6 +17,7 @@ import { ReceiptsSection } from "./ReceiptsSection";
 import { deleteWarning } from "./receipts";
 import {
 	addEntry,
+	applyInvoice,
 	canDelete,
 	canSave,
 	type DraftErrors,
@@ -131,6 +134,7 @@ export function EditPanel({
 		try {
 			await saveTransaction(transaction?.id ?? null, body);
 			await invalidateJournalQueries(queryClient);
+			await invalidateInvoices(queryClient);
 			onDone();
 		} catch (err) {
 			setServerError(
@@ -254,13 +258,25 @@ export function EditPanel({
 					</div>
 				</fieldset>
 			))}
-			<button
-				type="button"
-				onClick={() => setDraft((d) => addEntry(d, accounts))}
-				className="self-start rounded border border-slate-300 px-3 py-1 text-sm hover:bg-sky-100"
-			>
-				+ Buchung
-			</button>
+			<div className="flex items-center gap-2">
+				<button
+					type="button"
+					onClick={() => setDraft((d) => addEntry(d, accounts))}
+					className="shrink-0 rounded border border-slate-300 px-3 py-1 text-sm hover:bg-sky-100"
+				>
+					+ Buchung
+				</button>
+				<div className="flex-1">
+					<InvoicePicker
+						value={draft.invoiceId}
+						readOnly={baseline.invoiceId !== null}
+						onSelect={(invoice) =>
+							setDraft((d) => applyInvoice(d, invoice, accounts, imported))
+						}
+						className={`${input} w-full py-1 text-sm`}
+					/>
+				</div>
+			</div>
 			{draft.entries.length > 0 && rest !== null && (
 				<p
 					className={`text-sm ${rest === 0 ? "text-slate-600" : "font-medium text-red-700"}`}

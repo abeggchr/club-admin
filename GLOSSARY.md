@@ -28,7 +28,7 @@ The bank account balance (an amount and a start date) from which the Expected Ba
 The amount the bank account should hold on a given date: the Opening Balance plus all Entries whose Transaction is dated up to that date. The user compares it by eye against the bank statement.
 
 **Overpayment** (German: _Zuvielzahlung_):
-When an imported payment exceeds the outstanding amount of its Invoice, the excess is booked as an additional Entry "Rechnung 0042" to Account 3600 (Spenden).
+When an imported payment exceeds the outstanding amount of its Invoice, the excess is booked as an additional Entry "Rechnung 0042" to Account 3600 (Spenden). The Invoice counts as covered and is marked Paid.
 
 ### Bank & Import
 
@@ -109,10 +109,10 @@ The date an Invoice was created: the date of its Created status change.
 A lifecycle step of an Invoice, recorded as an append-only status change with a timestamp. Created (German: Erstellt) and Paid (German: Bezahlt, terminal).
 
 **Paid** (German: _Bezahlt_; code: _Paid_ on _InvoiceStatus_):
-A terminal Invoice Status, recorded as a status change when the first Imported Transaction covers the Invoice's total exactly. Its timestamp is the Transaction's booking date (shown in Europe/Zurich); once set, the Invoice never matches another payment.
+A terminal Invoice Status, recorded as a status change when the first Imported Transaction covers the Invoice's total (exactly or with an Overpayment), or when a Transaction is saved with the Invoice chosen in the Invoice picker of its form (the link is permanent). Its timestamp is the Transaction's date (shown in Europe/Zurich); once set, the Invoice never matches another payment.
 
 **PaidBy** (code: _PaidBy_ on _Invoice_):
-The id of the Transaction that first covered an Invoice's total (null while open).
+The id of the Transaction that paid an Invoice: the first to cover its total on import, or the one saved with the Invoice chosen in its form (null while open).
 
 **Creditor Reference** (German: _Gläubigerreferenz_; code: _Reference_ on _Invoice_):
 The Swiss QR-bill creditor reference (RF + check digits + Invoice Number) stored at Invoice creation. It is the sole key by which the bank import matches a payment to its Invoice.

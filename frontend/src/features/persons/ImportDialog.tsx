@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { importPersons, personsQueryOptions } from "./api";
 
 export function ImportDialog({
@@ -8,6 +8,7 @@ export function ImportDialog({
 	dialogRef: React.RefObject<HTMLDialogElement | null>;
 }) {
 	const queryClient = useQueryClient();
+	const formRef = useRef<HTMLFormElement>(null);
 	const [file, setFile] = useState<File | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [imported, setImported] = useState<number | null>(null);
@@ -24,6 +25,7 @@ export function ImportDialog({
 	const busy = upload.isPending;
 
 	function reset() {
+		formRef.current?.reset();
 		setFile(null);
 		setError(null);
 		setImported(null);
@@ -42,7 +44,7 @@ export function ImportDialog({
 			onClose={reset}
 			className="m-auto w-[28rem] rounded border border-neutral-300 p-6 backdrop:bg-black/40"
 		>
-			<form onSubmit={submit}>
+			<form ref={formRef} onSubmit={submit}>
 				<h2 className="text-xl font-bold">Personen importieren</h2>
 				<input
 					type="file"

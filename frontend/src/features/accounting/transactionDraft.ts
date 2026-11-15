@@ -27,6 +27,8 @@ export type TransactionDraft = {
 	amount: string;
 	text: string;
 	personId: number | null;
+	/** The Invoice the Transaction pays, chosen in the Invoice picker. */
+	invoiceId: number | null;
 	entries: EntryRow[];
 };
 
@@ -43,6 +45,7 @@ export function emptyDraft(date: string): TransactionDraft {
 		amount: "",
 		text: "",
 		personId: null,
+		invoiceId: null,
 		entries: [{ id: null, text: "", accountNumber: null, amount: null }],
 	};
 }
@@ -53,6 +56,7 @@ export function draftFromTransaction(
 		amount: number;
 		text: string | null;
 		personId: number | null;
+		invoiceId: number | null;
 	},
 	entries: Entry[],
 	accounts: Account[],
@@ -62,6 +66,7 @@ export function draftFromTransaction(
 		amount: formatChf(transaction.amount),
 		text: transaction.text ?? "",
 		personId: transaction.personId,
+		invoiceId: transaction.invoiceId,
 		entries: entries.map((e) => {
 			const account = accounts.find((a) => a.number === e.accountNumber);
 			return {
@@ -132,6 +137,49 @@ export function remainder(
 	return (toCents(total.value) - booked) / 100;
 }
 
+/**
+ * Fills the draft from an Invoice: one Entry row per Invoice Line (text and Account), amounts following the
+ * direction of the Transaction (a Withdrawal books the Lines negative). An empty Transaction amount becomes the
+ * Invoice total and an unset Person the Invoice's Person; an excess of the Transaction amount stays as the
+ * Difference for the user to book.
+ */
+export function applyInvoice(
+	draft: TransactionDraft,
+	invoice: {
+		id: number;
+		person: { id: number };
+		total: number;
+		lines: { text: string; amount: number; accountNumber: number }[];
+	},
+	accounts: Account[],
+	/** Keep the Person as is (an imported Transaction's Person is read-only). */
+	keepPerson = false,
+): TransactionDraft {
+	const parsed = parseAmount(draft.amount);
+	const sign = parsed.ok && parsed.value < 0 ? -1 : 1;
+	return {
+		...draft,
+		invoiceId: invoice.id,
+		amount:
+			parsed.ok && draft.amount.trim() !== ""
+				? draft.amount
+				: formatChf(invoice.total),
+		personId: keepPerson
+			? draft.personId
+			: (draft.personId ?? invoice.person.id),
+		entries: invoice.lines.map((line) => {
+			const category = categoryOf(line.accountNumber, accounts);
+			const signed = line.amount * sign;
+			return {
+				id: null,
+				text: line.text,
+				accountNumber: line.accountNumber,
+				amount: formatChf(category ? toTypedAmount(signed, category) : signed),
+			};
+		}),
+	};
+}
+
 /** Appends an empty Entry row pre-filled with the remaining difference (nothing while it is unknown or 0). */
 export function addEntry(
 	draft: TransactionDraft,
@@ -189,7 +237,8 @@ export function isDraftDirty(
 		initial.date !== current.date ||
 		initial.amount !== current.amount ||
 		initial.text !== current.text ||
-		initial.personId !== current.personId
+		initial.personId !== current.personId ||
+		initial.invoiceId !== current.invoiceId
 	)
 		return true;
 	if (initial.entries.length !== current.entries.length) return true;
@@ -275,6 +324,7 @@ export function toTransactionInput(
 		amount: total.value,
 		text: draft.text.trim() === "" ? null : draft.text.trim(),
 		personId: draft.personId,
+		invoiceId: draft.invoiceId,
 		entries,
 	};
 }

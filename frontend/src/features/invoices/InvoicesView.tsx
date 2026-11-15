@@ -18,6 +18,10 @@ const filters = {
 		label: "Offene",
 		filter: (i: InvoiceListItem) => i.status === "Created",
 	},
+	paid: {
+		label: "Bezahlte",
+		filter: (i: InvoiceListItem) => i.status === "Paid",
+	},
 	cancelled: {
 		label: "Stornierte",
 		filter: (i: InvoiceListItem) => i.status === "Cancelled",

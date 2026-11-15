@@ -10,7 +10,7 @@ public class Invoice
     public int PersonId { get; set; }
     /// <summary>Swiss QR-bill Creditor Reference (RF8008), stored at creation; '' for Invoices created before it was stored.</summary>
     public string Reference { get; set; } = "";
-    /// <summary>The id of the Transaction that first covered the total; plain column, no foreign key (set only by the import).</summary>
+    /// <summary>The id of the Transaction that first covered the total; plain column, no foreign key (set by the import or when a Transaction is saved as paying it).</summary>
     public int? PaidBy { get; set; }
     public List<InvoiceLine> Lines { get; set; } = [];
     public List<InvoiceStatusChange> StatusChanges { get; set; } = [];
