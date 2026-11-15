@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
 	importTransactions,
 	invalidateJournalQueries,
@@ -15,6 +15,7 @@ export function ImportDialog({
 	dialogRef: React.RefObject<HTMLDialogElement | null>;
 }) {
 	const queryClient = useQueryClient();
+	const formRef = useRef<HTMLFormElement>(null);
 	const [file, setFile] = useState<File | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [errors, setErrors] = useState<TransactionImportError[] | null>(null);
@@ -33,6 +34,7 @@ export function ImportDialog({
 	const busy = upload.isPending;
 
 	function reset() {
+		formRef.current?.reset();
 		setFile(null);
 		setError(null);
 		setErrors(null);
@@ -53,7 +55,7 @@ export function ImportDialog({
 			onClose={reset}
 			className="m-auto w-[28rem] rounded border border-neutral-300 p-6 backdrop:bg-black/40"
 		>
-			<form onSubmit={submit}>
+			<form ref={formRef} onSubmit={submit}>
 				<h2 className="text-xl font-bold">Bewegungen importieren</h2>
 				<p className="mt-1 text-sm text-neutral-600">
 					Die ZIP- oder XML-Datei (CAMT.053) aus dem eBanking wird direkt
