@@ -6,10 +6,10 @@ using PersonEntity = backend.Person.Person;
 namespace backend.Invoicing;
 
 [ApiController]
-[Route("api")]
+[Route("api/invoices")]
 public class InvoicingController(AppDbContext db) : ControllerBase
 {
-    [HttpGet("invoices")]
+    [HttpGet]
     public async Task<IActionResult> GetInvoices()
     {
         var invoices = await db.Invoices.WithDetails().OrderByDescending(i => i.Id).ToListAsync();
@@ -19,7 +19,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         );
     }
 
-    [HttpGet("invoices/{id:int}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetInvoice(int id)
     {
         var invoice = await db.Invoices.WithDetails().FirstOrDefaultAsync(i => i.Id == id);
@@ -31,7 +31,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         return Ok(InvoiceMapping.ToInvoiceDetail(invoice, people[invoice.PersonId]));
     }
 
-    [HttpPost("invoices")]
+    [HttpPost]
     public async Task<IActionResult> CreateInvoice(
         InvoiceInput input,
         [FromServices] InvoiceCreator creator,
@@ -86,14 +86,14 @@ public class InvoicingController(AppDbContext db) : ControllerBase
     }
 
     // How many Personen the Jahresbeiträge run considers and how many Rechnungen it would create.
-    [HttpGet("invoices/summary")]
+    [HttpGet("summary")]
     public async Task<IActionResult> GetInvoiceSummary(CancellationToken ct)
     {
         var invoices = await db.Invoices.WithDetails().ToListAsync(ct);
         return Ok(InvoiceRules.Summarize(invoices));
     }
 
-    [HttpGet("invoices/annual-fees/preview")]
+    [HttpGet("annual-fees/preview")]
     public async Task<IActionResult> PreviewAnnualFees(CancellationToken ct)
     {
         var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct);
@@ -113,7 +113,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         );
     }
 
-    [HttpPost("invoices/annual-fees")]
+    [HttpPost("annual-fees")]
     public async Task<IActionResult> CreateAnnualFees(
         AnnualFeesInput input,
         [FromServices] InvoiceCreator creator,
@@ -157,12 +157,12 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         return Ok(summary);
     }
 
-    [HttpGet("invoices/membership-discounts")]
+    [HttpGet("membership-discounts")]
     public async Task<IActionResult> GetMembershipDiscounts() =>
         Ok(await db.MembershipDiscounts.AsNoTracking().OrderBy(d => d.PersonId).ToListAsync());
 
     // Saves (adds or replaces) the one Ermässigung of a Person.
-    [HttpPut("invoices/membership-discounts")]
+    [HttpPut("membership-discounts")]
     public async Task<IActionResult> SaveMembershipDiscount(
         MembershipDiscountInput input,
         CancellationToken ct
@@ -190,7 +190,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         return Ok(discount);
     }
 
-    [HttpDelete("invoices/membership-discounts/{personId:int}")]
+    [HttpDelete("membership-discounts/{personId:int}")]
     public async Task<IActionResult> DeleteMembershipDiscount(int personId, CancellationToken ct)
     {
         var discount = await db.MembershipDiscounts.FindAsync([personId], ct);
@@ -203,7 +203,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
-    [HttpGet("invoices/{id:int}/pdf")]
+    [HttpGet("{id:int}/pdf")]
     public async Task<IActionResult> GetInvoicePdf(
         int id,
         [FromServices] IInvoiceStorage storage,
