@@ -6,7 +6,8 @@ namespace backend.Accounting;
 
 [ApiController]
 [Route("api")]
-public class AccountingController(AppDbContext db, ChartOfAccounts chart) : ControllerBase
+public class AccountingController(AppDbContext db, ChartOfAccounts chart, BankImporter importer)
+    : ControllerBase
 {
     [HttpGet("accounts")]
     public IActionResult GetAccounts() => Ok(chart.Accounts);
@@ -230,46 +231,6 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
     [HttpPost("transactions/import")]
     public async Task<IActionResult> ImportTransactions(IFormFile file)
     {
-        var settings = await db.Settings.FindAsync(Settings.Settings.SingletonId);
-        if (settings is null)
-        {
-            return BadRequest(
-                new
-                {
-                    error = "Bitte zuerst die Einstellungen (Anfangssaldo, Startdatum, IBAN) speichern.",
-                }
-            );
-        }
-
-        var existingReferences = await db
-            .Transactions.Where(t => t.BankReference != null)
-            .Select(t => t.BankReference!)
-            .ToListAsync();
-        var persons = await db.Persons.ToListAsync();
-
-        // Invoices for matching: QR-bill reference, total, and positions. An Invoice that already
-        // has a Paid status change is terminal (once Paid, always Paid) and is flagged so the matcher
-        // never re-books or re-sets PaidBy, e.g. when the paying movement was deleted and re-imported.
-        // existingPaid is 0 here: re-imports of the same movement are skipped via BankReference, so
-        // the Entries of an already-imported movement are attributed to the Invoice by its Paid
-        // status change, not by a foreign key.
-        var invoices = await db
-            .Invoices.Include(i => i.Lines)
-            .Include(i => i.StatusChanges)
-            .ToListAsync();
-        var importInvoices = invoices
-            .Where(i => !string.IsNullOrEmpty(i.Reference))
-            .Select(i => new ImportInvoice(
-                i.Id,
-                i.Reference,
-                i.Lines.Sum(l => l.Amount),
-                0m,
-                i.StatusChanges.Any(s => s.Status == InvoiceStatus.Paid),
-                i.Lines.OrderBy(l => l.Position)
-                    .Select(l => new ImportInvoiceLine(l.Text, l.AccountNumber, l.Amount))
-                    .ToList()
-            ))
-            .ToList();
         byte[] content;
         await using (var upload = file.OpenReadStream())
         using (var memory = new MemoryStream())
@@ -278,71 +239,28 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
             content = memory.ToArray();
         }
 
-        var result = BankImport.Import(
-            content,
-            new ImportSnapshot(settings, existingReferences, persons, importInvoices, chart),
-            file.FileName
-        );
-        if (result.Errors.Count > 0)
-        {
-            return BadRequest(new { errors = result.Errors });
-        }
-
-        db.Transactions.AddRange(
-            result.Transactions.Select(t => new Transaction
-            {
-                Date = t.Date,
-                Amount = t.Amount,
-                Text = t.Text,
-                BankReference = t.BankReference,
-                PersonId = t.PersonId,
-                Entries = t
-                    .AutoEntries.Select(e => new Entry
-                    {
-                        Text = e.Text,
-                        AccountNumber = e.AccountNumber,
-                        Amount = e.Amount,
-                    })
-                    .ToList(),
-            })
-        );
-
-        // The first fully-covering credit Transaction marks the Invoice Paid: append the Paid status
-        // change and record the Transaction's id as PaidBy before the save, so the Transaction and its
-        // AutoEntries are created and the Paid status change + PaidBy are all persisted in the same
-        // SaveEntryChangeAsync save. The newly added Transactions are still in the context, so their ids
-        // are resolved as part of the save below.
-        foreach (
-            var t in result.Transactions.Where(t =>
-                t.PaidAt is not null && t.MatchedInvoiceId is not null
-            )
-        )
-        {
-            var invoice = db.Invoices.Single(i => i.Id == t.MatchedInvoiceId);
-            var movement = db.Transactions.Single(x => x.BankReference == t.BankReference);
-            invoice.StatusChanges.Add(
-                new InvoiceStatusChange { Status = InvoiceStatus.Paid, Timestamp = t.PaidAt!.Value }
-            );
-            if (invoice.PaidBy is null)
-            {
-                invoice.PaidBy = movement.Id;
-            }
-        }
-        await AccountUsageSync.SaveEntryChangeAsync(db, chart);
-
         // Ticket #62: the response reports which Invoices were auto-booked (in import order) and how
         // many of the imported movements still have no Entries (credits and debits alike).
-        var bookedInvoices = BankImport.BookedInvoiceIds(result);
-        var unmatched = BankImport.UnmatchedCount(result);
-        return Ok(
-            new
-            {
-                imported = result.Transactions.Count,
-                skippedDuplicates = result.SkippedDuplicates,
-                bookedInvoices,
-                unmatched,
-            }
-        );
+        return await importer.ImportAsync(content, file.FileName) switch
+        {
+            BankImportOutcome.SettingsMissing => BadRequest(
+                new
+                {
+                    error = "Bitte zuerst die Einstellungen (Anfangssaldo, Startdatum, IBAN) speichern.",
+                }
+            ),
+            BankImportOutcome.Rejected rejected => BadRequest(new { errors = rejected.Errors }),
+            BankImportOutcome.Imported done => Ok(
+                new
+                {
+                    imported = done.ImportedCount,
+                    skippedDuplicates = done.SkippedDuplicates,
+                    bookedInvoices = done.BookedInvoices,
+                    unmatched = done.Unmatched,
+                }
+            ),
+            _ => throw new InvalidOperationException(),
+        };
     }
 
     // Sets the fields a client supplies for an Entry (already validated, so the text is not blank).
