@@ -8,7 +8,9 @@ export const membershipTypes = [
 	"patron",
 ] as const;
 
-export type MembershipType = (typeof membershipTypes)[number];
+// "unknown" is a Person whose membership is not recorded (e.g. an empty CSV value); it is not selectable.
+export type KnownMembershipType = (typeof membershipTypes)[number];
+export type MembershipType = KnownMembershipType | "unknown";
 
 // The German label of each membership type, as shown in the UI.
 export const membershipLabels: Record<MembershipType, string> = {
@@ -18,4 +20,5 @@ export const membershipLabels: Record<MembershipType, string> = {
 	honorary: "Ehrenmitglied",
 	free: "Freimitglied",
 	patron: "Gönner:innen",
+	unknown: "Unbekannt",
 };

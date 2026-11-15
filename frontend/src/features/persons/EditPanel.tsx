@@ -3,7 +3,7 @@ import {
 	useQueryClient,
 	useSuspenseQuery,
 } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiX } from "react-icons/fi";
 import { personsQueryOptions, updatePerson } from "./api";
 import { membershipLabels, membershipTypes } from "./membership";
@@ -61,6 +61,23 @@ export function EditPanel({
 	// A Person who is someone's Payer cannot get a Payer (nor be Main Payer): the picker is locked.
 	const payerLocked = !canHavePayer(persons, person);
 	const [draft, setDraft] = useState(person);
+	const [baseline, setBaseline] = useState(person);
+	const dirty = JSON.stringify(draft) !== JSON.stringify(baseline);
+	const panelRef = useRef<HTMLElement>(null);
+	// Clicking outside closes the panel, unless that would discard unsaved changes.
+	useEffect(() => {
+		if (dirty) return;
+		const attachedAt = performance.now();
+		function onDocumentClick(e: MouseEvent) {
+			// The click that opened the panel is still bubbling when this listener is attached.
+			if (e.timeStamp < attachedAt) return;
+			// composedPath is fixed at dispatch time, so it still works if the target was removed since.
+			if (panelRef.current && !e.composedPath().includes(panelRef.current))
+				onClose();
+		}
+		document.addEventListener("click", onDocumentClick);
+		return () => document.removeEventListener("click", onDocumentClick);
+	}, [dirty, onClose]);
 	// A chosen Payer may have gained a Payer of their own since: then they are no longer valid.
 	const chosenPayer = persons.find((p) => p.id === draft.payerId);
 	const payerStale =
@@ -71,6 +88,7 @@ export function EditPanel({
 		mutationFn: updatePerson,
 		onSuccess: (updated) => {
 			setDraft(updated);
+			setBaseline(updated);
 			setSaved(true);
 			return queryClient.invalidateQueries({
 				queryKey: personsQueryOptions.queryKey,
@@ -121,7 +139,10 @@ export function EditPanel({
 	}
 
 	return (
-		<aside className="w-[50%] shrink-0 rounded border border-neutral-200 p-4">
+		<aside
+			ref={panelRef}
+			className="w-[50%] shrink-0 rounded border border-neutral-200 p-4"
+		>
 			<form onSubmit={submit}>
 				<div className="flex items-center justify-between">
 					<h2 className="text-xl font-bold">Person bearbeiten</h2>
@@ -152,6 +173,9 @@ export function EditPanel({
 							}}
 							className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm"
 						>
+							{draft.membership === "unknown" && (
+								<option value="unknown">{membershipLabels.unknown}</option>
+							)}
 							{membershipTypes.map((type) => (
 								<option key={type} value={type}>
 									{membershipLabels[type]}
@@ -223,7 +247,7 @@ export function EditPanel({
 													setSaved(false);
 												}}
 											/>
-											Newsletter (Club-News)
+											Club-News
 										</label>,
 									]
 								: [renderField(f)],
