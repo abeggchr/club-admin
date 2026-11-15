@@ -37,11 +37,17 @@ public static class AccountUsageSync
         return result;
     }
 
-    // Saves a pending Entry change and the matching AccountUsage changes atomically.
-    public static async Task SaveEntryChangeAsync(AppDbContext db, ChartOfAccounts chart)
+    // Saves a pending Entry change and the matching AccountUsage changes atomically. afterFirstSave runs
+    // between the two saves, once new rows have their ids, and its changes are saved in the same transaction.
+    public static async Task SaveEntryChangeAsync(
+        AppDbContext db,
+        ChartOfAccounts chart,
+        Action? afterFirstSave = null
+    )
     {
         await using var tx = await db.Database.BeginTransactionAsync();
         await db.SaveChangesAsync();
+        afterFirstSave?.Invoke();
         Sync(db, chart);
         await db.SaveChangesAsync();
         await tx.CommitAsync();

@@ -15,12 +15,11 @@ using Person = backend.Person.Person;
 /// <summary>A position of an open Invoice as seen by the import: its Account hint and amount.</summary>
 public record ImportInvoiceLine(string Text, int AccountNumber, decimal Amount);
 
-/// <summary>An open Invoice as seen by the import: the QR-bill reference, the total, the positions, how much is already paid, and whether it is already Paid (terminal: it never matches again).</summary>
+/// <summary>An open Invoice as seen by the import: the QR-bill reference, the total, the positions, and whether it is already Paid (terminal: it never matches again).</summary>
 public record ImportInvoice(
     int Id,
     string Reference,
     decimal Total,
-    decimal ExistingPaid,
     bool AlreadyPaid,
     IReadOnlyList<ImportInvoiceLine> Lines
 );
@@ -845,7 +844,7 @@ public static class BankImport
     /// <summary>
     /// Tries to match a payment to its open Invoice and build the auto-entries. Returns null (no match) when:
     /// there is no QR-bill reference, no matching Invoice, the Invoice is already paid, the credit is an
-    /// underpayment, the debit's magnitude differs from the outstanding amount, a line's Account is missing or
+    /// underpayment, the debit's magnitude differs from the total, a line's Account is missing or
     /// inactive, an overpayment Entry is needed but Account 3600 is missing or inactive, or the Entries
     /// do not sum to the movement's amount. An overpaying credit additionally books the excess to Account 3600.
     /// A credit that completes the total returns the PaidAt timestamp
@@ -890,10 +889,9 @@ public static class BankImport
             return null;
         }
 
-        var outstanding = invoice.Total - invoice.ExistingPaid;
-        // A credit must cover at least the outstanding amount (an underpayment does not match); a debit
-        // must exactly equal it (a debit whose magnitude exceeds the outstanding amount does not match).
-        if (credit ? signedAmount < outstanding : signedAmount != -outstanding)
+        // A credit must cover at least the total (an underpayment does not match); a debit
+        // must exactly equal it (a debit whose magnitude exceeds the total does not match).
+        if (credit ? signedAmount < invoice.Total : signedAmount != -invoice.Total)
         {
             return null;
         }
@@ -914,7 +912,7 @@ public static class BankImport
 
         // Overpayment (spec §3/§5): an overpaying credit books the excess to Account 3600 (Spenden).
         decimal? overpaymentAmount = null;
-        var excess = signedAmount - outstanding;
+        var excess = signedAmount - invoice.Total;
         if (excess > 0)
         {
             var overpaymentAccount = chart.Find(OverpaymentAccount);
@@ -940,7 +938,7 @@ public static class BankImport
 
         // Only a credit that completes the total exactly records the Paid status change, timestamped with the
         // movement's booking date (Zurich midnight as a UTC instant); an overpayment does not set Paid.
-        var covered = credit && invoice.ExistingPaid >= 0 && signedAmount == outstanding;
+        var covered = credit && signedAmount == invoice.Total;
         DateTime? paidAt = covered ? InvoiceTime.TimestampFor(date) : null;
 
         return (invoice.Id, entries.AsReadOnly(), overpaymentAmount, paidAt);

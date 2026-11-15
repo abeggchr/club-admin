@@ -20,6 +20,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddEntraLogin(builder.Configuration);
 builder.Services.AddObjectStorage(builder.Configuration);
 builder.Services.AddScoped<InvoiceCreator>();
+builder.Services.AddScoped<BankImporter>();
 InvoiceDocument.UseCommunityLicense();
 
 // A malformed Chart of Accounts file fails startup (see ADR 0001).
