@@ -11,8 +11,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261111181842_AddInvoicePaidBy")]
-    partial class AddInvoicePaidBy
+    [Migration("20261115141407_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -68,46 +68,25 @@ namespace backend.Migrations
                     b.ToTable("JournalEntries");
                 });
 
-            modelBuilder.Entity("backend.Accounting.Settings", b =>
+            modelBuilder.Entity("backend.Accounting.Receipt", b =>
                 {
                     b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    b.Property<string>("Address")
-                        .IsRequired()
-                        .HasMaxLength(70)
-                        .HasColumnType("character varying(70)");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("City")
-                        .IsRequired()
-                        .HasMaxLength(35)
-                        .HasColumnType("character varying(35)");
+                    b.Property<int>("TransactionId")
+                        .HasColumnType("integer");
 
-                    b.Property<string>("Iban")
-                        .IsRequired()
-                        .HasMaxLength(21)
-                        .HasColumnType("character varying(21)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(70)
-                        .HasColumnType("character varying(70)");
-
-                    b.Property<decimal>("OpeningBalance")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<string>("PostalCode")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<DateOnly>("StartDate")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Settings");
+                    b.HasIndex("TransactionId");
+
+                    b.ToTable("Receipts");
                 });
 
             modelBuilder.Entity("backend.Accounting.Transaction", b =>
@@ -232,30 +211,21 @@ namespace backend.Migrations
                     b.ToTable("InvoiceStatusChange");
                 });
 
-            modelBuilder.Entity("backend.Invoicing.TextTemplate", b =>
+            modelBuilder.Entity("backend.Invoicing.MembershipDiscount", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<int>("PersonId")
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Greetings")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Subject")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                    b.Property<int>("Percent")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("PersonId");
 
-                    b.ToTable("TextTemplates");
+                    b.ToTable("MembershipDiscounts");
                 });
 
             modelBuilder.Entity("backend.Person.Person", b =>
@@ -282,6 +252,9 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsMainPayer")
+                        .HasColumnType("boolean");
+
                     b.Property<DateOnly?>("JoinedOn")
                         .HasColumnType("date");
 
@@ -307,15 +280,91 @@ namespace backend.Migrations
                     b.Property<string>("Number")
                         .HasColumnType("text");
 
+                    b.Property<int?>("PayerId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("PostalCode")
                         .HasColumnType("text");
+
+                    b.Property<bool>("ReceivesClubNews")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Street")
                         .HasColumnType("text");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PayerId");
+
                     b.ToTable("Persons");
+                });
+
+            modelBuilder.Entity("backend.Settings.Settings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(70)
+                        .HasColumnType("character varying(70)");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(35)
+                        .HasColumnType("character varying(35)");
+
+                    b.Property<string>("Iban")
+                        .IsRequired()
+                        .HasMaxLength(21)
+                        .HasColumnType("character varying(21)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(70)
+                        .HasColumnType("character varying(70)");
+
+                    b.Property<decimal>("OpeningBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("PostalCode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Settings");
+                });
+
+            modelBuilder.Entity("backend.Settings.TextTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Greetings")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TextTemplates");
                 });
 
             modelBuilder.Entity("backend.Accounting.Entry", b =>
@@ -327,6 +376,15 @@ namespace backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("backend.Accounting.Receipt", b =>
+                {
+                    b.HasOne("backend.Accounting.Transaction", null)
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("backend.Accounting.Transaction", b =>
@@ -362,6 +420,23 @@ namespace backend.Migrations
                         .HasForeignKey("InvoiceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("backend.Invoicing.MembershipDiscount", b =>
+                {
+                    b.HasOne("backend.Person.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("backend.Person.Person", b =>
+                {
+                    b.HasOne("backend.Person.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PayerId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("backend.Accounting.Transaction", b =>
