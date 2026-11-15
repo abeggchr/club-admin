@@ -72,9 +72,10 @@ public static class AuthSetup
         services.AddAuthorization();
         services.Configure<ForwardedHeadersOptions>(options =>
         {
-            options.ForwardedHeaders =
-                ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor;
-            // Railway's proxy address is not known in advance.
+            // Only the scheme is needed (https redirect URIs and cookies behind Railway's TLS proxy).
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+            // Railway's proxy address is not known in advance; without clearing, the headers from
+            // non-loopback proxies would be ignored.
             options.KnownIPNetworks.Clear();
             options.KnownProxies.Clear();
         });
@@ -122,7 +123,9 @@ public static class AuthSetup
 
     /// <summary>Only same-site relative paths: anything else would be an open redirect.</summary>
     public static string SafeReturnUrl(string? returnUrl) =>
-        returnUrl is ['/', not ('/' or '\\'), ..] || returnUrl == "/" ? returnUrl : "/";
+        returnUrl is ['/', not ('/' or '\\'), ..] && !returnUrl.Any(char.IsControl) || returnUrl == "/"
+            ? returnUrl
+            : "/";
 
     private static string Required(IConfigurationSection section, string key) =>
         section[key] is { Length: > 0 } value

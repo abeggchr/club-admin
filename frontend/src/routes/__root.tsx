@@ -8,7 +8,7 @@ import {
 	Outlet,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { type CurrentUser, fetchCurrentUser, logout } from "../lib/auth";
+import { fetchCurrentUser, logout } from "../lib/auth";
 import { settingsQueryOptions } from "../features/accounting/api";
 import { navItems } from "../nav";
 
@@ -16,7 +16,6 @@ import "../styles.css";
 
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient;
-	user?: CurrentUser;
 }>()({
 	beforeLoad: async () => ({ user: await fetchCurrentUser() }),
 	component: RootComponent,
@@ -36,7 +35,7 @@ function RootComponent() {
 					</Link>
 				</h1>
 					<div className="flex items-center gap-3 text-sm text-sky-900">
-						<span>{user?.email ?? user?.name}</span>
+						<span>{user.email ?? user.name}</span>
 						<button
 							type="button"
 							onClick={() => void logout()}

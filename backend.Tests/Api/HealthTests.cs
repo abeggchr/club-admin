@@ -10,8 +10,7 @@ public class HealthTests : IClassFixture<LocalPostgresFixture>
     public HealthTests(LocalPostgresFixture postgres)
     {
         _postgres = postgres;
-        if (!_postgres.Available)
-            throw new SkipException("No local PostgreSQL available (README: localhost:5432, postgres/secret).");
+        _postgres.SkipUnlessAvailable();
     }
 
     [Fact]

@@ -11,8 +11,7 @@ public class AuthTests : IClassFixture<LocalPostgresFixture>
     public AuthTests(LocalPostgresFixture postgres)
     {
         _postgres = postgres;
-        if (!_postgres.Available)
-            throw new SkipException("No local PostgreSQL available (README: localhost:5432, postgres/secret).");
+        _postgres.SkipUnlessAvailable();
     }
 
     [Theory]
@@ -27,17 +26,6 @@ public class AuthTests : IClassFixture<LocalPostgresFixture>
         var response = await client.GetAsync(path);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Health_is_reachable_anonymously()
-    {
-        await using var factory = new AppFactory(_postgres);
-        using var client = factory.CreateClient();
-
-        var response = await client.GetAsync("/api/health");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
