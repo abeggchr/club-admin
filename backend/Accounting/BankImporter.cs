@@ -55,6 +55,7 @@ public class BankImporter(AppDbContext db, ChartOfAccounts chart)
             .ToListAsync();
         var importInvoices = invoices
             .Where(i => !string.IsNullOrEmpty(i.Reference))
+            .Where(i => InvoiceRules.LatestStatus(i) != InvoiceStatus.Cancelled)
             .Select(i => new ImportInvoice(
                 i.Id,
                 i.Reference,

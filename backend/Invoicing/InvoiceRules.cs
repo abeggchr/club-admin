@@ -59,8 +59,9 @@ public static class InvoiceRules
                 .Last()
                 .Status;
 
-    /// <summary>Open: the latest Invoice Status is not Paid.</summary>
-    public static bool IsOpen(Invoice invoice) => LatestStatus(invoice) != InvoiceStatus.Paid;
+    /// <summary>Open: the latest Invoice Status is neither Paid nor Cancelled.</summary>
+    public static bool IsOpen(Invoice invoice) =>
+        LatestStatus(invoice) is not (InvoiceStatus.Paid or InvoiceStatus.Cancelled);
 
     /// <summary>
     /// The dashboard's Invoices: how many are open and what their full totals sum to. Partial

@@ -109,6 +109,11 @@ export async function deleteMembershipDiscount(
 	);
 }
 
+/** Cancels (storniert) an open Invoice; rejects with the backend's message. */
+export function cancelInvoice(id: number): Promise<InvoiceDetail> {
+	return requestJson(`/api/invoices/${id}/cancel`, "POST", {});
+}
+
 export function invalidateInvoices(queryClient: QueryClient) {
 	return queryClient.invalidateQueries({
 		queryKey: invoicesQueryOptions.queryKey,
@@ -118,6 +123,7 @@ export function invalidateInvoices(queryClient: QueryClient) {
 const statusLabels: Record<string, string> = {
 	Created: "Erstellt",
 	Paid: "Bezahlt",
+	Cancelled: "Storniert",
 };
 
 export function statusLabel(status: string): string {

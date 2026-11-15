@@ -31,6 +31,32 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         return Ok(InvoiceMapping.ToInvoiceDetail(invoice, people[invoice.PersonId]));
     }
 
+    // Cancels (storniert) an Invoice that is still Created: records a Cancelled status change.
+    [HttpPost("{id:int}/cancel")]
+    public async Task<IActionResult> CancelInvoice(int id, CancellationToken ct)
+    {
+        var invoice = await db
+            .Invoices.Include(i => i.Lines)
+            .Include(i => i.StatusChanges)
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
+        if (invoice is null)
+        {
+            return NotFound();
+        }
+        if (InvoiceRules.LatestStatus(invoice) != InvoiceStatus.Created)
+        {
+            return BadRequest(
+                new { error = "Nur offene Rechnungen können storniert werden." }
+            );
+        }
+        invoice.StatusChanges.Add(
+            new InvoiceStatusChange { Status = InvoiceStatus.Cancelled, Timestamp = DateTime.UtcNow }
+        );
+        await db.SaveChangesAsync(ct);
+        var person = (await PeopleByIdAsync([invoice.PersonId]))[invoice.PersonId];
+        return Ok(InvoiceMapping.ToInvoiceDetail(invoice, person));
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateInvoice(
         InvoiceInput input,
