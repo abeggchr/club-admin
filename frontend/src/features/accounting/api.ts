@@ -119,6 +119,29 @@ export async function deleteTransaction(id: number): Promise<void> {
 	);
 }
 
+/** Attaches one PDF as a Receipt; the backend answers with a German error message for a rejected file. */
+export async function uploadReceipt(
+	transactionId: number,
+	file: File,
+): Promise<void> {
+	const body = new FormData();
+	body.append("file", file);
+	await ensureOk(
+		await apiFetch(`/api/transactions/${transactionId}/receipts`, {
+			method: "POST",
+			body,
+		}),
+	);
+}
+
+export async function deleteReceipt(id: number): Promise<void> {
+	await ensureOk(
+		await apiFetch(`/api/transactions/receipts/${id}`, { method: "DELETE" }),
+	);
+}
+
+export const receiptUrl = (id: number) => `/api/transactions/receipts/${id}`;
+
 export type TransactionImportResult = {
 	imported: number;
 	skippedDuplicates: number;

@@ -6,8 +6,12 @@ namespace backend.Accounting;
 
 [ApiController]
 [Route("api")]
-public class AccountingController(AppDbContext db, ChartOfAccounts chart, BankImporter importer)
-    : ControllerBase
+public class AccountingController(
+    AppDbContext db,
+    ChartOfAccounts chart,
+    BankImporter importer,
+    IReceiptStorage receiptStorage
+) : ControllerBase
 {
     [HttpGet("accounts")]
     public IActionResult GetAccounts() => Ok(chart.Accounts);
@@ -208,7 +212,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart, BankIm
         return Ok(await LoadTransactionDtoAsync(opening!, id));
     }
 
-    // Deletes the Transaction together with any Entries still stored for it (cascade), syncing AccountUsage.
+    // Deletes the Transaction together with any Entries and Receipts still stored for it (cascade), syncing AccountUsage.
     [HttpDelete("transactions/{id:int}")]
     public async Task<IActionResult> DeleteTransaction(int id)
     {
@@ -220,9 +224,83 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart, BankIm
             return NotFound();
         }
 
+        // The Receipt rows cascade with the Transaction; their objects are deleted afterwards, best-effort.
+        var receiptIds = await db
+            .Receipts.Where(r => r.TransactionId == id)
+            .Select(r => r.Id)
+            .ToListAsync();
         db.JournalEntries.RemoveRange(transaction.Entries);
         db.Transactions.Remove(transaction);
         await AccountUsageSync.SaveEntryChangeAsync(db, chart);
+        await DeleteReceiptObjectsAsync(receiptIds);
+        return NoContent();
+    }
+
+    // Attaches one PDF Receipt to a Transaction (imported or not, booked or not): none of the bank facts change.
+    // A row pointing at a missing file must never occur; an orphaned object is harmless. The object key needs the
+    // row's Id, so the row is inserted inside a database transaction, the object is written, and only then the
+    // transaction commits: the row becomes visible only once its object exists. A failed commit leaves the object
+    // behind and is not cleaned up: the commit may have gone through unnoticed, and a row pointing at a missing
+    // file is worse than an orphan.
+    [HttpPost("transactions/{id:int}/receipts")]
+    public async Task<IActionResult> UploadReceipt(int id, IFormFile? file, CancellationToken ct)
+    {
+        if (!await db.Transactions.AnyAsync(t => t.Id == id, ct))
+        {
+            return NotFound();
+        }
+        byte[] content = [];
+        if (file is not null)
+        {
+            await using var upload = file.OpenReadStream();
+            using var memory = new MemoryStream();
+            await upload.CopyToAsync(memory, ct);
+            content = memory.ToArray();
+        }
+        var existing = await db.Receipts.CountAsync(r => r.TransactionId == id, ct);
+        if (ReceiptRules.Validate(content, existing) is { } error)
+        {
+            return BadRequest(new { error });
+        }
+
+        var receipt = new Receipt { TransactionId = id, UploadedAt = DateTime.UtcNow };
+        await using var dbTransaction = await db.Database.BeginTransactionAsync(ct);
+        db.Receipts.Add(receipt);
+        await db.SaveChangesAsync(ct);
+        await receiptStorage.PutAsync(receipt.Id, content, ct);
+        await dbTransaction.CommitAsync(ct);
+        return Ok(new ReceiptDto(receipt.Id, receipt.UploadedAt));
+    }
+
+    [HttpGet("transactions/receipts/{id:int}")]
+    public async Task<IActionResult> GetReceipt(int id, CancellationToken ct)
+    {
+        if (!await db.Receipts.AnyAsync(r => r.Id == id, ct))
+        {
+            return NotFound();
+        }
+        var pdf = await receiptStorage.GetAsync(id, ct);
+        if (pdf is null)
+        {
+            return NotFound();
+        }
+        // Set directly: File with a filename would emit "attachment".
+        Response.Headers.ContentDisposition = $"inline; filename=\"Beleg-{id}.pdf\"";
+        return File(pdf, "application/pdf");
+    }
+
+    // The row goes first, then the object best-effort: the reverse order could leave a row pointing at a missing file.
+    [HttpDelete("transactions/receipts/{id:int}")]
+    public async Task<IActionResult> DeleteReceipt(int id, CancellationToken ct)
+    {
+        var receipt = await db.Receipts.FirstOrDefaultAsync(r => r.Id == id, ct);
+        if (receipt is null)
+        {
+            return NotFound();
+        }
+        db.Receipts.Remove(receipt);
+        await db.SaveChangesAsync(ct);
+        await DeleteReceiptObjectsAsync([id]);
         return NoContent();
     }
 
@@ -272,6 +350,22 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart, BankIm
         return entry;
     }
 
+    // Best-effort: an object that stays behind is an unreferenced orphan, which is harmless and accepted.
+    private async Task DeleteReceiptObjectsAsync(IEnumerable<int> ids)
+    {
+        foreach (var id in ids)
+        {
+            try
+            {
+                await receiptStorage.DeleteAsync(id);
+            }
+            catch
+            {
+                // See above.
+            }
+        }
+    }
+
     private static string? NormalizeText(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
@@ -285,6 +379,8 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart, BankIm
             .Transactions.Include(t => t.Entries)
             .AsNoTracking()
             .ToListAsync();
+        var receipts = (await db.Receipts.AsNoTracking().OrderBy(r => r.Id).ToListAsync())
+            .ToLookup(r => r.TransactionId);
         return AccountingCalculator
             .TransactionBalances(opening, transactions)
             .Select(r => new TransactionDto(
@@ -295,7 +391,8 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart, BankIm
                 r.Transaction.PersonId,
                 r.Transaction.BankReference,
                 r.Balance,
-                r.Transaction.Entries.Select(e => e.Id).Order().ToList()
+                r.Transaction.Entries.Select(e => e.Id).Order().ToList(),
+                receipts[r.Transaction.Id].Select(x => new ReceiptDto(x.Id, x.UploadedAt)).ToList()
             ))
             .ToList();
     }
@@ -329,5 +426,8 @@ public record TransactionDto(
     int? PersonId,
     string? BankReference,
     decimal Balance,
-    List<int> EntryIds
+    List<int> EntryIds,
+    List<ReceiptDto> Receipts
 );
+
+public record ReceiptDto(int Id, DateTime UploadedAt);

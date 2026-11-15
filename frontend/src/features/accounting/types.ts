@@ -33,7 +33,15 @@ export type Transaction = {
 	bankReference: string | null;
 	/** The Ids of its Entries; empty means it is not booked yet ("Keine Buchung"). */
 	entryIds: number[];
+	/** The PDF Receipts (Belege) attached to it, in upload order. */
+	receipts: Receipt[];
 	balance: number;
+};
+
+export type Receipt = {
+	id: number;
+	/** UTC timestamp of the upload. */
+	uploadedAt: string;
 };
 
 export type TransactionInput = {

@@ -35,6 +35,9 @@ When an imported payment exceeds the outstanding amount of its Invoice, the exce
 **Transaction** (German: _Bewegung_):
 One money movement on the bank account: the bank's booking date and a signed amount, split into Entries. It may have zero Entries, in which case it is not booked yet and the table shows it as "Keine Buchung"; once it has at least one, the signed amounts of its Entries sum to its amount. Its direction follows from the sign of the amount and is not stored: it is a Deposit or a Withdrawal.
 
+**Receipt** (German: _Beleg_):
+A PDF attached to a Transaction, the paper that justifies the booking (a supplier's receipt, a payment confirmation). A Transaction has any number of them (at most 20), added at any time after it is saved, including an Imported or Unbooked one: attaching a Receipt changes none of its read-only bank facts. Stored in the same private bucket as the Invoice PDFs, but unlike those it can be removed, and it is deleted with its Transaction. A re-import and edits of the Entries leave Receipts untouched.
+
 **Deposit** (German: _Einzahlung_):
 A Transaction where money comes in (positive amount).
 

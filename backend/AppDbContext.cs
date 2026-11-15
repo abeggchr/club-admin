@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Settings> Settings => Set<Settings>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<Entry> JournalEntries => Set<Entry>();
+    public DbSet<Receipt> Receipts => Set<Receipt>();
     public DbSet<AccountUsage> AccountUsages => Set<AccountUsage>();
     public DbSet<TextTemplate> TextTemplates => Set<TextTemplate>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
@@ -108,5 +109,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(x => x.TransactionId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+        modelBuilder.Entity<Receipt>(e =>
+            e.HasOne<Transaction>()
+                .WithMany()
+                .HasForeignKey(x => x.TransactionId)
+                .OnDelete(DeleteBehavior.Cascade)
+        );
     }
 }

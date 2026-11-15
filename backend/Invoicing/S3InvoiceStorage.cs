@@ -86,6 +86,7 @@ public static class ObjectStorageSetup
             );
         });
         services.AddSingleton<IInvoiceStorage, S3InvoiceStorage>();
+        services.AddSingleton<backend.Accounting.IReceiptStorage, backend.Accounting.S3ReceiptStorage>();
         return services;
     }
 
