@@ -22,7 +22,7 @@ export function InvoicesPage() {
 	return (
 		<div className="px-8">
 			<h2 className="mt-4 text-xl font-semibold text-sky-900">Rechnungen</h2>
-			<div className="mt-4 flex items-center gap-4">
+			<div className="mt-4 flex items-center gap-2">
 				<button
 					type="button"
 					onClick={() => {
