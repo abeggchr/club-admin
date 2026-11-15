@@ -1,11 +1,14 @@
 namespace backend.Accounting;
 
-/// <summary>The club's settings, stored as a single record: the Anfangssaldo, its start date and the club's IBAN. All are required.</summary>
+/// <summary>The club's settings, stored as a single record: the title, the Anfangssaldo, its start date and the club's IBAN. The Anfangssaldo, its start date and the IBAN are required; the title is optional.</summary>
 public class Settings
 {
     public const int SingletonId = 1;
 
     public int Id { get; set; } = SingletonId;
+
+    /// <summary>The club's display title, shown in the header. Optional, ≤ 70 characters.</summary>
+    public string Title { get; set; } = "";
     public decimal OpeningBalance { get; set; }
     public DateOnly StartDate { get; set; }
     public string Iban { get; set; } = "";

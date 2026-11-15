@@ -102,6 +102,11 @@ namespace backend.Migrations
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
 
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(70)
+                        .HasColumnType("character varying(70)");
+
                     b.HasKey("Id");
 
                     b.ToTable("Settings");

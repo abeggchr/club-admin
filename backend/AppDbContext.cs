@@ -20,6 +20,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(o => o.Id).ValueGeneratedNever();
             e.Property(o => o.OpeningBalance).HasPrecision(18, 2);
+            e.Property(o => o.Title).IsRequired().HasMaxLength(70);
             e.Property(o => o.Iban).HasMaxLength(21);
             e.Property(o => o.Name).IsRequired().HasMaxLength(70);
             e.Property(o => o.Address).IsRequired().HasMaxLength(70);

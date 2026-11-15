@@ -1,5 +1,6 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ReactQueryDevtoolsPanel } from "@tanstack/react-query-devtools";
 import {
 	createRootRouteWithContext,
@@ -8,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { settingsQueryOptions } from "../features/accounting/api";
 import { navItems } from "../nav";
 
 import "../styles.css";
@@ -19,10 +21,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 );
 
 function RootComponent() {
+	const { data: settings } = useQuery(settingsQueryOptions);
+
 	return (
 		<>
 			<header className="px-4 pt-4">
-				<h1 className="text-2xl font-bold text-sky-900">Skiclub Waidberg</h1>
+				<h1 className="text-2xl font-bold text-sky-900">
+					{settings?.name.trim() || "SCW"}
+				</h1>
 				<nav className="mt-2 flex gap-1 rounded-lg bg-sky-500 p-2 shadow">
 					{navItems.map((item) => (
 						<Link
