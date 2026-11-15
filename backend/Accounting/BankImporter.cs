@@ -77,47 +77,58 @@ public class BankImporter(AppDbContext db, ChartOfAccounts chart)
             return new BankImportOutcome.Rejected(result.Errors);
         }
 
-        db.Transactions.AddRange(
-            result.Transactions.Select(t => new Transaction
-            {
-                Date = t.Date,
-                Amount = t.Amount,
-                Text = t.Text,
-                BankReference = t.BankReference,
-                PersonId = t.PersonId,
-                Entries = t
-                    .AutoEntries.Select(e => new Entry
+        var saved = result
+            .Transactions.Select(t =>
+                (
+                    Imported: t,
+                    Movement: new Transaction
                     {
-                        Text = e.Text,
-                        AccountNumber = e.AccountNumber,
-                        Amount = e.Amount,
-                    })
-                    .ToList(),
-            })
-        );
-
-        // The first fully-covering credit Transaction marks the Invoice Paid: append the Paid status
-        // change and record the Transaction's id as PaidBy before the save, so the Transaction and its
-        // AutoEntries are created and the Paid status change + PaidBy are all persisted in the same
-        // SaveEntryChangeAsync save. The newly added Transactions are still in the context, so their ids
-        // are resolved as part of the save below.
-        foreach (
-            var t in result.Transactions.Where(t =>
-                t.PaidAt is not null && t.MatchedInvoiceId is not null
+                        Date = t.Date,
+                        Amount = t.Amount,
+                        Text = t.Text,
+                        BankReference = t.BankReference,
+                        PersonId = t.PersonId,
+                        Entries = t
+                            .AutoEntries.Select(e => new Entry
+                            {
+                                Text = e.Text,
+                                AccountNumber = e.AccountNumber,
+                                Amount = e.Amount,
+                            })
+                            .ToList(),
+                    }
+                )
             )
-        )
-        {
-            var invoice = db.Invoices.Single(i => i.Id == t.MatchedInvoiceId);
-            var movement = db.Transactions.Single(x => x.BankReference == t.BankReference);
-            invoice.StatusChanges.Add(
-                new InvoiceStatusChange { Status = InvoiceStatus.Paid, Timestamp = t.PaidAt!.Value }
-            );
-            if (invoice.PaidBy is null)
+            .ToList();
+        db.Transactions.AddRange(saved.Select(s => s.Movement));
+
+        // The first fully-covering credit Transaction marks the Invoice Paid: once the Transactions are
+        // saved and have their ids, append the Paid status change and record the Transaction's id as
+        // PaidBy. Both saves share one database transaction, so the import is all or nothing.
+        await AccountUsageSync.SaveEntryChangeAsync(
+            db,
+            chart,
+            afterFirstSave: () =>
             {
-                invoice.PaidBy = movement.Id;
+                foreach (var (imported, movement) in saved)
+                {
+                    if (imported.PaidAt is null || imported.MatchedInvoiceId is null)
+                    {
+                        continue;
+                    }
+
+                    var invoice = invoices.Single(i => i.Id == imported.MatchedInvoiceId);
+                    invoice.StatusChanges.Add(
+                        new InvoiceStatusChange
+                        {
+                            Status = InvoiceStatus.Paid,
+                            Timestamp = imported.PaidAt.Value,
+                        }
+                    );
+                    invoice.PaidBy ??= movement.Id;
+                }
             }
-        }
-        await AccountUsageSync.SaveEntryChangeAsync(db, chart);
+        );
 
         return new BankImportOutcome.Imported(
             result.Transactions.Count,
