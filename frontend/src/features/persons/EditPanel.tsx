@@ -235,7 +235,7 @@ export function EditPanel({
 										<label
 											key="club-news"
 											className="flex items-end gap-2 pb-1 text-sm font-medium"
-										>	
+										>
 											<input
 												type="checkbox"
 												checked={draft.receivesClubNews}

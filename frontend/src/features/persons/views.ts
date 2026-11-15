@@ -18,7 +18,7 @@ export const views = {
 			"landlinePhone",
 			"country",
 			"notes",
-			"receivesClubNews"
+			"receivesClubNews",
 		),
 	},
 	contacts: {

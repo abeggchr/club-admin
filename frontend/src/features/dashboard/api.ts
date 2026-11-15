@@ -58,7 +58,8 @@ export type MembershipPieSlice = PieSlice & {
 export function membershipPie(summary: PersonsSummary): MembershipPieSlice[] {
 	const known = summary.byMembership.filter(
 		(m) =>
-			m.count > 0 && membershipTypes.includes(m.membership as KnownMembershipType),
+			m.count > 0 &&
+			membershipTypes.includes(m.membership as KnownMembershipType),
 	);
 	const geometry = pieSlices(known.map((m) => m.count));
 	return known.map((m, i) => {
