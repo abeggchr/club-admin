@@ -2,6 +2,7 @@ import {
 	createFileRoute,
 	type ErrorComponentProps,
 } from "@tanstack/react-router";
+import { settingsQueryOptions } from "../features/accounting/api";
 import { invoicesQueryOptions } from "../features/invoices/api";
 import { InvoicesPage } from "../features/invoices/InvoicesPage";
 import { personsQueryOptions } from "../features/persons/api";
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/invoices")({
 			queryClient.ensureQueryData(invoicesQueryOptions),
 			queryClient.ensureQueryData(personsQueryOptions),
 			queryClient.ensureQueryData(textTemplatesQueryOptions),
+			queryClient.ensureQueryData(settingsQueryOptions),
 		]),
 	component: InvoicesPage,
 	pendingComponent: () => <p className="p-8">Laden…</p>,
