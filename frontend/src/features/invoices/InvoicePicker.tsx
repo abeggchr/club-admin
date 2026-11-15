@@ -31,6 +31,10 @@ export function filterOpenInvoices(
 }
 
 type Props = {
+	/** The chosen Invoice, shown in the field. */
+	value: number | null;
+	/** When true the picker shows the chosen Invoice but does not open or report changes. */
+	readOnly?: boolean;
 	onSelect: (invoice: InvoiceDetail) => void;
 	id?: string;
 	className?: string;
@@ -40,7 +44,13 @@ type Props = {
  * Open-Invoice autocomplete: type an Invoice Number, a name or an amount; each option shows number, name and
  * total. Choosing one loads its detail (with the Lines) and reports it; the field then clears.
  */
-export function InvoicePicker({ onSelect, id, className }: Props) {
+export function InvoicePicker({
+	value,
+	readOnly,
+	onSelect,
+	id,
+	className,
+}: Props) {
 	const { data: invoices } = useSuspenseQuery(invoicesQueryOptions);
 	const queryClient = useQueryClient();
 	const listId = useId();
@@ -49,6 +59,8 @@ export function InvoicePicker({ onSelect, id, className }: Props) {
 	const [highlight, setHighlight] = useState(0);
 	const [error, setError] = useState<string>();
 	const options = filterOpenInvoices(invoices, query);
+	const selected = invoices.find((i) => i.id === value);
+	const text = query || (selected ? invoiceLabel(selected) : "");
 
 	const close = () => {
 		setOpen(false);
@@ -107,8 +119,13 @@ export function InvoicePicker({ onSelect, id, className }: Props) {
 				autoComplete="off"
 				placeholder="Offene Rechnung wählen…"
 				className={className}
-				value={query}
-				onFocus={() => setOpen(true)}
+				value={text}
+				readOnly={readOnly}
+				onFocus={(e) => {
+					if (readOnly) return;
+					setOpen(true);
+					e.target.select();
+				}}
 				onChange={(e) => {
 					setQuery(e.target.value);
 					setHighlight(0);
@@ -118,7 +135,7 @@ export function InvoicePicker({ onSelect, id, className }: Props) {
 				onKeyDown={onKeyDown}
 			/>
 			{error && <span className="text-red-600">{error}</span>}
-			{open && (
+			{open && !readOnly && (
 				<div
 					id={listId}
 					role="listbox"

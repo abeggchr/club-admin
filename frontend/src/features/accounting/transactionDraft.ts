@@ -27,6 +27,8 @@ export type TransactionDraft = {
 	amount: string;
 	text: string;
 	personId: number | null;
+	/** The Invoice the Transaction pays, chosen in the Invoice picker. */
+	invoiceId: number | null;
 	entries: EntryRow[];
 };
 
@@ -43,6 +45,7 @@ export function emptyDraft(date: string): TransactionDraft {
 		amount: "",
 		text: "",
 		personId: null,
+		invoiceId: null,
 		entries: [{ id: null, text: "", accountNumber: null, amount: null }],
 	};
 }
@@ -53,6 +56,7 @@ export function draftFromTransaction(
 		amount: number;
 		text: string | null;
 		personId: number | null;
+		invoiceId: number | null;
 	},
 	entries: Entry[],
 	accounts: Account[],
@@ -62,6 +66,7 @@ export function draftFromTransaction(
 		amount: formatChf(transaction.amount),
 		text: transaction.text ?? "",
 		personId: transaction.personId,
+		invoiceId: transaction.invoiceId,
 		entries: entries.map((e) => {
 			const account = accounts.find((a) => a.number === e.accountNumber);
 			return {
@@ -141,6 +146,7 @@ export function remainder(
 export function applyInvoice(
 	draft: TransactionDraft,
 	invoice: {
+		id: number;
 		person: { id: number };
 		total: number;
 		lines: { text: string; amount: number; accountNumber: number }[];
@@ -153,6 +159,7 @@ export function applyInvoice(
 	const sign = parsed.ok && parsed.value < 0 ? -1 : 1;
 	return {
 		...draft,
+		invoiceId: invoice.id,
 		amount:
 			parsed.ok && draft.amount.trim() !== ""
 				? draft.amount
@@ -230,7 +237,8 @@ export function isDraftDirty(
 		initial.date !== current.date ||
 		initial.amount !== current.amount ||
 		initial.text !== current.text ||
-		initial.personId !== current.personId
+		initial.personId !== current.personId ||
+		initial.invoiceId !== current.invoiceId
 	)
 		return true;
 	if (initial.entries.length !== current.entries.length) return true;
@@ -316,6 +324,7 @@ export function toTransactionInput(
 		amount: total.value,
 		text: draft.text.trim() === "" ? null : draft.text.trim(),
 		personId: draft.personId,
+		invoiceId: draft.invoiceId,
 		entries,
 	};
 }

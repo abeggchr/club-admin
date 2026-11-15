@@ -1,6 +1,7 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { MdClose } from "react-icons/md";
+import { invalidateInvoices } from "../invoices/api";
 import { InvoicePicker } from "../invoices/InvoicePicker";
 import { PersonPicker } from "../persons/PersonPicker";
 import { AccountPicker } from "./AccountPicker";
@@ -133,6 +134,7 @@ export function EditPanel({
 		try {
 			await saveTransaction(transaction?.id ?? null, body);
 			await invalidateJournalQueries(queryClient);
+			await invalidateInvoices(queryClient);
 			onDone();
 		} catch (err) {
 			setServerError(
@@ -266,6 +268,8 @@ export function EditPanel({
 				</button>
 				<div className="flex-1">
 					<InvoicePicker
+						value={draft.invoiceId}
+						readOnly={baseline.invoiceId !== null}
 						onSelect={(invoice) =>
 							setDraft((d) => applyInvoice(d, invoice, accounts, imported))
 						}

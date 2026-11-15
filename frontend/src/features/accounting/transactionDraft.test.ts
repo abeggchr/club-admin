@@ -29,6 +29,7 @@ function filled(overrides: Partial<TransactionDraft> = {}): TransactionDraft {
 		amount: "-120",
 		text: "",
 		personId: null,
+		invoiceId: null,
 		entries: [{ id: null, text: "Miete", accountNumber: 6010, amount: null }],
 		...overrides,
 	};
@@ -152,7 +153,13 @@ describe("isDraftDirty", () => {
 
 	it("is clean for a loaded Bewegung until something is changed", () => {
 		const loaded = draftFromTransaction(
-			{ date: "2026-03-01", amount: -120, text: "Hallenmiete", personId: 4 },
+			{
+				date: "2026-03-01",
+				amount: -120,
+				text: "Hallenmiete",
+				personId: 4,
+				invoiceId: null,
+			},
 			[
 				{
 					id: 7,
@@ -234,6 +241,7 @@ describe("toTransactionInput", () => {
 			amount: -120,
 			text: null,
 			personId: null,
+			invoiceId: null,
 			entries: [{ id: 7, text: "Miete", accountNumber: 6010, amount: -120 }],
 		});
 	});
@@ -350,6 +358,7 @@ describe("canDelete", () => {
 
 describe("applyInvoice", () => {
 	const invoice = {
+		id: 5,
 		person: { id: 7 },
 		total: 150,
 		lines: [
@@ -362,6 +371,7 @@ describe("applyInvoice", () => {
 		const draft = applyInvoice(empty, invoice, accounts);
 		expect(draft.amount).toBe("150.00");
 		expect(draft.personId).toBe(7);
+		expect(draft.invoiceId).toBe(5);
 		expect(
 			draft.entries.map((e) => [e.text, e.accountNumber, e.amount]),
 		).toEqual([
