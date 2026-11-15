@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Tests.Person;
 
-/// <summary>The Versandliste data path behind GET /api/persons/mailing-list: recipients, grouping and CSV.</summary>
+/// <summary>The Versandliste data path behind GET /api/person/mailing-list: recipients, grouping and CSV.</summary>
 public class MailingListTests : IClassFixture<LocalPostgresFixture>
 {
     private readonly LocalPostgresFixture _fixture;

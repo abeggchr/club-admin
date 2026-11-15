@@ -24,7 +24,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 export const personsSummaryQueryOptions = queryOptions({
 	queryKey: ["dashboard", "persons-summary"],
-	queryFn: () => fetchJson<PersonsSummary>("/api/persons/summary"),
+	queryFn: () => fetchJson<PersonsSummary>("/api/person/summary"),
 });
 
 export const invoicesSummaryQueryOptions = queryOptions({

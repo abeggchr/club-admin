@@ -9,9 +9,9 @@ describe("apiFetch", () => {
 		const fetchMock = vi.fn().mockResolvedValue(response);
 		vi.stubGlobal("fetch", fetchMock);
 
-		const result = await apiFetch("/api/persons", { method: "DELETE" });
+		const result = await apiFetch("/api/person", { method: "DELETE" });
 
-		expect(fetchMock).toHaveBeenCalledWith("/api/persons", {
+		expect(fetchMock).toHaveBeenCalledWith("/api/person", {
 			method: "DELETE",
 		});
 		expect(result).toBe(response);

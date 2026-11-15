@@ -26,14 +26,14 @@ public record PersonUpdate(
 );
 
 [ApiController]
-[Route("api")]
+[Route("api/person")]
 public class PersonController(AppDbContext db) : ControllerBase
 {
-    [HttpGet("persons")]
+    [HttpGet]
     public async Task<IActionResult> GetPersons() =>
         Ok(await db.Persons.OrderBy(p => p.Id).ToListAsync());
 
-    [HttpGet("persons/summary")]
+    [HttpGet("summary")]
     public async Task<IActionResult> GetSummary(CancellationToken ct)
     {
         var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
@@ -54,7 +54,7 @@ public class PersonController(AppDbContext db) : ControllerBase
         );
     }
 
-    [HttpPut("persons/{id:int}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateAsync(int id, PersonUpdate update)
     {
         if (
@@ -100,7 +100,7 @@ public class PersonController(AppDbContext db) : ControllerBase
         return Ok(person);
     }
 
-    [HttpDelete("persons/{id:int}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteAsync(int id)
     {
         var person = await db.Persons.FindAsync(id);
@@ -119,7 +119,7 @@ public class PersonController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("persons/import")]
+    [HttpPost("import")]
     public async Task<IActionResult> ImportPersons(IFormFile file)
     {
         List<Person> persons;
@@ -138,7 +138,7 @@ public class PersonController(AppDbContext db) : ControllerBase
         return Ok(new { imported = persons.Count });
     }
 
-    [HttpGet("persons/mailing-list")]
+    [HttpGet("mailing-list")]
     public async Task<IActionResult> GetMailingList(CancellationToken ct)
     {
         var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct);
