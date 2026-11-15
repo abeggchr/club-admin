@@ -1,119 +1,125 @@
 # Glossary
 
-Language of the club's revenue-expenses accounting (Einnahmen-Ausgaben-Rechnung), as opposed to double-entry bookkeeping. German terms are used in the UI, English terms in the code.
+Language of the club's revenue-expenses accounting (Einnahmen-Ausgaben-Rechnung), as opposed to double-entry bookkeeping. The English terms are the ones used in code and code comments; the German term of each entry is the one shown in the UI. Strings that appear verbatim in the UI or in files stay German and are quoted.
 
 ## Terms
 
-### Kontoplan & Buchhaltung
+### Chart of Accounts & Bookkeeping
 
-**Kontoplan** (code: _ChartOfAccounts_):
-The club's list of accounts that every Buchung is assigned to.
+**Chart of Accounts** (German: _Kontoplan_):
+The club's list of accounts that every Entry is assigned to.
 
-**Konto** (code: _Account_):
-One account in the Kontoplan, identified by a number and a name (e.g. 3400 Jahresbeiträge), and belonging to one Kategorie. A Konto that has been used in a Buchung can be deactivated but never deleted.
+**Account** (German: _Konto_):
+One account in the Chart of Accounts, identified by a number and a name (e.g. 3400 Jahresbeiträge), and belonging to one Category. An Account that has been used in an Entry can be deactivated but never deleted.
 
-**Kategorie** (code: _Category_):
-The grouping of Konten in the Kontoplan: Einnahmen (_Income_) or Ausgaben (_Expense_). The Kategorie of a Buchung's Konto decides whether it is revenue or expense.
+**Category** (German: _Kategorie_):
+The grouping of Accounts in the Chart of Accounts: Income (_Einnahmen_) or Expense (_Ausgaben_). The Category of an Entry's Account decides whether it is revenue or expense.
 
-**Buchung** (code: _Entry_):
-One line of a Bewegung: a text, a Konto and a signed amount (money in is positive, money out is negative). It belongs to exactly one Bewegung and has no date of its own; it takes the date of its Bewegung. Whether it is revenue or expense follows from the Kategorie of its Konto.
+**Entry** (German: _Buchung_):
+One line of a Transaction: a text, an Account and a signed amount (money in is positive, money out is negative). It belongs to exactly one Transaction and has no date of its own; it takes the date of its Transaction. Whether it is revenue or expense follows from the Category of its Account.
 
-**Buchungsjournal** (code: _Journal_):
-The chronological list of all Buchungen, ordered by the date of their Bewegung. It is the only record of money movements; it can be edited freely.
+**Journal** (German: _Buchungsjournal_):
+The chronological list of all Entries, ordered by the date of their Transaction. It is the only record of money movements; it can be edited freely.
 
-**Anfangssaldo** (code: _OpeningBalance_):
-The bank account balance (an amount and a start date) from which the Erwarteter Kontostand is counted. The Anfangssaldo, its start date, the club's IBAN (Klub-IBAN, code: _Iban_) and the Klubadresse are stored together as the club settings (code: _Settings_); all are required.
+**Opening Balance** (German: _Anfangssaldo_):
+The bank account balance (an amount and a start date) from which the Expected Balance is counted. The Opening Balance, its start date, the club's Iban and the Club Address are stored together as the club Settings; all are required.
 
-**Erwarteter Kontostand** (code: _ExpectedBalance_):
-The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen whose Bewegung is dated up to that date. The user compares it by eye against the bank statement.
+**Expected Balance** (German: _Erwarteter Kontostand_):
+The amount the bank account should hold on a given date: the Opening Balance plus all Entries whose Transaction is dated up to that date. The user compares it by eye against the bank statement.
 
-**Zuvielzahlung** (code: the extra Buchung to Konto 3600 on an overpayment):
-When an imported payment exceeds the outstanding amount of its Rechnung, the excess is booked as an additional Buchung "Rechnung 0042" to Konto 3600 (Spenden).
+**Overpayment** (German: _Zuvielzahlung_):
+When an imported payment exceeds the outstanding amount of its Invoice, the excess is booked as an additional Entry "Rechnung 0042" to Account 3600 (Spenden).
 
 ### Bank & Import
 
-**Bewegung** (code: _Transaction_):
-One money movement on the bank account: the bank's booking date and a signed amount, split into Buchungen. It may have zero Buchungen, in which case it is not booked yet and the table shows it as "Keine Buchung"; once it has at least one, the signed amounts of its Buchungen sum to its amount. Its direction follows from the sign of the amount and is not stored: it is an Einzahlung or an Auszahlung.
+**Transaction** (German: _Bewegung_):
+One money movement on the bank account: the bank's booking date and a signed amount, split into Entries. It may have zero Entries, in which case it is not booked yet and the table shows it as "Keine Buchung"; once it has at least one, the signed amounts of its Entries sum to its amount. Its direction follows from the sign of the amount and is not stored: it is a Deposit or a Withdrawal.
 
-**Einzahlung** (code: a _Transaction_ with a positive amount):
-A Bewegung where money comes in.
+**Deposit** (German: _Einzahlung_):
+A Transaction where money comes in (positive amount).
 
-**Auszahlung** (code: a _Transaction_ with a negative amount):
-A Bewegung where money goes out.
+**Withdrawal** (German: _Auszahlung_):
+A Transaction where money goes out (negative amount).
 
-**Importierte Bewegung** (code: a _Transaction_ with a BankReference):
-A Bewegung imported from the eBanking zip (CAMT.053 statements): the bank's booking date, the signed amount, the text and the BankReference. If the counterparty matched, the matching Person is linked as well. The date, amount, text and Person of an imported Bewegung are read-only afterwards, in the UI and the API; only its Buchungen may be edited. If the QR-bill reference of the payment matches an open Rechnung, the Bewegung arrives already carrying its Buchungen, derived from the Rechnung's positions; otherwise it has no Buchungen ("Keine Buchung"). A re-import skips a transaction whose BankReference is already stored.
+**Imported Transaction** (German: _Importierte Bewegung_):
+A Transaction with a BankReference, imported from the eBanking zip (CAMT.053 statements): the bank's booking date, the signed amount, the text and the BankReference. If the counterparty matched, the matching Person is linked as well. The date, amount, text and Person of an Imported Transaction are read-only afterwards, in the UI and the API; only its Entries may be edited. If the QR-bill reference of the payment matches an open Invoice, the Transaction arrives already carrying its Entries, derived from the Invoice's Lines; otherwise it has no Entries (Unbooked). A re-import skips a transaction whose BankReference is already stored.
 
-**BankReference** (code: _BankReference_):
-The bank's account server reference (AcctSvcrRef) of an imported booking. Unique per Bewegung and set only for imported ones, it is how the import recognizes a transaction that is already stored.
+**BankReference** (German: _Bankreferenz_):
+The bank's account server reference (AcctSvcrRef) of an imported booking. Unique per Transaction and set only for imported ones, it is how the import recognizes a transaction that is already stored.
 
-**Keine Buchung** (code: a _Transaction_ without Entries):
-The state of a Bewegung without Buchungen: it is not booked yet. The Bewegungen table marks it with a "Keine Buchung" badge; it counts in the running Kontostand and adds nothing to the Buchungsjournal until Buchungen are added.
+**Unbooked** (German: _Keine Buchung_):
+The state of a Transaction without Entries: it is not booked yet. The Transactions table marks it with a "Keine Buchung" badge; it counts in the running balance (_Kontostand_) and adds nothing to the Journal until Entries are added.
 
-**Klub-IBAN** (code: _Iban_):
-The IBAN of the club's bank account (CH or LI, 21 characters, valid mod-97 checksum). The import checks each bank statement against it. A QR-IBAN (institution ID 30000-31999) is rejected. Stored with the club settings (see Anfangssaldo).
+**Iban** (German: _Klub-IBAN_):
+The IBAN of the club's bank account (CH or LI, 21 characters, valid mod-97 checksum). The import checks each bank statement against it. A QR-IBAN (institution ID 30000-31999) is rejected. Stored with the club Settings (see Opening Balance).
 
-### Personen & Mitgliedschaft
+### People & Membership
 
-**Person** (code: _Person_):
-A club member or contact: a name, membership dates and contact data. The address is stored as Strasse plus Hausnummer (code: _Street_ and _Number_), not as one line, so that imported bank addresses can be matched against it. The flag "Newsletter" (code: _ReceivesClubNews_) marks a Person who receives the club news by snail mail even though they are no longer active.
+**Person** (German: _Person_):
+A club member or contact: a name, membership dates and contact data. The address is stored as _Street_ plus _Number_ (German: Strasse, Hausnummer), not as one line, so that imported bank addresses can be matched against it. The flag _ReceivesClubNews_ (German: "Newsletter") marks a Person who receives the club news by snail mail even though they are no longer active.
 
-**Versandliste** (code: _MailingList_):
-The list of addresses to send club news (by snail mail) to: every active Person (no Austritt in the past; Mitgliedschaft Unbekannt counts) plus every Person with the Newsletter flag set. Recipients with the same complete address (Strasse, Hausnummer, PLZ, Ort) share one row with their names, one per line (Empfänger); a recipient with an incomplete address gets a row of their own with whatever address parts exist. Downloaded from the Personen page as versandliste.csv (";"-separated, UTF-8 with BOM, columns Empfänger, Adresse, Ort, Land).
+**Mailing List** (German: _Versandliste_):
+The list of addresses to send club news (by snail mail) to: every active Person (no exit date in the past; Membership Unknown counts) plus every Person with the ReceivesClubNews flag set. Recipients with the same complete address (street, number, postal code, city) share one row with their names, one per line; a recipient with an incomplete address gets a row of their own with whatever address parts exist. Downloaded from the Persons page as versandliste.csv (";"-separated, UTF-8 with BOM, columns Empfänger, Adresse, Ort, Land).
 
-**Zahler** (code: _Payer_, _Person.PayerId_):
-The Person who pays for another Person. Optional, set on the paid-for Person; the Zahler needs no active membership. There are no chains and no cycles: a Person cannot be their own Zahler, a Zahler has no Zahler, and a Person who is a Zahler cannot get one. A Person who is someone's Zahler cannot be deleted.
+**Payer** (German: _Zahler_; code: _Person.PayerId_):
+The Person who pays for another Person. Optional, set on the paid-for Person; the Payer needs no active membership. There are no chains and no cycles: a Person cannot be their own Payer, a Payer has no Payer, and a Person who is a Payer cannot get one. A Person who is someone's Payer cannot be deleted.
 
-**Hauptzahler** (code: _IsMainPayer_ on _Person_):
-A flag on a Person without Zahler: they are the Rechnungsempfänger of their address and pay the Familie fee in the Jahresbeiträge run, ahead of the longest-standing Familie member. In the UI it is one choice of the Zahler picker, next to "Regulär" and the Personen. Choosing a named Zahler clears the flag. A Person who is someone's Zahler cannot get a Zahler or the flag: the picker is locked for them.
+**Main Payer** (German: _Hauptzahler_; code: _IsMainPayer_ on _Person_):
+A flag on a Person without Payer: they are the Recipient of their address and pay the Family fee in the Annual Fees run, ahead of the longest-standing Family member. In the UI it is one choice of the Payer picker, next to "Regulär" and the Persons. Choosing a named Payer clears the flag. A Person who is someone's Payer cannot get a Payer or the flag: the picker is locked for them.
 
-**Mitgliedschaft** (code: _MembershipType_):
-The kind of membership of a Person (Familie, Einzel, Junior, Ehren, Frei, Gönner, or Unbekannt), which decides the Jahresbeitrag. Unbekannt is never invoiced.
+**Membership** (German: _Mitgliedschaft_; code: _MembershipType_):
+The kind of membership of a Person (Family, Single, Junior, Honorary, Free, Patron, or Unknown; German: Familie, Einzel, Junior, Ehren, Frei, Gönner, Unbekannt), which decides the Annual Fee. Unknown is never invoiced.
 
-**Jahresbeitrag** (code: _MembershipFeeRules_), plural **Jahresbeiträge**:
-The yearly membership fee of a Person, set per Mitgliedschaft (a constant in the code) and booked to Konto 3400. "Jahresbeiträge" is also the run that creates the Rechnungen for all active Personen at once: one Rechnung per address with one Rechnungsposition per Person, where a Familie pays once per address and a Person with a Zahler is billed on the Zahler's Rechnung (ADR 0005). A Rechnungsposition of 0 (an Ehren member, a further Familie member of the address, or a 100 % Ermässigung) is kept, but no Rechnung is created when its total is 0.
+**Annual Fee** (German: _Jahresbeitrag_, plural _Jahresbeiträge_; code: _MembershipFeeRules_):
+The yearly membership fee of a Person, set per Membership (a constant in the code) and booked to Account 3400. The "Annual Fees run" (German: "Jahresbeiträge") is also the run that creates the Invoices for all active Persons at once: one Invoice per address with one Line per Person, where a Family pays once per address and a Person with a Payer is billed on the Payer's Invoice (ADR 0005). A Line of 0 (an Honorary member, a further Family member of the address, or a 100 % Discount) is kept, but no Invoice is created when its total is 0.
 
-**Ermässigung** (code: _MembershipDiscount_):
-A percentage (1-100) with a text that reduces one Person's Jahresbeitrag in the Jahresbeiträge run. It is stored per Person until removed, and its text is printed on the Rechnungsposition.
+**Discount** (German: _Ermässigung_; code: _MembershipDiscount_):
+A percentage (1-100) with a text that reduces one Person's Annual Fee in the Annual Fees run. It is stored per Person until removed, and its text is printed on the Line.
 
-### Rechnungen
+### Invoices
 
-**Klubadresse** (code: _Name_, _Address_, _PostalCode_ and _City_ in _Settings_):
-The club's address as creditor of the QR-bill: Name, Adresse (one free-text line, e.g. "Sportweg 12"), PLZ and Ort. All four are required, with the QR-bill limits Name ≤ 70, Adresse ≤ 70, PLZ ≤ 16, Ort ≤ 35. The country is always CH. It is stored with the club settings (see Anfangssaldo) and printed on every new Rechnung as the creditor of its QR-bill; creating a Rechnung without it is rejected.
+**Club Address** (German: _Klubadresse_; code: _Name_, _Address_, _PostalCode_ and _City_ in _Settings_):
+The club's address as creditor of the QR-bill: Name, Address (one free-text line, e.g. "Sportweg 12"), PostalCode and City. All four are required, with the QR-bill limits Name ≤ 70, Address ≤ 70, PostalCode ≤ 16, City ≤ 35. The country is always CH. It is stored with the club Settings (see Opening Balance) and printed on every new Invoice as the creditor of its QR-bill; creating an Invoice without it is rejected.
 
-**Textvorlage** (code: _TextTemplate_):
-A reusable set of Betreff, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. The texts may contain Platzhalter, which are replaced when a Rechnung is created; an unknown Platzhalter is rejected on save. Zero Textvorlagen is a valid state.
+**Text Template** (German: _Textvorlage_; code: _TextTemplate_):
+A reusable set of Subject, Text and Greetings (German: Betreff, Text, Grüsse) that an Invoice is written with. Managed under "Einstellungen"; all three fields are required. The texts may contain Placeholders, which are replaced when an Invoice is created; an unknown Placeholder is rejected on save. Zero Text Templates is a valid state.
 
-**Rechnung** (code: _Invoice_):
-A bill to one Person (the recipient; in the Jahresbeiträge run the Zahler of the Personen it covers), created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Textvorlage texts are stored resolved (Platzhalter already replaced) and live only in that PDF. It has no link to a Textvorlage and no link to the Buchhaltung either: creating it writes no Buchung — each position's Konto is only a booking hint for the later Buchung (ADR 0004). The last page of the PDF ends with the QR-Rechnung payment part (210×105 mm): Klub-IBAN, Klubadresse, the Rechnung total, a SCOR reference (RF + check digits + Rechnungsnummer) and the message "Rechnung #0042"; the Person is the debtor only when their address is complete. "Betrag offen lassen" leaves the amount out of the QR code, so the payer enters it. If less than 105 mm is free on the last page, the payment part gets a page of its own.
+**Placeholder** (German: _Platzhalter_):
+A marker in a Text Template that is replaced by a value when an Invoice is created.
 
-**Rechnungsposition** (code: _InvoiceLine_):
-One line of a Rechnung: a text, an amount greater than 0 and a required Konto from the Kontoplan, which is the booking hint for the later Buchung. The total of a Rechnung is the sum of its Rechnungspositionen and is not stored.
+**Invoice** (German: _Rechnung_):
+A bill to one Person (the Recipient; in the Annual Fees run the Payer of the Persons it covers), created once and never changed or deleted afterwards. Its PDF is rendered at creation and stored; the Text Template texts are stored resolved (Placeholders already replaced) and live only in that PDF. It has no link to a Text Template and no link to the bookkeeping either: creating it writes no Entry — each Line's Account is only a booking hint for the later Entry (ADR 0004). The last page of the PDF ends with the QR-bill payment part (German: QR-Rechnung; 210×105 mm): Iban, Club Address, the Invoice total, a SCOR reference (RF + check digits + Invoice Number) and the message "Rechnung #0042"; the Person is the debtor only when their address is complete. "Betrag offen lassen" leaves the amount out of the QR code, so the payer enters it. If less than 105 mm is free on the last page, the payment part gets a page of its own.
 
-**Rechnungsnummer**:
-The ID of a Rechnung with at least four digits (0042, 12345). Gaps are possible when a creation fails.
+**Recipient** (German: _Rechnungsempfänger_, _Empfänger_; code: _Recipient_):
+The Person an Invoice is addressed to and who is the debtor of its QR-bill.
 
-**Rechnungsdatum**:
-The date a Rechnung was created: the date of its Erstellt status change.
+**Invoice Line** (German: _Rechnungsposition_; code: _InvoiceLine_):
+One line of an Invoice: a text, an amount greater than 0 and a required Account from the Chart of Accounts, which is the booking hint for the later Entry. The total of an Invoice is the sum of its Lines and is not stored.
 
-**Rechnungsstatus** (code: _InvoiceStatus_):
-A lifecycle step of a Rechnung, recorded as an append-only status change with a timestamp. Erstellt (_Created_) and Bezahlt (_Paid_, terminal).
+**Invoice Number** (German: _Rechnungsnummer_):
+The ID of an Invoice with at least four digits (0042, 12345). Gaps are possible when a creation fails.
 
-**Bezahlt** (code: _Paid_ on _InvoiceStatus_):
-A terminal Rechnungsstatus, recorded as a status change when the first imported Bewegung covers the Rechnung's total exactly. Its timestamp is the movement's booking date (shown in Europe/Zurich); once set, the Rechnung never matches another payment.
+**Invoice Date** (German: _Rechnungsdatum_):
+The date an Invoice was created: the date of its Created status change.
+
+**Invoice Status** (German: _Rechnungsstatus_; code: _InvoiceStatus_):
+A lifecycle step of an Invoice, recorded as an append-only status change with a timestamp. Created (German: Erstellt) and Paid (German: Bezahlt, terminal).
+
+**Paid** (German: _Bezahlt_; code: _Paid_ on _InvoiceStatus_):
+A terminal Invoice Status, recorded as a status change when the first Imported Transaction covers the Invoice's total exactly. Its timestamp is the Transaction's booking date (shown in Europe/Zurich); once set, the Invoice never matches another payment.
 
 **PaidBy** (code: _PaidBy_ on _Invoice_):
-The id of the Bewegung that first covered a Rechnung's total (null while open).
+The id of the Transaction that first covered an Invoice's total (null while open).
 
-**Gläubigerreferenz** (code: _Reference_ on _Invoice_):
-The Swiss QR-bill creditor reference (RF + check digits + Rechnungsnummer) stored at Rechnung creation. It is the sole key by which the bank import matches a payment to its Rechnung.
+**Creditor Reference** (German: _Gläubigerreferenz_; code: _Reference_ on _Invoice_):
+The Swiss QR-bill creditor reference (RF + check digits + Invoice Number) stored at Invoice creation. It is the sole key by which the bank import matches a payment to its Invoice.
 
 ## Relationships
 
-- A Bewegung may have zero Buchungen (not booked yet, shown as "Keine Buchung") or one or more; once it has at least one, their signed amounts sum to its amount. A Buchung belongs to exactly one Bewegung.
-- A Buchung belongs to exactly one Konto.
-- A Bewegung can optionally be linked to one Person; a Buchung is not linked to a Person.
+- A Transaction may have zero Entries (not booked yet, shown as "Keine Buchung") or one or more; once it has at least one, their signed amounts sum to its amount. An Entry belongs to exactly one Transaction.
+- An Entry belongs to exactly one Account.
+- A Transaction can optionally be linked to one Person; an Entry is not linked to a Person.
 - There is one bank account only; cash is not tracked.
-- A Person has at most one Zahler (another Person) and can be the Zahler of several Personen ((shown in the UI as "Zahler für"), but not both at once.
-- A Rechnung belongs to exactly one Person, has one or more Rechnungspositionen and one or more status changes.
-- A Rechnungsposition belongs to exactly one Konto of the Kontoplan (its booking hint).
+- A Person has at most one Payer (another Person) and can be the Payer of several Persons (shown in the UI as "Zahler für"), but not both at once.
+- An Invoice belongs to exactly one Person, has one or more Lines and one or more status changes.
+- An Invoice Line belongs to exactly one Account of the Chart of Accounts (its booking hint).
