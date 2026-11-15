@@ -1,4 +1,4 @@
-namespace backend.Invoicing;
+namespace backend.Settings;
 
 /// <summary>Textvorlage: standard subject, text and greetings for a Rechnung.</summary>
 public class TextTemplate

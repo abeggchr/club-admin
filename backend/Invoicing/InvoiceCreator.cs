@@ -1,3 +1,5 @@
+using backend.Settings;
+
 namespace backend.Invoicing;
 
 public record InvoiceCreationResult(Invoice? Invoice, string? Error);

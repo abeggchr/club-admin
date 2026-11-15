@@ -1,8 +1,9 @@
 using backend.Invoicing;
 using backend.Person;
+using backend.Settings;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 using Microsoft.Extensions.Logging.Abstractions;
+using Xunit;
 using PersonEntity = backend.Person.Person;
 
 namespace backend.Tests.Invoicing;
@@ -37,17 +38,28 @@ public class InvoiceCreatorTests : IClassFixture<LocalPostgresFixture>
         if (_fixture.ConnectionString == "")
             throw new SkipException(
                 "No reachable PostgreSQL for the database-dependent creation tests. Expected the developer "
-                + "Postgres from the README at localhost:5432 (postgres/secret) or the host's Postgres at "
-                + "host.docker.internal:5432 (sandbox); CI provides a Postgres service."
+                    + "Postgres from the README at localhost:5432 (postgres/secret) or the host's Postgres at "
+                    + "host.docker.internal:5432 (sandbox); CI provides a Postgres service."
             );
         // The fixture already ran MigrateAsync on the fresh database, so tests read exactly the schema
         // the production migrations create.
-        return new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(_fixture.ConnectionString).Options);
+        return new AppDbContext(
+            new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(_fixture.ConnectionString).Options
+        );
     }
 
     private static PersonEntity CreatePerson(AppDbContext db)
     {
-        var person = new PersonEntity { FirstName = "Hans", LastName = "Muster", Street = "Dorfstrasse", Number = "1", PostalCode = "8000", City = "Zürich", Country = "Schweiz" };
+        var person = new PersonEntity
+        {
+            FirstName = "Hans",
+            LastName = "Muster",
+            Street = "Dorfstrasse",
+            Number = "1",
+            PostalCode = "8000",
+            City = "Zürich",
+            Country = "Schweiz",
+        };
         db.Persons.Add(person);
         db.SaveChanges();
         return person;
@@ -58,11 +70,20 @@ public class InvoiceCreatorTests : IClassFixture<LocalPostgresFixture>
     {
         await using var db = await Database();
         var person = CreatePerson(db);
-        var creator = new InvoiceCreator(db, new InMemoryInvoiceStorage(), NullLogger<InvoiceCreator>.Instance);
+        var creator = new InvoiceCreator(
+            db,
+            new InMemoryInvoiceStorage(),
+            NullLogger<InvoiceCreator>.Instance
+        );
 
         var result = await creator.CreateAsync(
             person,
-            new TextTemplate { Subject = "Jahresbeitrag 2026", Text = "Bitte zahlen Sie.", Greetings = "Freundliche Grüsse" },
+            new TextTemplate
+            {
+                Subject = "Jahresbeitrag 2026",
+                Text = "Bitte zahlen Sie.",
+                Greetings = "Freundliche Grüsse",
+            },
             [new InvoiceLineDraft("Jahresbeitrag", 100m, 3400)],
             Club
         );
@@ -90,8 +111,24 @@ public class InvoiceCreatorTests : IClassFixture<LocalPostgresFixture>
         var old = new Invoice
         {
             PersonId = person.Id,
-            Lines = [new InvoiceLine { Text = "Jahresbeitrag", Amount = 100m, AccountNumber = 3400, Position = 0 }],
-            StatusChanges = [new InvoiceStatusChange { Status = InvoiceStatus.Created, Timestamp = DateTime.UtcNow }],
+            Lines =
+            [
+                new InvoiceLine
+                {
+                    Text = "Jahresbeitrag",
+                    Amount = 100m,
+                    AccountNumber = 3400,
+                    Position = 0,
+                },
+            ],
+            StatusChanges =
+            [
+                new InvoiceStatusChange
+                {
+                    Status = InvoiceStatus.Created,
+                    Timestamp = DateTime.UtcNow,
+                },
+            ],
         };
         db.Invoices.Add(old);
         await db.SaveChangesAsync();
