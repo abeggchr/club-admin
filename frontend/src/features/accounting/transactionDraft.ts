@@ -132,6 +132,47 @@ export function remainder(
 	return (toCents(total.value) - booked) / 100;
 }
 
+/**
+ * Fills the draft from an Invoice: one Entry row per Invoice Line (text and Account), amounts following the
+ * direction of the Transaction (a Withdrawal books the Lines negative). An empty Transaction amount becomes the
+ * Invoice total and an unset Person the Invoice's Person; an excess of the Transaction amount stays as the
+ * Difference for the user to book.
+ */
+export function applyInvoice(
+	draft: TransactionDraft,
+	invoice: {
+		person: { id: number };
+		total: number;
+		lines: { text: string; amount: number; accountNumber: number }[];
+	},
+	accounts: Account[],
+	/** Keep the Person as is (an imported Transaction's Person is read-only). */
+	keepPerson = false,
+): TransactionDraft {
+	const parsed = parseAmount(draft.amount);
+	const sign = parsed.ok && parsed.value < 0 ? -1 : 1;
+	return {
+		...draft,
+		amount:
+			parsed.ok && draft.amount.trim() !== ""
+				? draft.amount
+				: formatChf(invoice.total),
+		personId: keepPerson
+			? draft.personId
+			: (draft.personId ?? invoice.person.id),
+		entries: invoice.lines.map((line) => {
+			const category = categoryOf(line.accountNumber, accounts);
+			const signed = line.amount * sign;
+			return {
+				id: null,
+				text: line.text,
+				accountNumber: line.accountNumber,
+				amount: formatChf(category ? toTypedAmount(signed, category) : signed),
+			};
+		}),
+	};
+}
+
 /** Appends an empty Entry row pre-filled with the remaining difference (nothing while it is unknown or 0). */
 export function addEntry(
 	draft: TransactionDraft,
