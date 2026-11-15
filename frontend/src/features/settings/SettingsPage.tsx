@@ -18,13 +18,7 @@ type FormState = {
 	startDate: string;
 };
 
-function Field({
-	label,
-	children,
-}: {
-	label: string;
-	children: ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
 	return (
 		<label className="flex flex-col gap-1 text-sm">
 			{label}
