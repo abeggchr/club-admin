@@ -97,11 +97,15 @@ public class InvoicingController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> PreviewAnnualFees(CancellationToken ct)
     {
         var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct);
+        if (settings is null)
+        {
+            return BadRequest(new { error = "Bitte zuerst die Einstellungen erfassen" });
+        }
         var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
         var discounts = await db
             .MembershipDiscounts.AsNoTracking()
             .ToDictionaryAsync(d => d.PersonId, ct);
-        var plan = MembershipFeeRules.Plan(persons, settings!.StartDate, discounts);
+        var plan = MembershipFeeRules.Plan(persons, settings.StartDate, discounts);
         return Ok(
             new
             {
