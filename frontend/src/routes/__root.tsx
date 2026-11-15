@@ -8,6 +8,7 @@ import {
 	Outlet,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { useEffect } from "react";
 import { settingsQueryOptions } from "../features/accounting/api";
 import { fetchCurrentUser, logout } from "../lib/auth";
 import { navItems } from "../nav";
@@ -24,6 +25,11 @@ export const Route = createRootRouteWithContext<{
 function RootComponent() {
 	const { data: settings } = useQuery(settingsQueryOptions);
 	const { user } = Route.useRouteContext();
+	const clubName = settings?.name.trim() || "Admin";
+
+	useEffect(() => {
+		document.title = clubName;
+	}, [clubName]);
 
 	return (
 		<>
@@ -31,7 +37,7 @@ function RootComponent() {
 				<div className="flex items-baseline justify-between">
 					<h1 className="text-2xl font-bold text-sky-900">
 						<Link to="/" aria-label="Übersicht">
-							{settings?.name.trim() || "Admin"}
+							{clubName}
 						</Link>
 					</h1>
 					<div className="flex items-center gap-3 text-sm text-sky-900">
