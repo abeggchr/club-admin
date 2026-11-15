@@ -1,4 +1,5 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
+import { apiFetch } from "../../lib/apiFetch";
 import type {
 	Account,
 	JournalEntry,
@@ -28,7 +29,7 @@ export async function requestJson<T>(
 	method: "POST" | "PUT",
 	body: unknown,
 ): Promise<T> {
-	const res = await fetch(url, {
+	const res = await apiFetch(url, {
 		method,
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(body),
@@ -38,7 +39,7 @@ export async function requestJson<T>(
 }
 
 export async function getJson<T>(url: string): Promise<T> {
-	const res = await fetch(url);
+	const res = await apiFetch(url);
 	await ensureOk(res);
 	return res.json();
 }
@@ -50,7 +51,7 @@ export const accountsQueryOptions = queryOptions({
 });
 
 async function fetchSettings(): Promise<Settings | null> {
-	const res = await fetch("/api/settings");
+	const res = await apiFetch("/api/settings");
 	if (res.status === 404) return null;
 	await ensureOk(res);
 	return res.json();
@@ -113,7 +114,9 @@ export function saveTransaction(
 
 /** Deletes a Bewegung together with any Buchungen still stored for it. */
 export async function deleteTransaction(id: number): Promise<void> {
-	await ensureOk(await fetch(`/api/transactions/${id}`, { method: "DELETE" }));
+	await ensureOk(
+		await apiFetch(`/api/transactions/${id}`, { method: "DELETE" }),
+	);
 }
 
 export type TransactionImportResult = {
@@ -147,7 +150,10 @@ export async function importTransactions(
 ): Promise<TransactionImportResult> {
 	const body = new FormData();
 	body.append("file", file);
-	const res = await fetch("/api/transactions/import", { method: "POST", body });
+	const res = await apiFetch("/api/transactions/import", {
+		method: "POST",
+		body,
+	});
 	if (res.ok) return res.json();
 	const data = await res.json().catch(() => null);
 	if (Array.isArray(data?.errors))

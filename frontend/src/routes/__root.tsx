@@ -9,27 +9,42 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { settingsQueryOptions } from "../features/accounting/api";
+import { fetchCurrentUser, logout } from "../lib/auth";
 import { navItems } from "../nav";
 
 import "../styles.css";
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
-	{
-		component: RootComponent,
-	},
-);
+export const Route = createRootRouteWithContext<{
+	queryClient: QueryClient;
+}>()({
+	beforeLoad: async () => ({ user: await fetchCurrentUser() }),
+	component: RootComponent,
+});
 
 function RootComponent() {
 	const { data: settings } = useQuery(settingsQueryOptions);
+	const { user } = Route.useRouteContext();
 
 	return (
 		<>
 			<header className="px-4 pt-4">
-				<h1 className="text-2xl font-bold text-sky-900">
-					<Link to="/" aria-label="Übersicht">
-						{settings?.name.trim() || "Admin"}
-					</Link>
-				</h1>
+				<div className="flex items-baseline justify-between">
+					<h1 className="text-2xl font-bold text-sky-900">
+						<Link to="/" aria-label="Übersicht">
+							{settings?.name.trim() || "Admin"}
+						</Link>
+					</h1>
+					<div className="flex items-center gap-3 text-sm text-sky-900">
+						<span>{user.email ?? user.name}</span>
+						<button
+							type="button"
+							onClick={() => void logout()}
+							className="rounded-md px-2 py-1 hover:bg-sky-100"
+						>
+							Abmelden
+						</button>
+					</div>
+				</div>
 				<nav className="mt-2 flex gap-1 rounded-lg bg-sky-500 p-2 shadow">
 					{navItems.map((item) => (
 						<Link

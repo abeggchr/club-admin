@@ -1,8 +1,9 @@
 import { queryOptions } from "@tanstack/react-query";
+import { apiFetch } from "../../lib/apiFetch";
 import type { Person } from "./types";
 
 async function fetchPersons(): Promise<Person[]> {
-	const res = await fetch("/api/persons");
+	const res = await apiFetch("/api/persons");
 	if (!res.ok) throw new Error(`Backend returned ${res.status}`);
 	return res.json();
 }
@@ -15,7 +16,7 @@ export const personsQueryOptions = queryOptions({
 export async function importPersons(file: File): Promise<number> {
 	const body = new FormData();
 	body.append("file", file);
-	const res = await fetch("/api/persons/import", { method: "POST", body });
+	const res = await apiFetch("/api/persons/import", { method: "POST", body });
 	if (!res.ok) {
 		const data = await res.json().catch(() => null);
 		throw new Error(data?.error ?? `Backend returned ${res.status}`);
@@ -24,7 +25,7 @@ export async function importPersons(file: File): Promise<number> {
 }
 
 export async function updatePerson(person: Person): Promise<Person> {
-	const res = await fetch(`/api/persons/${person.id}`, {
+	const res = await apiFetch(`/api/persons/${person.id}`, {
 		method: "PUT",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(person),
@@ -37,7 +38,7 @@ export async function updatePerson(person: Person): Promise<Person> {
 }
 
 export async function downloadMailingList() {
-	const res = await fetch("/api/persons/mailing-list");
+	const res = await apiFetch("/api/persons/mailing-list");
 	if (!res.ok) throw new Error(`Backend returned ${res.status}`);
 	const blob = await res.blob();
 	const url = URL.createObjectURL(blob);

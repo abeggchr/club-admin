@@ -23,6 +23,13 @@ public sealed class LocalPostgresFixture : IAsyncLifetime
     public string Server { get => _server; }
     public bool Available { get; private set; }
 
+    /// <summary>Skips the calling test class when no database is reachable.</summary>
+    public void SkipUnlessAvailable()
+    {
+        if (!Available)
+            throw new SkipException("No local PostgreSQL available (README: localhost:5432, postgres/secret).");
+    }
+
     public async Task InitializeAsync()
     {
         // In sandboxes localhost is the sandbox itself; the developer Postgres runs on the host; in

@@ -1,4 +1,5 @@
 using backend.Accounting;
+using backend.Auth;
 using backend.Invoicing;
 using backend.Person;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
 );
 
+builder.Services.AddEntraLogin(builder.Configuration);
 builder.Services.AddObjectStorage(builder.Configuration);
 builder.Services.AddScoped<InvoiceCreator>();
 InvoiceDocument.UseCommunityLicense();
@@ -45,6 +47,8 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+// Behind Railway's TLS proxy this makes redirect URIs and cookies https.
+app.UseForwardedHeaders();
 if (app.Environment.IsDevelopment())
 {
     // Local MinIO starts empty; production buckets are provisioned by Railway.
@@ -62,8 +66,12 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-var api = app.MapGroup("/api");
-api.MapGet("/health", () => Results.Ok());
+app.UseAuthentication();
+app.UseAuthorization();
+
+var api = app.MapGroup("/api").RequireAuthorization();
+api.MapAuthEndpoints();
+api.MapGet("/health", () => Results.Ok()).AllowAnonymous();
 
 api.MapGet("/accounts", (ChartOfAccounts chart) => chart.Accounts);
 
@@ -1034,3 +1042,6 @@ record InvoiceInput(
 );
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);
+
+// Makes the entry point visible to WebApplicationFactory in the tests.
+public partial class Program;

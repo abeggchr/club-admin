@@ -1,4 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
+import { apiFetch } from "../../lib/apiFetch";
 
 export type JubileePerson = {
 	personId: number;
@@ -26,7 +27,7 @@ export function sortJubilees(rows: JubileePerson[]): JubileePerson[] {
 }
 
 async function fetchJubilees(): Promise<Jubilees> {
-	const res = await fetch("/api/jubilees");
+	const res = await apiFetch("/api/jubilees");
 	if (!res.ok) throw new Error(`Backend returned ${res.status}`);
 	return res.json();
 }
