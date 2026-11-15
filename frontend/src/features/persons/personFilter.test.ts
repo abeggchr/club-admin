@@ -31,6 +31,7 @@ function person(
 		city: null,
 		country: null,
 		isMainPayer: false,
+		receivesClubNews: false,
 		notes: null,
 		payerId: null,
 	};

@@ -449,7 +449,8 @@ api.MapPost(
             // the Buchungen of an already-imported movement are attributed to the Rechnung by its Paid
             // status change, not by a foreign key.
             var invoices = await db
-                .Invoices.Include(i => i.Lines).Include(i => i.StatusChanges)
+                .Invoices.Include(i => i.Lines)
+                .Include(i => i.StatusChanges)
                 .ToListAsync();
             var importInvoices = invoices
                 .Where(i => !string.IsNullOrEmpty(i.Reference))
@@ -459,7 +460,9 @@ api.MapPost(
                     i.Lines.Sum(l => l.Amount),
                     0m,
                     i.StatusChanges.Any(s => s.Status == InvoiceStatus.Paid),
-                    i.Lines.OrderBy(l => l.Position).Select(l => new ImportInvoiceLine(l.Text, l.AccountNumber, l.Amount)).ToList()
+                    i.Lines.OrderBy(l => l.Position)
+                        .Select(l => new ImportInvoiceLine(l.Text, l.AccountNumber, l.Amount))
+                        .ToList()
                 ))
                 .ToList();
             byte[] zip;
@@ -487,12 +490,14 @@ api.MapPost(
                     Text = t.Text,
                     BankReference = t.BankReference,
                     PersonId = t.PersonId,
-                    Entries = t.AutoEntries.Select(e => new Entry
-                    {
-                        Text = e.Text,
-                        AccountNumber = e.AccountNumber,
-                        Amount = e.Amount,
-                    }).ToList(),
+                    Entries = t
+                        .AutoEntries.Select(e => new Entry
+                        {
+                            Text = e.Text,
+                            AccountNumber = e.AccountNumber,
+                            Amount = e.Amount,
+                        })
+                        .ToList(),
                 })
             );
 
@@ -501,12 +506,20 @@ api.MapPost(
             // AutoEntries are created and the Paid status change + PaidBy are all persisted in the same
             // SaveEntryChangeAsync save. The newly added Bewegungen are still in the context, so their ids
             // are resolved as part of the save below.
-            foreach (var t in result.Transactions.Where(t => t.PaidAt is not null && t.MatchedInvoiceId is not null))
+            foreach (
+                var t in result.Transactions.Where(t =>
+                    t.PaidAt is not null && t.MatchedInvoiceId is not null
+                )
+            )
             {
                 var invoice = db.Invoices.Single(i => i.Id == t.MatchedInvoiceId);
                 var movement = db.Transactions.Single(x => x.BankReference == t.BankReference);
                 invoice.StatusChanges.Add(
-                    new InvoiceStatusChange { Status = InvoiceStatus.Paid, Timestamp = t.PaidAt!.Value }
+                    new InvoiceStatusChange
+                    {
+                        Status = InvoiceStatus.Paid,
+                        Timestamp = t.PaidAt!.Value,
+                    }
                 );
                 if (invoice.PaidBy is null)
                 {
@@ -531,6 +544,26 @@ api.MapPost(
         }
     )
     .DisableAntiforgery();
+
+api.MapGet(
+    "/persons/mailing-list",
+    async (AppDbContext db, CancellationToken ct) =>
+    {
+        var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
+        var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
+        // Recipients: every active Person plus every Person flagged "Newsletter".
+        var recipients = ClubNewsRecipientRules.Recipients(persons, settings!.StartDate).ToList();
+        var csv = MailingListCsv.Build(MailingListRules.BuildRows(recipients));
+        // BOM (EF BB BF) so Excel opens the UTF-8 file with the correct encoding; the CSV
+        // string is BOM-free, like the buildPersonCsv string of the Personen export.
+        var bom = new byte[] { 0xEF, 0xBB, 0xBF };
+        var content = System.Text.Encoding.UTF8.GetBytes(csv);
+        var bytes = new byte[bom.Length + content.Length];
+        bom.CopyTo(bytes, 0);
+        content.CopyTo(bytes, bom.Length);
+        return Results.Bytes(bytes, "text/csv; charset=utf-8", "versandliste.csv");
+    }
+);
 
 api.MapGet(
     "/text-templates",
@@ -615,7 +648,13 @@ api.MapGet(
 
 api.MapPost(
     "/invoices",
-    async (InvoiceInput input, AppDbContext db, InvoiceCreator creator, ChartOfAccounts chart, CancellationToken ct) =>
+    async (
+        InvoiceInput input,
+        AppDbContext db,
+        InvoiceCreator creator,
+        ChartOfAccounts chart,
+        CancellationToken ct
+    ) =>
     {
         var lines = (input.Lines ?? [])
             .Select(l => new InvoiceLineDraft(l.Text, l.Amount, l.AccountNumber))
@@ -642,7 +681,14 @@ api.MapPost(
             return Results.BadRequest(new { error = creditorError });
         }
 
-        var result = await creator.CreateAsync(person, template, lines, creditor, input.OpenAmount, ct);
+        var result = await creator.CreateAsync(
+            person,
+            template,
+            lines,
+            creditor,
+            input.OpenAmount,
+            ct
+        );
         if (result.Invoice is not { } invoice)
         {
             return Results.Json(
@@ -664,12 +710,16 @@ api.MapGet(
     {
         var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
         var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
-        var discounts = await db.MembershipDiscounts.AsNoTracking().ToDictionaryAsync(d => d.PersonId, ct);
+        var discounts = await db
+            .MembershipDiscounts.AsNoTracking()
+            .ToDictionaryAsync(d => d.PersonId, ct);
         var plan = MembershipFeeRules.Plan(persons, settings!.StartDate, discounts);
         return Results.Ok(
             new
             {
-                consideredPersons = persons.Count(p => MembershipFeeRules.IsActive(p, settings.StartDate)),
+                consideredPersons = persons.Count(p =>
+                    MembershipFeeRules.IsActive(p, settings.StartDate)
+                ),
                 plannedInvoices = plan.Invoices.Count,
             }
         );
@@ -697,11 +747,21 @@ api.MapPost(
         }
 
         var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
-        var discounts = await db.MembershipDiscounts.AsNoTracking().ToDictionaryAsync(d => d.PersonId, ct);
+        var discounts = await db
+            .MembershipDiscounts.AsNoTracking()
+            .ToDictionaryAsync(d => d.PersonId, ct);
         var plan = MembershipFeeRules.Plan(persons, settings!.StartDate, discounts);
         var summary = await BulkInvoiceRunner.RunAsync(
             plan,
-            (invoice, token) => creator.CreateAsync(invoice.Recipient, template, invoice.Lines, creditor, false, token),
+            (invoice, token) =>
+                creator.CreateAsync(
+                    invoice.Recipient,
+                    template,
+                    invoice.Lines,
+                    creditor,
+                    false,
+                    token
+                ),
             ct
         );
         return Results.Ok(summary);
@@ -710,7 +770,8 @@ api.MapPost(
 
 api.MapGet(
     "/membership-discounts",
-    async (AppDbContext db) => await db.MembershipDiscounts.AsNoTracking().OrderBy(d => d.PersonId).ToListAsync()
+    async (AppDbContext db) =>
+        await db.MembershipDiscounts.AsNoTracking().OrderBy(d => d.PersonId).ToListAsync()
 );
 
 // Saves (adds or replaces) the one Ermässigung of a Person.
@@ -718,7 +779,9 @@ api.MapPut(
     "/membership-discounts",
     async (MembershipDiscountInput input, AppDbContext db, CancellationToken ct) =>
     {
-        if (MembershipDiscountRules.Validate(input.PersonId, input.Percent, input.Text) is { } error)
+        if (
+            MembershipDiscountRules.Validate(input.PersonId, input.Percent, input.Text) is { } error
+        )
         {
             return Results.BadRequest(new { error });
         }
@@ -931,6 +994,11 @@ record InvoiceLineInput(string? Text, decimal Amount, int AccountNumber);
 
 record AnnualFeesInput(int? TemplateId);
 
-record InvoiceInput(int? PersonId, int? TemplateId, List<InvoiceLineInput>? Lines, bool OpenAmount = false);
+record InvoiceInput(
+    int? PersonId,
+    int? TemplateId,
+    List<InvoiceLineInput>? Lines,
+    bool OpenAmount = false
+);
 
 record OpeningBalanceUpdate(decimal OpeningBalance, DateOnly StartDate);

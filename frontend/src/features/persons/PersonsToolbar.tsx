@@ -7,6 +7,7 @@ type Props = {
 	viewKey: ViewKey;
 	onViewChange: (key: ViewKey) => void;
 	onExport: () => void;
+	onMailingList: () => void;
 	onImport: () => void;
 };
 
@@ -16,6 +17,7 @@ export function PersonsToolbar({
 	viewKey,
 	onViewChange,
 	onExport,
+	onMailingList,
 	onImport,
 }: Props) {
 	return (
@@ -53,6 +55,14 @@ export function PersonsToolbar({
 				>
 					<FiDownload />
 					Export
+				</button>
+				<button
+					type="button"
+					onClick={onMailingList}
+					className="flex items-center gap-2 rounded border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
+				>
+					<FiDownload />
+					Versandliste
 				</button>
 				<button
 					type="button"

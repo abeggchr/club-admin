@@ -50,7 +50,10 @@ The club's address as creditor of the QR-bill: Name, Adresse (one free-text line
 The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen whose Bewegung is dated up to that date. The user compares it by eye against the bank statement.
 
 **Person** (code: _Person_):
-A club member or contact: a name, membership dates and contact data. The address is stored as Strasse plus Hausnummer (code: _Street_ and _Number_), not as one line, so that imported bank addresses can be matched against it.
+A club member or contact: a name, membership dates and contact data. The address is stored as Strasse plus Hausnummer (code: _Street_ and _Number_), not as one line, so that imported bank addresses can be matched against it. The flag "Newsletter" (code: _ReceivesClubNews_) marks a Person who receives the club news by snail mail even though they are no longer active.
+
+**Versandliste** (code: _MailingList_):
+The list of addresses to send club news (by snail mail) to: every active Person (no Austritt in the past; Mitgliedschaft Unbekannt counts) plus every Person with the Newsletter flag set. Recipients with the same complete address (Strasse, Hausnummer, PLZ, Ort) share one row with their names, one per line (Empfänger); a recipient with an incomplete address gets a row of their own with whatever address parts exist. Downloaded from the Personen page as versandliste.csv (";"-separated, UTF-8 with BOM, columns Empfänger, Adresse, Ort, Land).
 
 **Zahler** (code: _Payer_, _Person.PayerId_):
 The Person who pays for another Person. Optional, set on the paid-for Person; the Zahler needs no active membership. There are no chains and no cycles: a Person cannot be their own Zahler, a Zahler has no Zahler, and a Person who is a Zahler cannot get one. A Person who is someone's Zahler cannot be deleted.
