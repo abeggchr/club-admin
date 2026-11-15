@@ -1,14 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	type ErrorComponentProps,
+} from "@tanstack/react-router";
+import {
+	invoicesSummaryQueryOptions,
+	personsSummaryQueryOptions,
+} from "../features/dashboard/api";
+import { Dashboard } from "../features/dashboard/Dashboard";
+import { jubileesQueryOptions } from "../features/jubilees/api";
 
-export const Route = createFileRoute("/")({ component: Home });
-
-function Home() {
-	return (
-		<div className="p-8">
-			<h1 className="text-4xl font-bold">Welcome to TanStack Start</h1>
-			<p className="mt-4 text-lg">
-				Edit <code>src/routes/index.tsx</code> to get started.
-			</p>
-		</div>
-	);
-}
+export const Route = createFileRoute("/")({
+	loader: ({ context: { queryClient } }) =>
+		Promise.all([
+			queryClient.ensureQueryData(jubileesQueryOptions),
+			queryClient.ensureQueryData(personsSummaryQueryOptions),
+			queryClient.ensureQueryData(invoicesSummaryQueryOptions),
+		]),
+	component: Dashboard,
+	pendingComponent: () => <p className="p-8">Laden…</p>,
+	errorComponent: ({ error }: ErrorComponentProps) => (
+		<p className="p-8 text-red-600">
+			Laden fehlgeschlagen:{" "}
+			{error instanceof Error ? error.message : String(error)}
+		</p>
+	),
+});

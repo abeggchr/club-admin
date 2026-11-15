@@ -72,6 +72,29 @@ api.MapGet(
     async (AppDbContext db) => await db.Persons.OrderBy(p => p.Id).ToListAsync()
 );
 
+api.MapGet(
+    "/persons/summary",
+    async (AppDbContext db, CancellationToken ct) =>
+    {
+        var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
+        var summary = PersonSummaryRules.Summarize(
+            persons,
+            backend.Invoicing.InvoiceTime.Today(DateTime.UtcNow)
+        );
+        return Results.Ok(
+            new
+            {
+                total = summary.Total,
+                byMembership = summary.ByMembership.Select(m => new
+                {
+                    membership = m.Membership.ToString().ToLowerInvariant(),
+                    m.Count,
+                }),
+            }
+        );
+    }
+);
+
 api.MapPut("/persons/{id:int}", PersonEndpoints.UpdateAsync);
 
 api.MapDelete("/persons/{id:int}", PersonEndpoints.DeleteAsync);
@@ -704,6 +727,15 @@ api.MapPost(
 );
 
 // How many Personen the Jahresbeiträge run considers and how many Rechnungen it would create.
+api.MapGet(
+    "/invoices/summary",
+    async (AppDbContext db, CancellationToken ct) =>
+    {
+        var invoices = await db.Invoices.WithDetails().ToListAsync(ct);
+        return Results.Ok(InvoiceRules.Summarize(invoices));
+    }
+);
+
 api.MapGet(
     "/invoices/annual-fees/preview",
     async (AppDbContext db, CancellationToken ct) =>

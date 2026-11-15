@@ -16,6 +16,9 @@ public static class InvoiceTime
 
     public static DateOnly ZurichDate(DateTime utc) => DateOnly.FromDateTime(ToZurich(utc));
 
+    /// <summary>Today's calendar date in Europe/Zurich, from a UTC instant.</summary>
+    public static DateOnly Today(DateTime utc) => ZurichDate(utc);
+
     /// <summary>
     /// The UTC instant that represents a Zurich calendar date (that date's midnight in Europe/Zurich).
     /// Used for the Paid status timestamp of a movement, whose BookgDt is a date without time.

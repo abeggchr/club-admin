@@ -91,4 +91,59 @@ public class InvoiceRulesTests
     [Fact]
     public void The_total_is_the_sum_of_the_line_amounts() =>
         Assert.Equal(150.50m, InvoiceRules.Total([Line(amount: 100m), Line(amount: 50.50m)]));
+
+    private static Invoice Invoice(InvoiceStatus status, decimal amount = 100m) =>
+        new()
+        {
+            Id = 1,
+            PersonId = 1,
+            Lines =
+            [
+                new InvoiceLine { Text = "Jahresbeitrag", Amount = amount, AccountNumber = 3400, Position = 0 },
+            ],
+            StatusChanges =
+            [
+                new InvoiceStatusChange
+                {
+                    Status = InvoiceStatus.Created,
+                    Timestamp = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new InvoiceStatusChange { Status = status, Timestamp = new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc) },
+            ],
+        };
+
+    [Fact]
+    public void A_Rechnung_without_status_changes_is_open_as_Created()
+    {
+        var invoice = new Invoice();
+
+        Assert.Equal(InvoiceStatus.Created, InvoiceRules.LatestStatus(invoice));
+        Assert.True(InvoiceRules.IsOpen(invoice));
+    }
+
+    [Fact]
+    public void The_latest_status_change_decides_open_and_paid()
+    {
+        Assert.False(InvoiceRules.IsOpen(Invoice(InvoiceStatus.Paid)));
+        Assert.True(InvoiceRules.IsOpen(Invoice(InvoiceStatus.Created)));
+    }
+
+    [Fact]
+    public void The_summary_counts_the_open_Rechnungen_and_sums_their_full_totals()
+    {
+        var summary = InvoiceRules.Summarize(
+            [
+                Invoice(InvoiceStatus.Paid, 200m),
+                Invoice(InvoiceStatus.Created, 100.50m),
+                Invoice(InvoiceStatus.Created, 99.50m),
+                new Invoice(),
+            ]
+        );
+
+        Assert.Equal(new InvoiceSummary(3, 200m), summary);
+    }
+
+    [Fact]
+    public void An_empty_journal_summarises_to_zero() =>
+        Assert.Equal(new InvoiceSummary(0, 0m), InvoiceRules.Summarize([]));
 }

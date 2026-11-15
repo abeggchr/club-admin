@@ -1,6 +1,5 @@
 import {
 	MdAccountBalance,
-	MdCake,
 	MdPeople,
 	MdReceipt,
 	MdSettings,
@@ -8,7 +7,6 @@ import {
 
 export const navItems = [
 	{ to: "/persons", label: "Persons", Icon: MdPeople, align: "start" },
-	{ to: "/jubilees", label: "Jubiliäen", Icon: MdCake, align: "start" },
 	{ to: "/invoices", label: "Rechnungen", Icon: MdReceipt, align: "start" },
 	{
 		to: "/accounting",
