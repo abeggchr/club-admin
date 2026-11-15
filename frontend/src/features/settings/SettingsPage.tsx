@@ -20,6 +20,7 @@ type FormState = {
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
 	return (
+		// biome-ignore lint/a11y/noLabelWithoutControl: the input is passed in as children
 		<label className="flex flex-col gap-1 text-sm">
 			{label}
 			{children}
