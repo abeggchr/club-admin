@@ -24,16 +24,16 @@ export const Route = createRootRouteWithContext<{
 function RootComponent() {
 	const { data: settings } = useQuery(settingsQueryOptions);
 	const { user } = Route.useRouteContext();
-  
+
 	return (
 		<>
 			<header className="px-4 pt-4">
 				<div className="flex items-baseline justify-between">
 					<h1 className="text-2xl font-bold text-sky-900">
-					<Link to="/" aria-label="Übersicht">
-						{settings?.name.trim() || "Admin"}
-					</Link>
-				</h1>
+						<Link to="/" aria-label="Übersicht">
+							{settings?.name.trim() || "Admin"}
+						</Link>
+					</h1>
 					<div className="flex items-center gap-3 text-sm text-sky-900">
 						<span>{user.email ?? user.name}</span>
 						<button
