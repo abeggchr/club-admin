@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountingRouteImport } from './routes/accounting'
 import { Route as InvoicesRouteImport } from './routes/invoices'
-import { Route as JubileesRouteImport } from './routes/jubilees'
 import { Route as PersonsRouteImport } from './routes/persons'
 import { Route as SettingsRouteImport } from './routes/settings'
 
@@ -31,11 +30,6 @@ const InvoicesRoute = InvoicesRouteImport.update({
   path: '/invoices',
   getParentRoute: () => rootRouteImport,
 } as any)
-const JubileesRoute = JubileesRouteImport.update({
-  id: '/jubilees',
-  path: '/jubilees',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PersonsRoute = PersonsRouteImport.update({
   id: '/persons',
   path: '/persons',
@@ -51,7 +45,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
   '/invoices': typeof InvoicesRoute
-  '/jubilees': typeof JubileesRoute
   '/persons': typeof PersonsRoute
   '/settings': typeof SettingsRoute
 }
@@ -59,7 +52,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
   '/invoices': typeof InvoicesRoute
-  '/jubilees': typeof JubileesRoute
   '/persons': typeof PersonsRoute
   '/settings': typeof SettingsRoute
 }
@@ -68,31 +60,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
   '/invoices': typeof InvoicesRoute
-  '/jubilees': typeof JubileesRoute
   '/persons': typeof PersonsRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    '/' | '/accounting' | '/invoices' | '/jubilees' | '/persons' | '/settings'
+  fullPaths: '/' | '/accounting' | '/invoices' | '/persons' | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/accounting' | '/invoices' | '/jubilees' | '/persons' | '/settings'
-  id:
-    | '__root__'
-    | '/'
-    | '/accounting'
-    | '/invoices'
-    | '/jubilees'
-    | '/persons'
-    | '/settings'
+  to: '/' | '/accounting' | '/invoices' | '/persons' | '/settings'
+  id: '__root__' | '/' | '/accounting' | '/invoices' | '/persons' | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountingRoute: typeof AccountingRoute
   InvoicesRoute: typeof InvoicesRoute
-  JubileesRoute: typeof JubileesRoute
   PersonsRoute: typeof PersonsRoute
   SettingsRoute: typeof SettingsRoute
 }
@@ -120,13 +102,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvoicesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/jubilees': {
-      id: '/jubilees'
-      path: '/jubilees'
-      fullPath: '/jubilees'
-      preLoaderRoute: typeof JubileesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/persons': {
       id: '/persons'
       path: '/persons'
@@ -148,7 +123,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountingRoute: AccountingRoute,
   InvoicesRoute: InvoicesRoute,
-  JubileesRoute: JubileesRoute,
   PersonsRoute: PersonsRoute,
   SettingsRoute: SettingsRoute,
 }

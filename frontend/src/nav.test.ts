@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { navItems } from "./nav";
 
 describe("navItems", () => {
-	it("lists Persons, Jubiliäen, Rechnungen and Buchhaltung at the start, in that order", () => {
+	it("lists Persons, Rechnungen and Buchhaltung at the start, in that order", () => {
 		expect(
 			navItems.filter((i) => i.align === "start").map((i) => i.to),
-		).toEqual(["/persons", "/jubilees", "/invoices", "/accounting"]);
+		).toEqual(["/persons", "/invoices", "/accounting"]);
 	});
 
 	it("puts Settings alone at the right end, after all other items", () => {
