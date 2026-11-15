@@ -6,16 +6,16 @@ using Microsoft.EntityFrameworkCore;
 namespace backend.Settings;
 
 [ApiController]
-[Route("api")]
+[Route("api/settings")]
 public class SettingsController(AppDbContext db) : ControllerBase
 {
-    [HttpGet("settings")]
+    [HttpGet]
     public async Task<IActionResult> GetSettings() =>
         await db.Settings.FindAsync(Settings.SingletonId) is { } settings
             ? Ok(settings)
             : NotFound();
 
-    [HttpPut("settings")]
+    [HttpPut]
     public async Task<IActionResult> UpdateSettings(SettingsUpdate update)
     {
         var earliest = await db.Transactions.AnyAsync()
