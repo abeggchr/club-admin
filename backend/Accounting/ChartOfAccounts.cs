@@ -16,7 +16,7 @@ public class ChartOfAccountsException(string message, Exception? inner = null)
     : Exception(message, inner);
 
 /// <summary>
-/// The club's Kontoplan, read from a checked-in file (see ADR 0001).
+/// The club's Chart of Accounts, read from a checked-in file (see ADR 0001).
 /// </summary>
 public class ChartOfAccounts
 {
@@ -35,7 +35,7 @@ public class ChartOfAccounts
 
     public IReadOnlyList<Account> Accounts { get; }
 
-    /// <summary>Resolves a Konto by number, including inactive ones.</summary>
+    /// <summary>Resolves an Account by number, including inactive ones.</summary>
     public Account? Find(int number) => _byNumber.GetValueOrDefault(number);
 
     public static ChartOfAccounts Load(string path)

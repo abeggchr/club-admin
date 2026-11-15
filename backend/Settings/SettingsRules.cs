@@ -3,7 +3,7 @@ using backend.Shared;
 
 namespace backend.Settings;
 
-/// <summary>Pure validation for the club settings (Anfangssaldo, Startdatum, IBAN, Klubadresse). Returns a German error message, or null when valid.</summary>
+/// <summary>Pure validation for the club settings (Opening Balance, start date, IBAN, Club Address). Returns a German error message, or null when valid.</summary>
 public static class SettingsRules
 {
     public static string? Validate(

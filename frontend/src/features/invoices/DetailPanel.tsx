@@ -12,7 +12,7 @@ import {
 } from "./api";
 import { formatDateTime } from "./invoiceDetail";
 
-/** Read-only detail of a Rechnung. Nothing here is editable or deletable. */
+/** Read-only detail of an Invoice. Nothing here is editable or deletable. */
 export function DetailPanel({
 	id,
 	onClose,
@@ -55,7 +55,7 @@ export function DetailPanel({
 			{invoice && (
 				<>
 					<p className="text-sm">
-						<span className="text-slate-500">Rechnungsdatum:</span>{" "}
+						<span className="text-slate-500">Invoice Date:</span>{" "}
 						{formatDate(invoice.date)}
 					</p>
 

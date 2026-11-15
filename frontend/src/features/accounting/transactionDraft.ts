@@ -7,21 +7,21 @@ import {
 import { entryDateError } from "./date";
 import type { Account, Entry, TransactionInput } from "./types";
 
-/** One Buchung row of the form. `amount: null` means the row still follows the Bewegung Betrag. */
+/** One Entry row of the form. `amount: null` means the row still follows the Transaction amount. */
 export type EntryRow = {
 	id: number | null;
 	text: string;
 	accountNumber: number | null;
-	/** Typed in the Konto's natural direction (Ausgaben positive for an expense). */
+	/** Typed in the Account's natural direction (Expense positive for an expense). */
 	amount: string | null;
 	/**
 	 * Bank-signed amount a row added with "+ Buchung" starts with (the remaining difference then), shown until
-	 * the user edits the Betrag. Without it, only the first row follows the Bewegung Betrag.
+	 * the user edits the amount. Without it, only the first row follows the Transaction amount.
 	 */
 	prefill?: number;
 };
 
-/** The Bewegung form's field values as the user sees them. `amount` is the typed, bank-signed Bewegung Betrag. */
+/** The Transaction form's field values as the user sees them. `amount` is the typed, bank-signed Transaction amount. */
 export type TransactionDraft = {
 	date: string;
 	amount: string;
@@ -80,7 +80,7 @@ function categoryOf(accountNumber: number | null, accounts: Account[]) {
 	return accounts.find((a) => a.number === accountNumber)?.category;
 }
 
-/** The Buchung Betrag shown in a row: what the user typed, or for the first untouched row the Bewegung Betrag. */
+/** The Entry amount shown in a row: what the user typed, or for the first untouched row the Transaction amount. */
 export function entryAmount(
 	draft: TransactionDraft,
 	index: number,
@@ -104,7 +104,7 @@ function toCents(amount: number): number {
 	return Math.round(amount * 100);
 }
 
-/** The signed amount of a row, or null when its amount or Konto is not (yet) valid. */
+/** The signed amount of a row, or null when its amount or Account is not (yet) valid. */
 function signedEntryAmount(
 	draft: TransactionDraft,
 	index: number,
@@ -116,8 +116,8 @@ function signedEntryAmount(
 }
 
 /**
- * Bewegung Betrag minus the signed sum of the Buchungen; 0 means the Bewegung is fully booked.
- * Rows that are not valid yet count as 0. Null while the Bewegung Betrag is not a valid amount.
+ * Transaction amount minus the signed sum of the Entries; 0 means the Transaction is fully booked.
+ * Rows that are not valid yet count as 0. Null while the Transaction amount is not a valid amount.
  */
 export function remainder(
 	draft: TransactionDraft,
@@ -132,7 +132,7 @@ export function remainder(
 	return (toCents(total.value) - booked) / 100;
 }
 
-/** Appends an empty Buchung row pre-filled with the remaining difference (nothing while it is unknown or 0). */
+/** Appends an empty Entry row pre-filled with the remaining difference (nothing while it is unknown or 0). */
 export function addEntry(
 	draft: TransactionDraft,
 	accounts: Account[],
@@ -148,7 +148,7 @@ export function addEntry(
 	return { ...draft, entries: [...draft.entries, row] };
 }
 
-/** Drops a Buchung row; a row that followed the Bewegung Betrag as first row keeps its shown value. */
+/** Drops an Entry row; a row that followed the Transaction amount as first row keeps its shown value. */
 export function removeEntry(
 	draft: TransactionDraft,
 	index: number,
@@ -165,7 +165,7 @@ export function removeEntry(
 	return { ...draft, entries };
 }
 
-/** True when the draft passes validation, i.e. the Differenz is 0 and every field is valid. */
+/** True when the draft passes validation, i.e. the difference is 0 and every field is valid. */
 export function canSave(
 	draft: TransactionDraft,
 	accounts: Account[],
@@ -174,7 +174,7 @@ export function canSave(
 	return validateDraft(draft, accounts, openingStartDate) === null;
 }
 
-/** A Bewegung can only be deleted once all its Buchung rows were removed. */
+/** A Transaction can only be deleted once all its Entry rows were removed. */
 export function canDelete(draft: TransactionDraft): boolean {
 	return draft.entries.length === 0;
 }
@@ -235,7 +235,7 @@ export function validateDraft(
 		errors.entries.push(rowErrors);
 	});
 
-	// A Bewegung with zero Buchungen is not booked yet ("Keine Buchung"); the Differenz must be 0 once Buchungen exist.
+	// A Transaction with zero Entries is not booked yet ("Keine Buchung"); the difference must be 0 once Entries exist.
 	if (
 		draft.entries.length > 0 &&
 		total.ok &&

@@ -147,7 +147,7 @@ public class PersonController(AppDbContext db) : ControllerBase
         var recipients = ClubNewsRecipientRules.Recipients(persons, settings!.StartDate).ToList();
         var csv = MailingListCsv.Build(MailingListRules.BuildRows(recipients));
         // BOM (EF BB BF) so Excel opens the UTF-8 file with the correct encoding; the CSV
-        // string is BOM-free, like the buildPersonCsv string of the Personen export.
+        // string is BOM-free, like the buildPersonCsv string of the Persons export.
         var bom = new byte[] { 0xEF, 0xBB, 0xBF };
         var content = System.Text.Encoding.UTF8.GetBytes(csv);
         var bytes = new byte[bom.Length + content.Length];

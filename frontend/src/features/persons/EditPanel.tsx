@@ -58,10 +58,10 @@ export function EditPanel({
 	const queryClient = useQueryClient();
 	const { data: persons } = useSuspenseQuery(personsQueryOptions);
 	const paidPersons = personsPaidBy(persons, person);
-	// A Person who is someone's Zahler cannot get a Zahler (nor be Hauptzahler): the picker is locked.
+	// A Person who is someone's Payer cannot get a Payer (nor be Main Payer): the picker is locked.
 	const payerLocked = !canHavePayer(persons, person);
 	const [draft, setDraft] = useState(person);
-	// A chosen Zahler may have gained a Zahler of their own since: then they are no longer valid.
+	// A chosen Payer may have gained a Payer of their own since: then they are no longer valid.
 	const chosenPayer = persons.find((p) => p.id === draft.payerId);
 	const payerStale =
 		chosenPayer !== undefined && !canBePayerOf(chosenPayer, person);
@@ -186,7 +186,7 @@ export function EditPanel({
 											readOnly={payerLocked}
 											selectable={(p) => canBePayerOf(p, person)}
 											onChange={(id) => {
-												// A named Zahler replaces Hauptzahler; clearing the field falls back to Regulär.
+												// A named Payer replaces Main Payer; clearing the field falls back to Regulär.
 												setDraft({ ...draft, payerId: id, isMainPayer: false });
 												setSaved(false);
 											}}

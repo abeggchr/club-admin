@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Tests.Person;
 
-/// <summary>Controller-level tests for deleting a Person (Zahler, ticket #66).</summary>
+/// <summary>Controller-level tests for deleting a Person (Payer, ticket #66).</summary>
 public class DeletePersonTests(LocalPostgresFixture fixture) : PersonControllerTestBase(fixture)
 {
     [Fact]

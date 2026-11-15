@@ -105,7 +105,7 @@ public class SettingsController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
-    // Copies an already validated Textvorlage input onto the entity, trimmed.
+    // Copies an already validated Text Template input onto the entity, trimmed.
     private static TextTemplate ApplyInput(TextTemplate template, TextTemplateInput input)
     {
         template.Subject = input.Subject!.Trim();

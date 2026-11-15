@@ -85,7 +85,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         );
     }
 
-    // How many Personen the Jahresbeiträge run considers and how many Rechnungen it would create.
+    // How many Persons the Annual Fees run considers and how many Invoices it would create.
     [HttpGet("summary")]
     public async Task<IActionResult> GetInvoiceSummary(CancellationToken ct)
     {
@@ -161,7 +161,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> GetMembershipDiscounts() =>
         Ok(await db.MembershipDiscounts.AsNoTracking().OrderBy(d => d.PersonId).ToListAsync());
 
-    // Saves (adds or replaces) the one Ermässigung of a Person.
+    // Saves (adds or replaces) the one Discount of a Person.
     [HttpPut("membership-discounts")]
     public async Task<IActionResult> SaveMembershipDiscount(
         MembershipDiscountInput input,

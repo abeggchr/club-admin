@@ -13,7 +13,7 @@ import {
 	saveMembershipDiscount,
 } from "./api";
 
-/** Ermässigungen: one discount per Person, saved immediately and independent of the run. */
+/** Discounts: one discount per Person, saved immediately and independent of the run. */
 export function DiscountsSection({ disabled }: { disabled: boolean }) {
 	const queryClient = useQueryClient();
 	const { data: discounts } = useSuspenseQuery(membershipDiscountsQueryOptions);

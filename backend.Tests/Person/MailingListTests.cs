@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Tests.Person;
 
-/// <summary>The Versandliste data path behind GET /api/person/mailing-list: recipients, grouping and CSV.</summary>
+/// <summary>The Mailing List data path behind GET /api/person/mailing-list: recipients, grouping and CSV.</summary>
 public class MailingListTests : IClassFixture<LocalPostgresFixture>
 {
     private readonly LocalPostgresFixture _fixture;
@@ -69,7 +69,7 @@ public class MailingListTests : IClassFixture<LocalPostgresFixture>
         };
 
     // The query the mailing-list endpoint runs: every active Person plus every flagged Person,
-    // grouped and rendered to the Versandliste CSV.
+    // grouped and rendered to the Mailing List CSV.
     private static async Task<string> MailingListCsvAsync(LocalPostgresFixture fixture)
     {
         await using var db = Connect(fixture);

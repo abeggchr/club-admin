@@ -141,7 +141,7 @@ public class QrBillSlipTests
 
         Assert.Null(QrBillCreditor.From(settings));
         Assert.Null(QrBillCreditor.From(null));
-        // POST /invoices answers 400 with this error before InvoiceCreator is called, so no Rechnung is created.
+        // POST /invoices answers 400 with this error before InvoiceCreator is called, so no Invoice is created.
         // (The endpoint needs PostgreSQL, so the decision is tested through Resolve.)
         foreach (var s in new backend.Settings.Settings?[] { settings, null })
         {
@@ -169,10 +169,10 @@ public class QrBillSlipTests
     [Theory]
     [InlineData(1)]
     [InlineData(42)]
-    [InlineData(2147483647)] // int.MaxValue: the longest Rechnungsnummer (10 digits)
+    [InlineData(2147483647)] // int.MaxValue: the longest Invoice Number (10 digits)
     public void Reference_building_never_throws_for_any_Rechnungsnummer_the_system_produces(int id)
     {
-        // Rechnungsnummer is InvoiceRules.FormatNumber(id): the ID zero-padded to at least 4 digits, so always
+        // Invoice Number is InvoiceRules.FormatNumber(id): the ID zero-padded to at least 4 digits, so always
         // numeric and at most 10 characters; "RF" + 2 check digits + that is far below the SCOR limit of 25.
         var number = InvoiceRules.FormatNumber(id);
 

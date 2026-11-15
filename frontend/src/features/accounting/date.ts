@@ -1,4 +1,4 @@
-/** Inline check of a Buchung date against the Anfangssaldo start date (ISO yyyy-mm-dd strings compare lexically). */
+/** Inline check of an Entry date against the Opening Balance start date (ISO yyyy-mm-dd strings compare lexically). */
 export function entryDateError(
 	date: string,
 	openingStartDate: string | undefined,

@@ -197,7 +197,7 @@ public class RunningBalanceTests
     [Fact]
     public void Entries_are_ordered_by_the_date_of_their_transaction()
     {
-        // Entry 1 was created first but its Bewegung is the later one.
+        // Entry 1 was created first but its Transaction is the later one.
         var rows = AccountingCalculator.RunningBalances(
             Opening,
             [
@@ -434,8 +434,8 @@ public class TransactionBalanceTests
 
 public class UnbookedTransactionBalanceTests
 {
-    // A Bewegung may have zero Buchungen ("Keine Buchung"): it counts in the bank's running Kontostand and in the
-    // balance at a date, and adds nothing to the journal until Buchungen exist (ticket #24).
+    // A Transaction may have zero Entries ("Keine Buchung"): it counts in the bank's running balance and in the
+    // balance at a date, and adds nothing to the journal until Entries exist (ticket #24).
 
     private static readonly backend.Settings.Settings Opening = new()
     {
@@ -468,7 +468,7 @@ public class UnbookedTransactionBalanceTests
             Opening,
             [
                 T(1, new DateOnly(2026, 2, 1), 100m),
-                T(2, new DateOnly(2026, 3, 1), -50m), // no Buchungen
+                T(2, new DateOnly(2026, 3, 1), -50m), // no Entries
             ]
         );
 
@@ -493,7 +493,7 @@ public class UnbookedTransactionBalanceTests
     public void A_transaction_without_entries_adds_nothing_to_the_journal()
     {
         var booked = T(1, new DateOnly(2026, 2, 1), 100m);
-        var unbooked = T(2, new DateOnly(2026, 3, 1), -50m); // zero Buchungen
+        var unbooked = T(2, new DateOnly(2026, 3, 1), -50m); // zero Entries
         var entries = new[] { E(1, booked, 100m) };
 
         var rows = AccountingCalculator.RunningBalances(Opening, entries);

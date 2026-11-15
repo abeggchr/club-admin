@@ -138,7 +138,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
             return NotFound();
         }
 
-        // The date, amount, text and person of an imported Bewegung are bank facts and cannot change.
+        // The date, amount, text and person of an imported Transaction are bank facts and cannot change.
         if (
             TransactionRules.ValidateUnchangedBankFacts(
                 transaction,
@@ -207,7 +207,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
         return Ok(await LoadTransactionDtoAsync(opening!, id));
     }
 
-    // Deletes the Bewegung together with any Buchungen still stored for it (cascade), syncing AccountUsage.
+    // Deletes the Transaction together with any Entries still stored for it (cascade), syncing AccountUsage.
     [HttpDelete("transactions/{id:int}")]
     public async Task<IActionResult> DeleteTransaction(int id)
     {
@@ -225,7 +225,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
         return NoContent();
     }
 
-    // Imports one Bewegung per simple CAMT.053 entry of the eBanking zip (ticket #25); a re-import skips
+    // Imports one Transaction per simple CAMT.053 entry of the eBanking zip (ticket #25); a re-import skips
     // transactions whose BankReference is already stored.
     [HttpPost("transactions/import")]
     public async Task<IActionResult> ImportTransactions(IFormFile file)
@@ -247,11 +247,11 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
             .ToListAsync();
         var persons = await db.Persons.ToListAsync();
 
-        // Rechnungen for matching: QR-bill reference, total, and positions. A Rechnung that already
+        // Invoices for matching: QR-bill reference, total, and positions. An Invoice that already
         // has a Paid status change is terminal (once Paid, always Paid) and is flagged so the matcher
         // never re-books or re-sets PaidBy, e.g. when the paying movement was deleted and re-imported.
         // existingPaid is 0 here: re-imports of the same movement are skipped via BankReference, so
-        // the Buchungen of an already-imported movement are attributed to the Rechnung by its Paid
+        // the Entries of an already-imported movement are attributed to the Invoice by its Paid
         // status change, not by a foreign key.
         var invoices = await db
             .Invoices.Include(i => i.Lines)
@@ -306,10 +306,10 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
             })
         );
 
-        // The first fully-covering credit Bewegung marks the Rechnung Bezahlt: append the Paid status
-        // change and record the Bewegung's id as PaidBy before the save, so the Bewegung and its
+        // The first fully-covering credit Transaction marks the Invoice Paid: append the Paid status
+        // change and record the Transaction's id as PaidBy before the save, so the Transaction and its
         // AutoEntries are created and the Paid status change + PaidBy are all persisted in the same
-        // SaveEntryChangeAsync save. The newly added Bewegungen are still in the context, so their ids
+        // SaveEntryChangeAsync save. The newly added Transactions are still in the context, so their ids
         // are resolved as part of the save below.
         foreach (
             var t in result.Transactions.Where(t =>
@@ -329,8 +329,8 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
         }
         await AccountUsageSync.SaveEntryChangeAsync(db, chart);
 
-        // Ticket #62: the response reports which Rechnungen were auto-booked (in import order) and how
-        // many of the imported movements still have no Buchungen (credits and debits alike).
+        // Ticket #62: the response reports which Invoices were auto-booked (in import order) and how
+        // many of the imported movements still have no Entries (credits and debits alike).
         var bookedInvoices = BankImport.BookedInvoiceIds(result);
         var unmatched = BankImport.UnmatchedCount(result);
         return Ok(
@@ -344,7 +344,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
         );
     }
 
-    // Sets the fields a client supplies for a Buchung (already validated, so the text is not blank).
+    // Sets the fields a client supplies for an Entry (already validated, so the text is not blank).
     private static Entry Line(Entry entry, string? text, int accountNumber, decimal amount)
     {
         entry.Text = text!.Trim();
@@ -359,7 +359,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
     private async Task<TransactionDto> LoadTransactionDtoAsync(Settings.Settings opening, int id) =>
         (await LoadTransactionDtosAsync(opening)).Single(t => t.Id == id);
 
-    // All Bewegungen, newest first, each with the Kontostand after it.
+    // All Transactions, newest first, each with the running balance after it.
     private async Task<List<TransactionDto>> LoadTransactionDtosAsync(Settings.Settings opening)
     {
         var transactions = await db

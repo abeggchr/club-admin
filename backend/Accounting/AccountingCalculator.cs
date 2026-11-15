@@ -4,8 +4,8 @@ namespace backend.Accounting;
 public static class AccountingCalculator
 {
     /// <summary>
-    /// Erwarteter Kontostand on <paramref name="date"/>: the Anfangssaldo plus all Buchungen up to that date.
-    /// Returns null before the Anfangssaldo start date, where no balance is defined.
+    /// Expected Balance on <paramref name="date"/>: the Opening Balance plus all Entries up to that date.
+    /// Returns null before the Opening Balance start date, where no balance is defined.
     /// </summary>
     public static decimal? ExpectedBalance(Settings.Settings opening, DateOnly date)
     {
@@ -18,8 +18,8 @@ public static class AccountingCalculator
     }
 
     /// <summary>
-    /// Erwarteter Kontostand on <paramref name="date"/>, counting all Buchungen whose Bewegung is dated up to
-    /// and including it. The entries need their Bewegung loaded.
+    /// Expected Balance on <paramref name="date"/>, counting all Entries whose Transaction is dated up to
+    /// and including it. The entries need their Transaction loaded.
     /// </summary>
     public static decimal? ExpectedBalance(
         Settings.Settings opening,
@@ -36,8 +36,8 @@ public static class AccountingCalculator
     }
 
     /// <summary>
-    /// The bank's balance on <paramref name="date"/>: the Anfangssaldo plus all Bewegungen up to and including
-    /// that date. Returns null before the Anfangssaldo start date, where no balance is defined.
+    /// The bank's balance on <paramref name="date"/>: the Opening Balance plus all Transactions up to and including
+    /// that date. Returns null before the Opening Balance start date, where no balance is defined.
     /// </summary>
     public static decimal? TransactionBalance(
         Settings.Settings opening,
@@ -54,9 +54,9 @@ public static class AccountingCalculator
     }
 
     /// <summary>
-    /// Whether the bank's view of the balance (Bewegungen) and the journal's view (Buchungen) on a date
+    /// Whether the bank's view of the balance (Transactions) and the journal's view (Entries) on a date
     /// disagree, in which case the UI turns "Kontostand heute" red. Two undefined balances (before the
-    /// Anfangssaldo) do not disagree.
+    /// Opening Balance) do not disagree.
     /// </summary>
     public static bool BalancesDiffer(decimal? expected, decimal? transactions)
     {
@@ -64,9 +64,9 @@ public static class AccountingCalculator
     }
 
     /// <summary>
-    /// The whole journal, newest first, each row carrying the running Erwarteter Kontostand up to and including
-    /// that row. Ordered by Bewegung date, then Bewegung Id, then Buchung Id (creation order). Always takes the
-    /// unfiltered journal; the entries need their Bewegung loaded.
+    /// The whole journal, newest first, each row carrying the running Expected Balance up to and including
+    /// that row. Ordered by Transaction date, then Transaction Id, then Entry Id (creation order). Always takes the
+    /// unfiltered journal; the entries need their Transaction loaded.
     /// </summary>
     public static IReadOnlyList<JournalRow> RunningBalances(
         Settings.Settings opening,
@@ -91,8 +91,8 @@ public static class AccountingCalculator
     }
 
     /// <summary>
-    /// All Bewegungen, newest first (same-day ties by creation order, i.e. Id), each row carrying the Kontostand
-    /// after it: the Anfangssaldo plus the amounts of all Bewegungen up to and including that one.
+    /// All Transactions, newest first (same-day ties by creation order, i.e. Id), each row carrying the running balance
+    /// after it: the Opening Balance plus the amounts of all Transactions up to and including that one.
     /// </summary>
     public static IReadOnlyList<TransactionRow> TransactionBalances(
         Settings.Settings opening,

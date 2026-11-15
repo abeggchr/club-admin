@@ -2,7 +2,7 @@ using Codecrete.SwissQRBill.Generator;
 
 namespace backend.Invoicing;
 
-/// <summary>The club as QR-bill creditor: its normal IBAN and the Klubadresse from the settings (country is always CH).</summary>
+/// <summary>The club as QR-bill creditor: its normal IBAN and the Club Address from the settings (country is always CH).</summary>
 public record QrBillCreditor(
     string Iban,
     string Name,
@@ -15,12 +15,12 @@ public record QrBillCreditor(
         "Bitte zuerst die Klubadresse in den Einstellungen erfassen";
 
     /// <summary>
-    /// The creditor for creating a Rechnung, or the German error to answer with (400) before anything is created.
+    /// The creditor for creating an Invoice, or the German error to answer with (400) before anything is created.
     /// </summary>
     public static (QrBillCreditor? Creditor, string? Error) Resolve(Settings.Settings? settings) =>
         From(settings) is { } creditor ? (creditor, null) : (null, MissingAddressError);
 
-    /// <summary>The creditor from the club settings, or null when the settings lack the IBAN or any part of the Klubadresse.</summary>
+    /// <summary>The creditor from the club settings, or null when the settings lack the IBAN or any part of the Club Address.</summary>
     public static QrBillCreditor? From(Settings.Settings? settings)
     {
         if (settings is null)
@@ -55,7 +55,7 @@ public record QrBillDebtor(
     string CountryCode
 );
 
-/// <summary>The Swiss QR-bill payment part (210×105 mm) of a Rechnung, rendered as PNG with SwissQRBill.NET.</summary>
+/// <summary>The Swiss QR-bill payment part (210×105 mm) of an Invoice, rendered as PNG with SwissQRBill.NET.</summary>
 public static class QrBillSlip
 {
     /// <summary>Height of the payment part.</summary>

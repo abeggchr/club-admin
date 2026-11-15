@@ -1,6 +1,6 @@
 namespace backend.Settings;
 
-/// <summary>The club's settings, stored as a single record: the Name, the Anfangssaldo, its start date, the IBAN and the Klubadresse. All are required.</summary>
+/// <summary>The club's settings, stored as a single record: the Name, the Opening Balance, its start date, the IBAN and the Club Address. All are required.</summary>
 public class Settings
 {
     public const int SingletonId = 1;

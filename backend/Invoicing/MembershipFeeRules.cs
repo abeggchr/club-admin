@@ -2,7 +2,7 @@ using backend.Person;
 
 namespace backend.Invoicing;
 
-/// <summary>One Rechnung the Jahresbeiträge run will create: one per address, one line per paying Person.</summary>
+/// <summary>One Invoice the Annual Fees run will create: one per address, one line per paying Person.</summary>
 public record PlannedInvoice(
     backend.Person.Person Recipient,
     IReadOnlyList<InvoiceLineDraft> Lines
@@ -13,12 +13,12 @@ public record BulkInvoicePlan(
     IReadOnlyList<string> Warnings
 );
 
-/// <summary>Pure rules deciding who pays which Jahresbeitrag and on which Rechnung.</summary>
+/// <summary>Pure rules deciding who pays which Annual Fee and on which Invoice.</summary>
 public static class MembershipFeeRules
 {
     public const int AccountNumber = 3400;
 
-    /// <summary>The yearly fee in CHF, or null when the type is not invoiced (Unbekannt).</summary>
+    /// <summary>The yearly fee in CHF, or null when the type is not invoiced (Unknown).</summary>
     public static decimal? FeeFor(MembershipType type) =>
         type switch
         {
@@ -46,13 +46,13 @@ public static class MembershipFeeRules
         var allPersons = persons.ToList();
         var byId = allPersons.ToDictionary(p => p.Id);
         var invoiced = ActiveInvoicedMembers(allPersons, at, warnings);
-        // A member with a Zahler pays on the Zahler's Rechnung and is otherwise out of grouping.
+        // A member with a Payer pays on the Payer's Invoice and is otherwise out of grouping.
         var dependents = invoiced
             .Where(p => p.PayerId is { } id && byId.ContainsKey(id))
             .ToList();
         var members = invoiced.Except(dependents).ToList();
         var dependentsByPayer = dependents.ToLookup(p => p.PayerId!.Value);
-        // A Zahler who is no paying member still takes part in grouping, as the recipient only.
+        // A Payer who is no paying member still takes part in grouping, as the recipient only.
         var silentPayers = dependentsByPayer
             .Select(g => byId[g.Key])
             .Where(payer => !members.Contains(payer))
@@ -141,7 +141,7 @@ public static class MembershipFeeRules
     }
 
     /// <summary>
-    /// The Familie member of an address who pays the Familie fee once: a flagged main payer first,
+    /// The Family member of an address who pays the Family fee once: a flagged main payer first,
     /// then the longest-standing member.
     /// </summary>
     private static backend.Person.Person? SelectFamilyPayer(List<backend.Person.Person> group) =>
@@ -151,7 +151,7 @@ public static class MembershipFeeRules
             .ThenBy(Seniority, SeniorityComparer)
             .FirstOrDefault();
 
-    /// <summary>The fee a Person pays: a Familie member other than the payer pays nothing.</summary>
+    /// <summary>The fee a Person pays: a Family member other than the payer pays nothing.</summary>
     private static decimal FeeOf(backend.Person.Person p, backend.Person.Person? payerFamily) =>
         p.Membership == MembershipType.Family && p != payerFamily
             ? 0m

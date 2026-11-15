@@ -9,7 +9,7 @@ import { formatDate, invoicesQueryOptions, statusLabel } from "./api";
 import { CreatePanel } from "./CreatePanel";
 import { DetailPanel } from "./DetailPanel";
 
-/** The Rechnungen area: table (newest first) | create panel (only while open). */
+/** The Invoices area: table (newest first) | create panel (only while open). */
 export function InvoicesPage() {
 	const { data: invoices } = useSuspenseQuery(invoicesQueryOptions);
 	const { data: templates } = useSuspenseQuery(textTemplatesQueryOptions);

@@ -38,7 +38,7 @@ public class TransactionRulesTests
             entries ?? [Line(-120m)]
         );
 
-    // The stored Bewegung; the new values default to exactly these, so a test changes only what it asserts.
+    // The stored Transaction; the new values default to exactly these, so a test changes only what it asserts.
     private static string? BankFacts(
         string? bankReference,
         string newDate = "2026-03-01",

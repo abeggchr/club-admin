@@ -1,6 +1,6 @@
 namespace backend.Settings;
 
-/// <summary>Pure validation for a Textvorlage. Returns a German error message, or null when valid.</summary>
+/// <summary>Pure validation for a Text Template. Returns a German error message, or null when valid.</summary>
 public static class TextTemplateRules
 {
     public static string? Validate(string? subject, string? text, string? greetings)

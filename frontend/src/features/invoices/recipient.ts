@@ -2,12 +2,12 @@ import type { Person } from "../persons/types";
 
 export type RecipientPick = {
 	recipientId: number | null;
-	/** The Person the Zahler was substituted for (drives the hint "Zahler von X"), or null. */
+	/** The Person the Payer was substituted for (drives the hint "Zahler von X"), or null. */
 	payerOf: number | null;
 };
 
 /**
- * Picking Person X as recipient switches to X's Zahler. A Hauptzahler has no Zahler of their own
+ * Picking Person X as recipient switches to X's Payer. A Main Payer has no Payer of their own
  * (payerId is null), so they stay the recipient.
  */
 export function pickRecipient(

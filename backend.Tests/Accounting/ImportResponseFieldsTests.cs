@@ -3,9 +3,9 @@ using backend.Accounting;
 namespace backend.Tests.Accounting;
 
 /// <summary>
-/// The import success response (ticket #62, spec #44 §7): bookedInvoices = the Rechnungsnummern of the
+/// The import success response (ticket #62, spec #44 §7): bookedInvoices = the Invoice Numbers of the
 /// movements that were auto-booked, in import order; unmatched = the count of imported movements (credits
-/// and debits) that came in without Buchungen. The endpoint maps these two fields into its response 1:1.
+/// and debits) that came in without Entries. The endpoint maps these two fields into its response 1:1.
 /// </summary>
 public class ImportResponseFieldsTests
 {

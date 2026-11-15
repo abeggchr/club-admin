@@ -3,7 +3,7 @@ using backend.Accounting;
 namespace backend.Tests.Accounting;
 
 /// <summary>
-/// Deleting an imported Bewegung removes its BankReference from the stored set, so importing the same file
+/// Deleting an imported Transaction removes its BankReference from the stored set, so importing the same file
 /// again recreates it (ticket #30). Verified at the BankImport seam: dedup only skips known references.
 /// </summary>
 public class BankImportReimportTests
@@ -25,7 +25,7 @@ public class BankImportReimportTests
         var imported = Assert.Single(
             BankImport.Import(zip, new ImportSnapshot(Settings, [], [], [], null)).Transactions
         );
-        // The Bewegung was deleted, so its BankReference is no longer stored and the same file imports it again.
+        // The Transaction was deleted, so its BankReference is no longer stored and the same file imports it again.
         var reimported = Assert.Single(
             BankImport.Import(zip, new ImportSnapshot(Settings, [], [], [], null)).Transactions
         );

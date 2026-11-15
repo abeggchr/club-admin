@@ -2004,7 +2004,7 @@ public class BankImportTests
     public void A_Paid_Rechnung_never_matches_again_even_without_existing_bookings()
     {
         // The previous matching check was ExistingPaid == Total; after the paying movement was deleted
-        // there is no attributed Buchung left, so the terminal Paid flag is what blocks the re-match.
+        // there is no attributed Entry left, so the terminal Paid flag is what blocks the re-match.
         var chart = TestChart();
         var invoices = new[]
         {
@@ -2046,7 +2046,7 @@ public class BankImportTests
     public void A_reimport_after_the_paying_movement_was_deleted_does_not_rebook()
     {
         // Re-import the same file: the movement imports again (its BankReference is no longer stored),
-        // but the Rechnung is Bezahlt, so it does not match, does not re-book and does not re-set PaidBy.
+        // but the Invoice is Paid, so it does not match, does not re-book and does not re-set PaidBy.
         var chart = TestChart();
         var openInvoices = new[]
         {

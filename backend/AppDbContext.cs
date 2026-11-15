@@ -58,9 +58,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         });
         modelBuilder.Entity<Invoice>(e =>
         {
-            // Matching on bank import is by exact Gläubigerreferenz string; '' never matches.
+            // Matching on bank import is by exact Creditor Reference string; '' never matches.
             e.Property(x => x.Reference).IsRequired().HasMaxLength(35);
-            // Plain nullable column, deliberately no foreign key to Transactions: the Bewegung may be edited or deleted.
+            // Plain nullable column, deliberately no foreign key to Transactions: the Transaction may be edited or deleted.
             e.Property(x => x.PaidBy);
             e.HasOne<Person>()
                 .WithMany()
@@ -90,7 +90,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Amount).HasPrecision(18, 2);
             e.Property(x => x.Text).HasMaxLength(500);
             e.Property(x => x.BankReference).HasMaxLength(35);
-            // Several manual Bewegungen have no BankReference; the database lets them coexist.
+            // Several manual Transactions have no BankReference; the database lets them coexist.
             e.HasIndex(x => x.BankReference).IsUnique();
             e.HasIndex(x => x.Date);
             e.HasOne<Person>()
@@ -98,7 +98,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(x => x.PersonId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
-        // The database does not enforce that a Bewegung has Buchungen or that they sum to its Betrag (ADR 0003).
+        // The database does not enforce that a Transaction has Entries or that they sum to its amount (ADR 0003).
         modelBuilder.Entity<Entry>(e =>
         {
             e.Property(x => x.Amount).HasPrecision(18, 2);

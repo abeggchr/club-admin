@@ -8,7 +8,7 @@ function today(): string {
 	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** The Erwartete Kontostand as of today, on one line. */
+/** The Erwartete running balance as of today, on one line. */
 export function BalanceAtDate() {
 	const { data, isError } = useQuery(expectedBalanceQueryOptions(today()));
 

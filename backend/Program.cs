@@ -22,7 +22,7 @@ builder.Services.AddObjectStorage(builder.Configuration);
 builder.Services.AddScoped<InvoiceCreator>();
 InvoiceDocument.UseCommunityLicense();
 
-// A malformed Kontoplan file fails startup (see ADR 0001).
+// A malformed Chart of Accounts file fails startup (see ADR 0001).
 builder.Services.AddSingleton(
     ChartOfAccounts.Load(
         Path.Combine(AppContext.BaseDirectory, "Accounting", "chart-of-accounts.json")
@@ -37,7 +37,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 
-    // Refuse to start when the Kontoplan file disagrees with the stored Buchungen (ADR 0001, ADR 0002).
+    // Refuse to start when the Chart of Accounts file disagrees with the stored Entries (ADR 0001, ADR 0002).
     var chart = scope.ServiceProvider.GetRequiredService<ChartOfAccounts>();
     var recorded = AccountUsageSync.Sync(db, chart);
     if (ChartConsistency.Check(chart, recorded) is { } inconsistency)

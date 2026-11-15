@@ -22,7 +22,7 @@ type Props = {
 	onSelect: (entry: JournalEntry) => void;
 };
 
-/** The Buchungsjournal: every Buchung with the date of its Bewegung and the running Kontostand. */
+/** The Journal: every Entry with the date of its Transaction and the running balance. */
 export function JournalList({
 	entries,
 	selectedId,
@@ -58,7 +58,7 @@ export function JournalList({
 				),
 			}),
 			helper.accessor("balance", {
-				// Erwarteter Kontostand
+				// Expected Balance
 				header: () => <span className="block text-right">Kontostand</span>,
 				cell: (info) => (
 					<span className="block text-right tabular-nums">

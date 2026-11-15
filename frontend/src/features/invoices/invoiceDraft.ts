@@ -6,12 +6,12 @@ export type InvoiceLineRow = {
 	account: number | null;
 };
 
-/** The Rechnung form's field values as the user sees them. */
+/** The Invoice form's field values as the user sees them. */
 export type InvoiceDraft = {
 	personId: number | null;
 	templateId: number | null;
 	lines: InvoiceLineRow[];
-	/** "Betrag offen lassen": the QR code carries no amount. */
+	/** "amount offen lassen": the QR code carries no amount. */
 	openAmount: boolean;
 };
 

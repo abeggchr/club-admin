@@ -2,7 +2,7 @@ import type { TransactionImportResult } from "./api";
 
 /**
  * The success lines of the import dialog (ticket #62): the imported/duplicate line plus the two new
- * lines reporting the auto-booked Rechnungsnummern and the movements still without a Buchung.
+ * lines reporting the auto-booked Invoice Numbers and the movements still without an Entry.
  */
 export function importResultLines(result: TransactionImportResult): string[] {
 	const lines = [

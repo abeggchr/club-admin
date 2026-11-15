@@ -6,7 +6,7 @@ using PersonEntity = backend.Person.Person;
 
 namespace backend.Tests.Person;
 
-/// <summary>Controller-level tests for changing a Person (Zahler, ticket #66).</summary>
+/// <summary>Controller-level tests for changing a Person (Payer, ticket #66).</summary>
 public class UpdatePersonTests(LocalPostgresFixture fixture) : PersonControllerTestBase(fixture)
 {
     private static PersonUpdate Update(PersonEntity p, int? payerId) =>

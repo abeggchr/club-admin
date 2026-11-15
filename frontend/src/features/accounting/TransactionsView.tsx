@@ -9,13 +9,13 @@ import { JournalList } from "./JournalList";
 import { highlightOf, type Selection, toggleSelection } from "./selection";
 import { TransactionsTable } from "./TransactionsTable";
 
-/** What the panel beside the Bewegungen is doing: nothing, adding a new Bewegung, or editing one. */
+/** What the panel beside the Transactions is doing: nothing, adding a new Transaction, or editing one. */
 type PanelMode =
 	| { kind: "closed" }
 	| { kind: "add" }
 	| { kind: "edit"; id: number; focusEntryId: number | null };
 
-/** The Buchhaltung page: Bewegungen | edit panel (only while open) | Buchungsjournal. */
+/** The Buchhaltung page: Transactions | edit panel (only while open) | Journal. */
 export function TransactionsView() {
 	const [mode, setMode] = useState<PanelMode>({ kind: "closed" });
 	const [selection, setSelection] = useState<Selection | null>(null);
@@ -32,10 +32,10 @@ export function TransactionsView() {
 			: undefined;
 	const highlight = highlightOf(selection, entries);
 
-	/** Selects a row (or deselects it when clicked again) and opens/closes the panel for its Bewegung. */
+	/** Selects a row (or deselects it when clicked again) and opens/closes the panel for its Transaction. */
 	function onSelect(clicked: Selection) {
 		const next = toggleSelection(selection, clicked);
-		// Moving within the open Bewegung keeps the draft; deselecting or switching to another one drops it.
+		// Moving within the open Transaction keeps the draft; deselecting or switching to another one drops it.
 		const keepsDraft =
 			next !== null &&
 			mode.kind === "edit" &&

@@ -2,23 +2,23 @@ using backend.Invoicing;
 
 namespace backend.Person;
 
-/// <summary>One Mitgliedschaft of the dashboard summary with its count of active Personen.</summary>
+/// <summary>One Membership of the dashboard summary with its count of active Persons.</summary>
 public record MembershipSummary(MembershipType Membership, int Count);
 
 public record PersonSummary(int Total, IReadOnlyList<MembershipSummary> ByMembership);
 
-/// <summary>Pure rules for the dashboard: which Personen count as active and how they are tallied per Mitgliedschaft.</summary>
+/// <summary>Pure rules for the dashboard: which Persons count as active and how they are tallied per Membership.</summary>
 public static class PersonSummaryRules
 {
     /// <summary>
-    /// The dashboard's active Personen: <see cref="MembershipFeeRules.IsActive"/> per Person.
-    /// A Person without an Eintritt never counts, whatever their Mitgliedschaft.
+    /// The dashboard's active Persons: <see cref="MembershipFeeRules.IsActive"/> per Person.
+    /// A Person without a join date never counts, whatever their Membership.
     /// </summary>
     public static IReadOnlyList<Person> Active(IReadOnlyList<Person> persons, DateOnly at) =>
         persons.Where(p => MembershipFeeRules.IsActive(p, at)).ToList();
 
     /// <summary>
-    /// The active Personen tallied per Mitgliedschaft: 0 counts are left out,
+    /// The active Persons tallied per Membership: 0 counts are left out,
     /// sorted by count descending, ties in enum order.
     /// </summary>
     public static IReadOnlyList<MembershipSummary> ByMembership(IEnumerable<Person> persons) =>

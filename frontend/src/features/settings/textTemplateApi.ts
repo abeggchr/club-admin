@@ -10,7 +10,7 @@ export const textTemplatesQueryOptions = queryOptions({
 	queryFn: () => getJson<TextTemplate[]>("/api/settings/text-templates"),
 });
 
-/** Creates a Textvorlage (id null) or replaces an existing one. */
+/** Creates a Text Template (id null) or replaces an existing one. */
 export function saveTextTemplate(
 	id: number | null,
 	draft: TextTemplateDraft,

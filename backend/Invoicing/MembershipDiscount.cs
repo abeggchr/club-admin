@@ -1,6 +1,6 @@
 namespace backend.Invoicing;
 
-/// <summary>Ermässigung: a Person's percentage discount on the Jahresbeitrag, stored until removed.</summary>
+/// <summary>Discount: a Person's percentage discount on the Annual Fee, stored until removed.</summary>
 public class MembershipDiscount
 {
     public int PersonId { get; set; }
@@ -8,7 +8,7 @@ public class MembershipDiscount
     public string Text { get; set; } = "";
 }
 
-/// <summary>Pure validation for an Ermässigung. Returns a German error message, or null when valid.</summary>
+/// <summary>Pure validation for a Discount. Returns a German error message, or null when valid.</summary>
 public static class MembershipDiscountRules
 {
     public static string? Validate(int? personId, int? percent, string? text)

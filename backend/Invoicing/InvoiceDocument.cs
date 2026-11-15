@@ -26,7 +26,7 @@ public record InvoiceDocumentData(
     bool OpenAmount = false
 );
 
-/// <summary>Renders a Rechnung to PDF bytes: A4, German, logo top left, address for a right-window envelope.</summary>
+/// <summary>Renders an Invoice to PDF bytes: A4, German, logo top left, address for a right-window envelope.</summary>
 public static class InvoiceDocument
 {
     // Swiss right-window envelope (C5/6): the window starts ~118 mm from the left edge and ~45 mm from the top.
