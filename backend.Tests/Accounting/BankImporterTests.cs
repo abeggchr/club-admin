@@ -40,10 +40,19 @@ public class BankImporterTests : IClassFixture<LocalPostgresFixture>
         );
     }
 
+    /// <summary>Empties the tables the import reads and writes; the tests of this class share one database.</summary>
+    private static async Task Reset(AppDbContext db)
+    {
+        await db.Invoices.ExecuteDeleteAsync();
+        await db.Transactions.ExecuteDeleteAsync();
+        await db.Persons.ExecuteDeleteAsync();
+        await db.Settings.ExecuteDeleteAsync();
+    }
+
     /// <summary>Settings, a Person and one open Invoice of 100.00 with the reference RF340042.</summary>
     private static async Task<int> SeedOpenInvoice(AppDbContext db)
     {
-        db.Settings.RemoveRange(db.Settings);
+        await Reset(db);
         db.Settings.Add(
             new backend.Settings.Settings
             {
@@ -76,16 +85,8 @@ public class BankImporterTests : IClassFixture<LocalPostgresFixture>
     {
         await using var db = Database();
         var invoiceId = await SeedOpenInvoice(db);
-        var file = CamtFile(
-            "stmt",
-            ClubIban,
-            TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX-PAID", "RF340042")
-        );
 
-        var outcome = await new BankImporter(db, Chart).ImportAsync(
-            System.Text.Encoding.UTF8.GetBytes(file),
-            "stmt.xml"
-        );
+        var outcome = await Import(db, Payment("100.00", "TX-PAID"));
 
         var imported = Assert.IsType<BankImportOutcome.Imported>(outcome);
         Assert.Equal(1, imported.ImportedCount);
@@ -103,5 +104,91 @@ public class BankImporterTests : IClassFixture<LocalPostgresFixture>
             .SingleAsync(i => i.Id == invoiceId);
         Assert.Contains(invoice.StatusChanges, s => s.Status == InvoiceStatus.Paid);
         Assert.Equal(movement.Id, invoice.PaidBy);
+    }
+
+    private static string Payment(string amount, string txRef) =>
+        CamtFile(
+            "stmt",
+            ClubIban,
+            TxDtlsNtryWithReference(amount, "CRDT", "2026-02-10", txRef, "RF340042")
+        );
+
+    private static Task<BankImportOutcome> Import(AppDbContext db, string file) =>
+        new BankImporter(db, Chart).ImportAsync(System.Text.Encoding.UTF8.GetBytes(file), "stmt.xml");
+
+    [Fact]
+    public async Task Without_saved_Settings_nothing_is_imported()
+    {
+        await using var db = Database();
+        await Reset(db);
+
+        var outcome = await Import(db, Payment("100.00", "TX-1"));
+
+        Assert.IsType<BankImportOutcome.SettingsMissing>(outcome);
+        await using var check = Database();
+        Assert.Empty(await check.Transactions.ToListAsync());
+    }
+
+    [Fact]
+    public async Task A_rejected_file_stores_nothing()
+    {
+        await using var db = Database();
+        await SeedOpenInvoice(db);
+        var otherIban = CamtFile(
+            "stmt",
+            "CH9300762011623852951",
+            TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX-1", "RF340042")
+        );
+
+        var outcome = await Import(db, otherIban);
+
+        Assert.IsType<BankImportOutcome.Rejected>(outcome);
+        await using var check = Database();
+        Assert.Empty(await check.Transactions.ToListAsync());
+        var invoice = await check.Invoices.Include(i => i.StatusChanges).SingleAsync();
+        Assert.DoesNotContain(invoice.StatusChanges, s => s.Status == InvoiceStatus.Paid);
+    }
+
+    [Fact]
+    public async Task Importing_the_same_file_again_skips_it_and_keeps_the_Rechnung_Paid_once()
+    {
+        await using var db = Database();
+        var invoiceId = await SeedOpenInvoice(db);
+        var file = Payment("100.00", "TX-PAID");
+        await Import(db, file);
+
+        await using var again = Database();
+        var outcome = Assert.IsType<BankImportOutcome.Imported>(await Import(again, file));
+
+        Assert.Equal(0, outcome.ImportedCount);
+        Assert.Equal(1, outcome.SkippedDuplicates);
+        await using var check = Database();
+        Assert.Single(await check.Transactions.ToListAsync());
+        var invoice = await check.Invoices.Include(i => i.StatusChanges).SingleAsync(i => i.Id == invoiceId);
+        Assert.Single(invoice.StatusChanges, s => s.Status == InvoiceStatus.Paid);
+    }
+
+    // Pins today's behaviour (issue #91): an overpayment books the excess to 3600 but does not mark the
+    // Rechnung Paid, so it stays open for a later payment.
+    [Fact]
+    public async Task An_overpayment_books_the_excess_to_Spenden_and_leaves_the_Rechnung_open()
+    {
+        await using var db = Database();
+        var invoiceId = await SeedOpenInvoice(db);
+
+        var outcome = Assert.IsType<BankImportOutcome.Imported>(
+            await Import(db, Payment("150.00", "TX-OVER"))
+        );
+
+        Assert.Equal([invoiceId], outcome.BookedInvoices);
+        await using var check = Database();
+        var movement = await check.Transactions.Include(t => t.Entries).SingleAsync();
+        Assert.Equal(
+            [(3400, 100m), (3600, 50m)],
+            movement.Entries.OrderBy(e => e.AccountNumber).Select(e => (e.AccountNumber, e.Amount))
+        );
+        var invoice = await check.Invoices.Include(i => i.StatusChanges).SingleAsync();
+        Assert.DoesNotContain(invoice.StatusChanges, s => s.Status == InvoiceStatus.Paid);
+        Assert.Null(invoice.PaidBy);
     }
 }
