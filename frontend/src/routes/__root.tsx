@@ -8,8 +8,8 @@ import {
 	Outlet,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { fetchCurrentUser, logout } from "../lib/auth";
 import { settingsQueryOptions } from "../features/accounting/api";
+import { fetchCurrentUser, logout } from "../lib/auth";
 import { navItems } from "../nav";
 
 import "../styles.css";
