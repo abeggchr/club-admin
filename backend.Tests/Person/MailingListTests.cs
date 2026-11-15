@@ -1,11 +1,11 @@
-using backend.Person;
 using backend.Accounting;
-using Microsoft.EntityFrameworkCore;
+using backend.Person;
 using backend.Tests.Invoicing;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Tests.Person;
 
-/// <summary>The Versandliste data path behind GET /api/persons/mailing-list: recipients, grouping and CSV.</summary>
+/// <summary>The Mailing List data path behind GET /api/person/mailing-list: recipients, grouping and CSV.</summary>
 public class MailingListTests : IClassFixture<LocalPostgresFixture>
 {
     private readonly LocalPostgresFixture _fixture;
@@ -14,7 +14,9 @@ public class MailingListTests : IClassFixture<LocalPostgresFixture>
     {
         _fixture = fixture;
         if (!_fixture.Available)
-            throw new SkipException("No local PostgreSQL available (README: localhost:5432, postgres/secret).");
+            throw new SkipException(
+                "No local PostgreSQL available (README: localhost:5432, postgres/secret)."
+            );
     }
 
     private static readonly DateOnly StartDate = new(2026, 1, 1);
@@ -22,7 +24,10 @@ public class MailingListTests : IClassFixture<LocalPostgresFixture>
     private static AppDbContext Connect(LocalPostgresFixture fixture) =>
         new(
             new DbContextOptionsBuilder<AppDbContext>()
-                .UseNpgsql(fixture.ConnectionString, b => b.MigrationsAssembly(typeof(AppDbContext).Assembly))
+                .UseNpgsql(
+                    fixture.ConnectionString,
+                    b => b.MigrationsAssembly(typeof(AppDbContext).Assembly)
+                )
                 .Options
         );
 
@@ -64,21 +69,23 @@ public class MailingListTests : IClassFixture<LocalPostgresFixture>
         };
 
     // The query the mailing-list endpoint runs: every active Person plus every flagged Person,
-    // grouped and rendered to the Versandliste CSV.
+    // grouped and rendered to the Mailing List CSV.
     private static async Task<string> MailingListCsvAsync(LocalPostgresFixture fixture)
     {
         await using var db = Connect(fixture);
-        var settings = await db.Settings.FindAsync(Settings.SingletonId);
+        var settings = await db.Settings.FindAsync(backend.Settings.Settings.SingletonId);
         var persons = await db.Persons.AsNoTracking().ToListAsync();
         return MailingListCsv.Build(
-            MailingListRules.BuildRows(ClubNewsRecipientRules.Recipients(persons, settings!.StartDate))
+            MailingListRules.BuildRows(
+                ClubNewsRecipientRules.Recipients(persons, settings!.StartDate)
+            )
         );
     }
 
     private static void Seed(AppDbContext db, backend.Person.Person[] persons)
     {
         db.Settings.Add(
-            new Settings
+            new backend.Settings.Settings
             {
                 OpeningBalance = 0,
                 StartDate = StartDate,

@@ -4,7 +4,11 @@ namespace backend.Tests.Accounting;
 
 public class TransactionRulesTests
 {
-    private static readonly Settings Opening = new() { OpeningBalance = 0m, StartDate = new DateOnly(2026, 1, 1) };
+    private static readonly backend.Settings.Settings Opening = new()
+    {
+        OpeningBalance = 0m,
+        StartDate = new DateOnly(2026, 1, 1),
+    };
 
     private static readonly ChartOfAccounts Chart = ChartOfAccounts.Parse(
         """
@@ -34,7 +38,7 @@ public class TransactionRulesTests
             entries ?? [Line(-120m)]
         );
 
-    // The stored Bewegung; the new values default to exactly these, so a test changes only what it asserts.
+    // The stored Transaction; the new values default to exactly these, so a test changes only what it asserts.
     private static string? BankFacts(
         string? bankReference,
         string newDate = "2026-03-01",
@@ -69,7 +73,8 @@ public class TransactionRulesTests
         Assert.Contains("vor dem Anfangssaldo", Validate(date: "2025-12-31"));
 
     [Fact]
-    public void A_transaction_on_the_opening_date_is_accepted() => Assert.Null(Validate(date: "2026-01-01"));
+    public void A_transaction_on_the_opening_date_is_accepted() =>
+        Assert.Null(Validate(date: "2026-01-01"));
 
     [Fact]
     public void A_zero_amount_is_rejected() =>
@@ -96,7 +101,9 @@ public class TransactionRulesTests
 
     [Fact]
     public void An_existing_entry_may_keep_its_now_inactive_account() =>
-        Assert.Null(Validate(amount: 50m, entries: [Line(50m, account: 3999, existingAccount: 3999)]));
+        Assert.Null(
+            Validate(amount: 50m, entries: [Line(50m, account: 3999, existingAccount: 3999)])
+        );
 
     [Fact]
     public void An_existing_entry_may_not_switch_to_a_different_inactive_account() =>
@@ -107,7 +114,10 @@ public class TransactionRulesTests
 
     [Fact]
     public void An_entry_with_more_than_two_decimals_is_rejected() =>
-        Assert.Contains("Dezimalstellen", Validate(amount: -1m, entries: [Line(-1.005m), Line(0.005m)]));
+        Assert.Contains(
+            "Dezimalstellen",
+            Validate(amount: -1m, entries: [Line(-1.005m), Line(0.005m)])
+        );
 
     [Fact]
     public void An_entry_with_a_zero_amount_is_rejected() =>
@@ -144,7 +154,13 @@ public class TransactionRulesTests
     [Fact]
     public void A_manual_transaction_may_change_its_date_amount_text_and_person() =>
         Assert.Null(
-            BankFacts(null, newDate: "2026-03-02", newAmount: -121m, newText: "Miete April", newPersonId: 8)
+            BankFacts(
+                null,
+                newDate: "2026-03-02",
+                newAmount: -121m,
+                newText: "Miete April",
+                newPersonId: 8
+            )
         );
 
     [Fact]
@@ -156,13 +172,21 @@ public class TransactionRulesTests
 
     [Fact]
     public void The_opening_date_may_move_up_to_the_earliest_transaction() =>
-        Assert.Null(TransactionRules.ValidateOpeningStartDate(new DateOnly(2026, 3, 1), new DateOnly(2026, 3, 1)));
+        Assert.Null(
+            TransactionRules.ValidateOpeningStartDate(
+                new DateOnly(2026, 3, 1),
+                new DateOnly(2026, 3, 1)
+            )
+        );
 
     [Fact]
     public void The_opening_date_cannot_move_later_than_the_earliest_transaction() =>
         Assert.Contains(
             "frühesten Bewegung",
-            TransactionRules.ValidateOpeningStartDate(new DateOnly(2026, 3, 2), new DateOnly(2026, 3, 1))
+            TransactionRules.ValidateOpeningStartDate(
+                new DateOnly(2026, 3, 2),
+                new DateOnly(2026, 3, 1)
+            )
         );
 
     [Fact]

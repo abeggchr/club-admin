@@ -21,12 +21,27 @@ public class QrBillSlipTests
         Assert.Equal("RF340042", bill.Reference);
     }
 
-    private static readonly QrBillDebtor Hans = new("Hans Muster", "Dorfstrasse", "1", "8000", "Zürich", "CH");
+    private static readonly QrBillDebtor Hans = new(
+        "Hans Muster",
+        "Dorfstrasse",
+        "1",
+        "8000",
+        "Zürich",
+        "CH"
+    );
 
     [Fact]
     public void Complete_Person_address_makes_the_Person_the_debtor()
     {
-        var debtor = QrBillSlip.DebtorFor("Hans", "Muster", "Dorfstrasse", "1", "8000", "Zürich", "Schweiz");
+        var debtor = QrBillSlip.DebtorFor(
+            "Hans",
+            "Muster",
+            "Dorfstrasse",
+            "1",
+            "8000",
+            "Zürich",
+            "Schweiz"
+        );
 
         Assert.Equal(Hans, debtor);
         var bill = QrBillSlip.Build(Club, "0042", 100m, debtor);
@@ -46,9 +61,22 @@ public class QrBillSlipTests
     [InlineData("Dorfstrasse", "1", "8000", "Zürich", null)]
     [InlineData("Dorfstrasse", "1", "8000", "Zürich", "Atlantis")]
     public void Incomplete_Person_address_leaves_the_debtor_out(
-        string? street, string? number, string? postalCode, string? city, string? country)
+        string? street,
+        string? number,
+        string? postalCode,
+        string? city,
+        string? country
+    )
     {
-        var debtor = QrBillSlip.DebtorFor("Hans", "Muster", street, number, postalCode, city, country);
+        var debtor = QrBillSlip.DebtorFor(
+            "Hans",
+            "Muster",
+            street,
+            number,
+            postalCode,
+            city,
+            country
+        );
 
         Assert.Null(debtor);
         Assert.Null(QrBillSlip.Build(Club, "0042", 100m, debtor).Debtor);
@@ -78,7 +106,7 @@ public class QrBillSlipTests
     [Fact]
     public void Settings_with_a_complete_Klubadresse_give_the_creditor()
     {
-        var settings = new backend.Accounting.Settings
+        var settings = new backend.Settings.Settings
         {
             Iban = "CH9300762011623852957",
             Name = " SC Wettingen ",
@@ -96,9 +124,13 @@ public class QrBillSlipTests
     [InlineData("SC Wettingen", "Sportweg 12", "", "Wettingen")]
     [InlineData("SC Wettingen", "Sportweg 12", "5430", "")]
     public void Missing_Klubadresse_gives_no_creditor_and_the_German_error(
-        string name, string address, string postalCode, string city)
+        string name,
+        string address,
+        string postalCode,
+        string city
+    )
     {
-        var settings = new backend.Accounting.Settings
+        var settings = new backend.Settings.Settings
         {
             Iban = "CH9300762011623852957",
             Name = name,
@@ -109,9 +141,9 @@ public class QrBillSlipTests
 
         Assert.Null(QrBillCreditor.From(settings));
         Assert.Null(QrBillCreditor.From(null));
-        // POST /invoices answers 400 with this error before InvoiceCreator is called, so no Rechnung is created.
+        // POST /invoices answers 400 with this error before InvoiceCreator is called, so no Invoice is created.
         // (The endpoint needs PostgreSQL, so the decision is tested through Resolve.)
-        foreach (var s in new backend.Accounting.Settings?[] { settings, null })
+        foreach (var s in new backend.Settings.Settings?[] { settings, null })
         {
             var (creditor, error) = QrBillCreditor.Resolve(s);
             Assert.Null(creditor);
@@ -122,7 +154,7 @@ public class QrBillSlipTests
     [Fact]
     public void Complete_Klubadresse_resolves_to_the_creditor_without_error()
     {
-        var settings = new backend.Accounting.Settings
+        var settings = new backend.Settings.Settings
         {
             Iban = Club.Iban,
             Name = Club.Name,
@@ -137,10 +169,10 @@ public class QrBillSlipTests
     [Theory]
     [InlineData(1)]
     [InlineData(42)]
-    [InlineData(2147483647)] // int.MaxValue: the longest Rechnungsnummer (10 digits)
+    [InlineData(2147483647)] // int.MaxValue: the longest Invoice Number (10 digits)
     public void Reference_building_never_throws_for_any_Rechnungsnummer_the_system_produces(int id)
     {
-        // Rechnungsnummer is InvoiceRules.FormatNumber(id): the ID zero-padded to at least 4 digits, so always
+        // Invoice Number is InvoiceRules.FormatNumber(id): the ID zero-padded to at least 4 digits, so always
         // numeric and at most 10 characters; "RF" + 2 check digits + that is far below the SCOR limit of 25.
         var number = InvoiceRules.FormatNumber(id);
 

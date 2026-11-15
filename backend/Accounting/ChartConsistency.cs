@@ -1,12 +1,12 @@
 namespace backend.Accounting;
 
 /// <summary>
-/// Startup consistency check between the Kontoplan file and the Konten used by Buchungen (ADR 0001, ADR 0002).
-/// Pure: the caller supplies each used Konto number with the Kategorie recorded when it was first used.
+/// Startup consistency check between the Chart of Accounts file and the Accounts used by Entries (ADR 0001, ADR 0002).
+/// Pure: the caller supplies each used Account number with the Category recorded when it was first used.
 /// </summary>
 public static class ChartConsistency
 {
-    /// <summary>Returns a German error naming the offending Konto numbers, or null when consistent.</summary>
+    /// <summary>Returns a German error naming the offending Account numbers, or null when consistent.</summary>
     public static string? Check(ChartOfAccounts chart, IReadOnlyDictionary<int, Category> recordedCategories)
     {
         var missing = new List<int>();

@@ -27,7 +27,7 @@ export function sortJubilees(rows: JubileePerson[]): JubileePerson[] {
 }
 
 async function fetchJubilees(): Promise<Jubilees> {
-	const res = await apiFetch("/api/jubilees");
+	const res = await apiFetch("/api/person/jubilees");
 	if (!res.ok) throw new Error(`Backend returned ${res.status}`);
 	return res.json();
 }

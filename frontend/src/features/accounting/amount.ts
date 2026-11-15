@@ -9,7 +9,7 @@ const GROUPED = /^(-?)(\d{1,3}(?:'\d{3})+)(?:\.(\d*))?$/;
 
 /**
  * Parses a user-typed CHF amount (e.g. "1'250.50", "1250.5", "-120").
- * The result is the typed number, not yet signed by Kategorie (see toSignedAmount).
+ * The result is the typed number, not yet signed by Category (see toSignedAmount).
  */
 export function parseAmount(
 	input: string,
@@ -33,15 +33,15 @@ export function parseAmount(
 	return { ok: true, value: (sign === "-" ? -cents : cents) / 100 };
 }
 
-/** Negates the amount for an Ausgaben-Konto (cents-exact); an Einnahmen amount is unchanged. */
+/** Negates the amount for an Expense Account (cents-exact); an Income amount is unchanged. */
 function orientForCategory(amount: number, category: Category): number {
 	const cents = Math.round(amount * 100);
 	return (category === "Expense" ? -cents : cents) / 100 || 0;
 }
 
 /**
- * Converts the amount typed in the Konto's natural direction into the stored amount,
- * signed from the bank's point of view: Ausgaben negative, Einnahmen positive.
+ * Converts the amount typed in the Account's natural direction into the stored amount,
+ * signed from the bank's point of view: Expense negative, Income positive.
  * A negative input is a refund or reversal and flips the effect.
  */
 export const toSignedAmount = orientForCategory;

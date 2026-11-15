@@ -64,11 +64,11 @@ export const columns = helper.columns([
 		},
 	}),
 	helper.accessor("mobilePhone", {
-		header: "Mobilfunknummer",
+		header: "Mobile",
 		cell: (info) => orDash(info.getValue()),
 	}),
 	helper.accessor("landlinePhone", {
-		header: "Festnetznummer",
+		header: "Festnetz",
 		cell: (info) => orDash(info.getValue()),
 	}),
 	helper.accessor("street", {

@@ -35,7 +35,7 @@ function filled(overrides: Partial<TransactionDraft> = {}): TransactionDraft {
 
 describe("entryAmount (first-row pre-fill)", () => {
 	it("follows the Bewegung Betrag in the Konto’s natural direction until edited", () => {
-		expect(entryAmount(filled(), 0, accounts)).toBe("120.00"); // Ausgabe: -120 typed as 120
+		expect(entryAmount(filled(), 0, accounts)).toBe("120.00"); // Expense: -120 typed as 120
 		const income = filled({
 			amount: "50",
 			entries: [{ id: null, text: "x", accountNumber: 3400, amount: null }],
@@ -76,20 +76,20 @@ describe("remainder", () => {
 
 	it("signs typed amounts per Kategorie", () => {
 		const draft = filled({ amount: "-100" });
-		draft.entries[0].amount = "30"; // Ausgabe 30 => -30
+		draft.entries[0].amount = "30"; // Expense 30 => -30
 		expect(remainder(draft, accounts)).toBe(-70);
 		draft.entries.push({
 			id: null,
 			text: "Spende",
 			accountNumber: 3400,
 			amount: "20",
-		}); // Einnahme 20 => +20
+		}); // Income 20 => +20
 		expect(remainder(draft, accounts)).toBe(-90);
 	});
 
 	it("treats a negative typed amount as a reversal", () => {
 		const draft = filled({ amount: "100" });
-		draft.entries[0].amount = "-100"; // Ausgabe -100 => +100
+		draft.entries[0].amount = "-100"; // Expense -100 => +100
 		expect(remainder(draft, accounts)).toBe(0);
 	});
 
@@ -256,7 +256,7 @@ describe('addEntry ("+ Buchung")', () => {
 			{ id: null, text: "Beitrag", accountNumber: 3400, amount: "100" },
 		];
 		const next = addEntry(draft, accounts);
-		next.entries[1].accountNumber = 6010; // Ausgabe: -5 typed as 5
+		next.entries[1].accountNumber = 6010; // Expense: -5 typed as 5
 		expect(entryAmount(next, 1, accounts)).toBe("5.00");
 		expect(remainder(next, accounts)).toBe(0);
 	});

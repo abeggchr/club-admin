@@ -2,23 +2,37 @@ using Codecrete.SwissQRBill.Generator;
 
 namespace backend.Invoicing;
 
-/// <summary>The club as QR-bill creditor: its normal IBAN and the Klubadresse from the settings (country is always CH).</summary>
-public record QrBillCreditor(string Iban, string Name, string Address, string PostalCode, string City)
+/// <summary>The club as QR-bill creditor: its normal IBAN and the Club Address from the settings (country is always CH).</summary>
+public record QrBillCreditor(
+    string Iban,
+    string Name,
+    string Address,
+    string PostalCode,
+    string City
+)
 {
-    private const string MissingAddressError = "Bitte zuerst die Klubadresse in den Einstellungen erfassen";
+    private const string MissingAddressError =
+        "Bitte zuerst die Klubadresse in den Einstellungen erfassen";
 
     /// <summary>
-    /// The creditor for creating a Rechnung, or the German error to answer with (400) before anything is created.
+    /// The creditor for creating an Invoice, or the German error to answer with (400) before anything is created.
     /// </summary>
-    public static (QrBillCreditor? Creditor, string? Error) Resolve(backend.Accounting.Settings? settings) =>
+    public static (QrBillCreditor? Creditor, string? Error) Resolve(Settings.Settings? settings) =>
         From(settings) is { } creditor ? (creditor, null) : (null, MissingAddressError);
 
-    /// <summary>The creditor from the club settings, or null when the settings lack the IBAN or any part of the Klubadresse.</summary>
-    public static QrBillCreditor? From(backend.Accounting.Settings? settings)
+    /// <summary>The creditor from the club settings, or null when the settings lack the IBAN or any part of the Club Address.</summary>
+    public static QrBillCreditor? From(Settings.Settings? settings)
     {
         if (settings is null)
             return null;
-        string[] parts = [settings.Iban, settings.Name, settings.Address, settings.PostalCode, settings.City];
+        string[] parts =
+        [
+            settings.Iban,
+            settings.Name,
+            settings.Address,
+            settings.PostalCode,
+            settings.City,
+        ];
         if (parts.Any(string.IsNullOrWhiteSpace))
             return null;
         return new QrBillCreditor(
@@ -41,13 +55,15 @@ public record QrBillDebtor(
     string CountryCode
 );
 
-/// <summary>The Swiss QR-bill payment part (210×105 mm) of a Rechnung, rendered as PNG with SwissQRBill.NET.</summary>
+/// <summary>The Swiss QR-bill payment part (210×105 mm) of an Invoice, rendered as PNG with SwissQRBill.NET.</summary>
 public static class QrBillSlip
 {
     /// <summary>Height of the payment part.</summary>
     public const float HeightMm = 105;
 
-    private static readonly Dictionary<string, string> CountryNames = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string> CountryNames = new(
+        StringComparer.OrdinalIgnoreCase
+    )
     {
         ["Schweiz"] = "CH",
         ["Suisse"] = "CH",
@@ -66,7 +82,12 @@ public static class QrBillSlip
     };
 
     /// <summary>A null amount leaves the amount out of the QR code: the payer enters it.</summary>
-    public static Bill Build(QrBillCreditor creditor, string invoiceNumber, decimal? amount, QrBillDebtor? debtor)
+    public static Bill Build(
+        QrBillCreditor creditor,
+        string invoiceNumber,
+        decimal? amount,
+        QrBillDebtor? debtor
+    )
     {
         var (street, houseNo) = SplitAddressLine(creditor.Address.Trim());
         var bill = new Bill
@@ -134,7 +155,8 @@ public static class QrBillSlip
             city.Trim(),
             code
         );
-        return debtor.Name.Length <= 70
+        return
+            debtor.Name.Length <= 70
             && debtor.Street.Length <= 70
             && debtor.Number.Length <= 16
             && debtor.PostalCode.Length <= 16
@@ -160,7 +182,9 @@ public static class QrBillSlip
     {
         if (CountryNames.TryGetValue(country, out var code))
             return code;
-        return country.Length == 2 && country.All(char.IsAsciiLetter) ? country.ToUpperInvariant() : null;
+        return country.Length == 2 && country.All(char.IsAsciiLetter)
+            ? country.ToUpperInvariant()
+            : null;
     }
 
     /// <summary>"Sportweg 12" becomes street and house number; a line without a trailing number stays the street.</summary>

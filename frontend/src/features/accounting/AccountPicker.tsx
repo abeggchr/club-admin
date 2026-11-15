@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
+import { filterAccounts } from "./accountFilter";
 import { accountsQueryOptions } from "./api";
-import { filterAccounts } from "./kontoFilter";
 import type { Account } from "./types";
 
 export function accountLabel(account: Account): string {
@@ -26,12 +26,12 @@ type Props = {
 };
 
 /**
- * Konto autocomplete: type a Kontonummer or part of the name to filter; every
- * option shows whether the Konto is an Einnahme or an Ausgabe. Inactive Konten
- * are not selectable; an inactive Konto that is the current value stays shown
- * (disabled) so existing Buchungen remain resolvable.
+ * Account autocomplete: type a account number or part of the name to filter; every
+ * option shows whether the Account is an Income or an Expense. Inactive Accounts
+ * are not selectable; an inactive Account that is the current value stays shown
+ * (disabled) so existing Entries remain resolvable.
  */
-export function KontoPicker({ value, onChange, id, className }: Props) {
+export function AccountPicker({ value, onChange, id, className }: Props) {
 	const { data: accounts } = useSuspenseQuery(accountsQueryOptions);
 	const listId = useId();
 	const [query, setQuery] = useState<string | null>(null); // null = not editing

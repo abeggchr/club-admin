@@ -3,15 +3,15 @@ using backend.Accounting;
 namespace backend.Tests.Accounting;
 
 /// <summary>
-/// The import success response (ticket #62, spec #44 §7): bookedInvoices = the Rechnungsnummern of the
+/// The import success response (ticket #62, spec #44 §7): bookedInvoices = the Invoice Numbers of the
 /// movements that were auto-booked, in import order; unmatched = the count of imported movements (credits
-/// and debits) that came in without Buchungen. The endpoint maps these two fields into its response 1:1.
+/// and debits) that came in without Entries. The endpoint maps these two fields into its response 1:1.
 /// </summary>
 public class ImportResponseFieldsTests
 {
     private const string ClubIban = "CH9300762011623852957";
 
-    private static readonly Settings Settings = new()
+    private static readonly backend.Settings.Settings Settings = new()
     {
         OpeningBalance = 0m,
         StartDate = new DateOnly(2026, 1, 1),
@@ -33,8 +33,22 @@ public class ImportResponseFieldsTests
         );
         var invoices = new[]
         {
-            new ImportInvoice(42, "RF340042", 100m, 0m, false, [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]),
-            new ImportInvoice(43, "RF340043", 50m, 0m, false, [new ImportInvoiceLine("Beitrag", 3400, 50m)]),
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                false,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+            new ImportInvoice(
+                43,
+                "RF340043",
+                50m,
+                0m,
+                false,
+                [new ImportInvoiceLine("Beitrag", 3400, 50m)]
+            ),
         };
         var zip = CamtTestFiles.Zip(
             (
@@ -42,9 +56,21 @@ public class ImportResponseFieldsTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042"),
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    ),
                     CamtTestHelpers.TxDtlsNtry("10.00", "DBIT", "2026-02-10", "TX2"),
-                    CamtTestHelpers.TxDtlsNtryWithReference("50.00", "CRDT", "2026-02-10", "TX3", "RF340043")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "50.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX3",
+                        "RF340043"
+                    )
                 )
             )
         );
@@ -71,7 +97,14 @@ public class ImportResponseFieldsTests
         );
         var invoices = new[]
         {
-            new ImportInvoice(42, "RF340042", 100m, 0m, false, [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]),
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                false,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
         };
         var zip = CamtTestFiles.Zip(
             (
@@ -79,7 +112,13 @@ public class ImportResponseFieldsTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042"),
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    ),
                     CamtTestHelpers.TxDtlsNtry("10.00", "DBIT", "2026-02-10", "TX2"),
                     CamtTestHelpers.TxDtlsNtry("20.00", "CRDT", "2026-02-10", "TX3")
                 )

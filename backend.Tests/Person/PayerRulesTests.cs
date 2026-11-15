@@ -4,7 +4,7 @@ namespace backend.Tests.Person;
 
 public class PayerRulesTests
 {
-    // (Id, PayerId) of all Personen.
+    // (Id, PayerId) of all Persons.
     private static readonly PayerLink[] Links = [new(1, null), new(2, null), new(3, 2), new(4, null)];
 
     [Fact]

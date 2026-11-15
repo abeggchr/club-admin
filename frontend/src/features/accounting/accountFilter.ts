@@ -1,8 +1,8 @@
 import type { Account } from "./types";
 
 /**
- * Konten matching what the user typed: a Kontonummer prefix or any word-part
- * of the name, case-insensitive. Empty query matches everything. Inactive Konten
+ * Accounts matching what the user typed: a account number prefix or any word-part
+ * of the name, case-insensitive. Empty query matches everything. Inactive Accounts
  * are only offered when they are the current value.
  */
 export function filterAccounts(

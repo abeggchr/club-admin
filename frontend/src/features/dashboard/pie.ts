@@ -5,8 +5,8 @@ export type PieSlice = {
 	index: number;
 	/** The slice's span in degrees, always > 0. */
 	size: number;
-	/** "x1,y1 x2,y2 x3,y3 …" points for an SVG <polygon>. */
-	points: string;
+	/** The "d" attribute of an SVG <path>: the center, a straight edge and a circular arc. */
+	path: string;
 };
 
 const CENTER = 50;
@@ -32,8 +32,16 @@ export function pieSlices(values: number[]): PieSlice[] {
 			const rad = ((deg - 90) * Math.PI) / 180;
 			return `${round(CENTER + RADIUS * Math.cos(rad))},${round(CENTER + RADIUS * Math.sin(rad))}`;
 		};
-		const points = [`${CENTER},${CENTER}`, toXY(start), toXY(end)].join(" ");
-		return { index: i, size: round((pointsPerSlice[i] / 360) * 100), points };
+		const arc = (to: string, large: number) =>
+			`A${RADIUS},${RADIUS} 0 ${large} 1 ${to}`;
+		const span = pointsPerSlice[i];
+		// An arc can't span 360° (start and end coincide), so a full circle is drawn as two halves.
+		const arcs =
+			span >= 360
+				? `${arc(toXY(start + 180), 0)} ${arc(toXY(end), 0)}`
+				: arc(toXY(end), span > 180 ? 1 : 0);
+		const path = `M${CENTER},${CENTER} L${toXY(start)} ${arcs} Z`;
+		return { index: i, size: round((span / 360) * 100), path };
 	});
 }
 

@@ -1,9 +1,9 @@
 namespace backend.Person;
 
-/// <summary>A Person's id and their Zahler (null when none).</summary>
+/// <summary>A Person's id and their Payer (null when none).</summary>
 public record PayerLink(int Id, int? PayerId);
 
-/// <summary>Pure rules for the Zahler of a Person: no self-reference, no chains, no cycles. Return a German error message, or null when valid.</summary>
+/// <summary>Pure rules for the Payer of a Person: no self-reference, no chains, no cycles. Return a German error message, or null when valid.</summary>
 public static class PayerRules
 {
     public static string? ValidateSet(int personId, int? payerId, IReadOnlyCollection<PayerLink> all)

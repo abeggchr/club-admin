@@ -29,12 +29,12 @@ function JubileesTable({
 		<section className="mt-8">
 			<h3 className="text-lg font-semibold text-sky-900">{title}</h3>
 			<div className="mt-2 overflow-x-auto rounded border border-slate-200">
-				<table className="w-full text-left text-sm">
+				<table className="w-full text-left text-sm table-fixed">
 					<thead className="border-b border-slate-200 bg-slate-50">
 						<tr>
-							<th className="px-3 py-2 font-medium">Name</th>
-							<th className="px-3 py-2 font-medium">Jahre</th>
-							<th className="px-3 py-2 font-medium">{dateLabel}</th>
+							<th className="w-1/3 px-3 py-2 font-medium">Name</th>
+							<th className="w-1/3 px-3 py-2 font-medium">Jahre</th>
+							<th className="w-1/3 px-3 py-2 font-medium">{dateLabel}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -54,7 +54,7 @@ function JubileesTable({
 									className="border-b border-slate-100 last:border-0"
 								>
 									<td className="px-3 py-2">
-										{r.lastName}, {r.firstName}
+										{r.firstName} {r.lastName}
 									</td>
 									<td className="px-3 py-2 tabular-nums">{r.years}</td>
 									<td className="px-3 py-2">
@@ -91,7 +91,7 @@ export function MembersTile() {
 						aria-label="Mitglieder nach Mitgliedschaft"
 					>
 						{slices.map((s) => (
-							<polygon key={s.membership} points={s.points} fill={s.color} />
+							<path key={s.membership} d={s.path} fill={s.color} />
 						))}
 					</svg>
 					<ul className="space-y-1 text-sm">
@@ -140,9 +140,6 @@ export function JubilaeenSection() {
 
 	return (
 		<section className="mt-8">
-			<h2 className="text-xl font-semibold text-sky-900">
-				Jubiläen {jubilees.clubYearStartYear}
-			</h2>
 			<JubileesTable
 				title="Geburtstag"
 				rows={sortJubilees(jubilees.anniversaries)}
@@ -160,7 +157,6 @@ export function JubilaeenSection() {
 export function Dashboard() {
 	return (
 		<div className="px-8 pb-8">
-			<h2 className="mt-4 text-xl font-semibold text-sky-900">Übersicht</h2>
 			<div className="mt-4 grid gap-4 md:grid-cols-2">
 				<MembersTile />
 				<InvoicesTile />

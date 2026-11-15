@@ -1,9 +1,11 @@
+using backend.Settings;
+
 namespace backend.Invoicing;
 
 public record InvoiceCreationResult(Invoice? Invoice, string? Error);
 
 /// <summary>
-/// Creates a Rechnung in one DB transaction: insert Invoice, lines and Created status change, obtain the ID,
+/// Creates an Invoice in one DB transaction: insert Invoice, lines and Created status change, obtain the ID,
 /// render the PDF, upload it, commit. Any failure rolls back; the lost ID leaves an accepted gap in the numbering.
 /// </summary>
 public class InvoiceCreator(
@@ -57,9 +59,9 @@ public class InvoiceCreator(
             db.Invoices.Add(invoice);
             await db.SaveChangesAsync(ct);
 
-            // The Gläubigerreferenz derives from the Rechnungsnummer, so it is known as soon as the ID
+            // The Creditor Reference derives from the Invoice Number, so it is known as soon as the ID
             // is. It is persisted in its own save, before the PDF rendering: a rendering failure (e.g.
-            // missing native graphics in a headless environment) must never leave a Rechnung without its
+            // missing native graphics in a headless environment) must never leave an Invoice without its
             // reference.
             var bill = QrBillSlip.Build(
                 creditor,
@@ -68,9 +70,9 @@ public class InvoiceCreator(
                 debtor
             );
             invoice.Reference = bill.Reference;
-            // Persist the Gläubigerreferenz in its own save, before the PDF rendering: the reference is
-            // known as soon as the Rechnungsnummer is, and a rendering failure (e.g. missing native
-            // graphics in a headless environment) must never leave a Rechnung without its reference.
+            // Persist the Creditor Reference in its own save, before the PDF rendering: the reference is
+            // known as soon as the Invoice Number is, and a rendering failure (e.g. missing native
+            // graphics in a headless environment) must never leave an Invoice without its reference.
             await db.SaveChangesAsync(ct);
 
             var addressLines = InvoiceDocument.AddressLines(

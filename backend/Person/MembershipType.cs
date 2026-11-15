@@ -30,8 +30,8 @@ public static partial class MembershipTypeExtensions
 
     /// <summary>
     /// Parses the value of the "Mitgliedschaft" column of the member list CSV into a membership
-    /// type, applying the importer's mapping ("Folgemitglied" is a Familienmitglied, "Gönner" is
-    /// a Gönner:in). An empty value stays Unknown, an unrecognized value throws.
+    /// type, applying the importer's mapping ("Folgemitglied" is a Family member, "Gönner" is
+    /// a Patron:in). An empty value stays Unknown, an unrecognized value throws.
     /// </summary>
     public static MembershipType FromCsvValue(string? value)
     {

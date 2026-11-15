@@ -48,7 +48,7 @@ public static class InvoiceQueries
         invoices.AsNoTracking().Include(i => i.Lines).Include(i => i.StatusChanges);
 }
 
-/// <summary>Maps a Rechnung to its API shapes. Dates and times are shown in Europe/Zurich.</summary>
+/// <summary>Maps an Invoice to its API shapes. Dates and times are shown in Europe/Zurich.</summary>
 public static class InvoiceMapping
 {
     public static string DisplayName(PersonEntity p) => $"{p.LastName} {p.FirstName}";

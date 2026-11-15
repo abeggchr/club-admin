@@ -15,7 +15,7 @@ public class AuthTests : IClassFixture<LocalPostgresFixture>
     }
 
     [Theory]
-    [InlineData("/api/persons")]
+    [InlineData("/api/person")]
     [InlineData("/api/accounts")]
     [InlineData("/api/settings")]
     public async Task Anonymous_api_request_gets_401(string path)
@@ -35,7 +35,7 @@ public class AuthTests : IClassFixture<LocalPostgresFixture>
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, "anna@example.ch");
 
-        var response = await client.GetAsync("/api/persons");
+        var response = await client.GetAsync("/api/person");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

@@ -1,9 +1,9 @@
 namespace backend.Accounting;
 
-/// <summary>Pure validation rules for a single Buchung. Return a German error message, or null when valid.</summary>
+/// <summary>Pure validation rules for a single Entry. Return a German error message, or null when valid.</summary>
 public static class EntryRules
 {
-    /// <summary>Everything about a Buchung except its date, which belongs to its Bewegung.</summary>
+    /// <summary>Everything about an Entry except its date, which belongs to its Transaction.</summary>
     public static string? ValidateLine(
         ChartOfAccounts chart,
         string? text,
@@ -21,7 +21,7 @@ public static class EntryRules
         {
             return $"Das Konto {accountNumber} existiert nicht.";
         }
-        // An edited Buchung keeps resolving its Konto even if that Konto was deactivated since.
+        // An edited Entry keeps resolving its Account even if that Account was deactivated since.
         if (!account.Active && accountNumber != existingAccountNumber)
         {
             return $"Das Konto {account.Number} {account.Name} ist inaktiv.";

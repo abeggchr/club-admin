@@ -1,8 +1,8 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { MdClose } from "react-icons/md";
+import { AccountPicker } from "../accounting/AccountPicker";
 import { formatChf } from "../accounting/amount";
-import { KontoPicker } from "../accounting/KontoPicker";
 import { personsQueryOptions } from "../persons/api";
 import { PersonPicker } from "../persons/PersonPicker";
 import { personLabel } from "../persons/personFilter";
@@ -145,7 +145,7 @@ export function CreatePanel({ onDone }: { onDone: () => void }) {
 					<div className="flex gap-3">
 						<label className="flex flex-[2] flex-col text-sm">
 							Konto
-							<KontoPicker
+							<AccountPicker
 								value={line.account}
 								onChange={(account) => patchLine(i, { account })}
 								className={input}

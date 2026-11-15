@@ -12,7 +12,7 @@ import {
 } from "./api";
 import { DiscountsSection } from "./DiscountsSection";
 
-/** Jahresbeiträge: creates the Rechnungen for all active members with one Textvorlage. */
+/** Annual Fees: creates the Invoices for all active members with one Text Template. */
 export function AnnualFeesDialog({
 	dialogRef,
 }: {

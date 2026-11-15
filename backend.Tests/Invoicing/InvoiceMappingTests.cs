@@ -40,7 +40,7 @@ public class InvoiceMappingTests
     public void List_and_detail_show_the_Bezahlt_status_for_a_paid_Rechnung()
     {
         // The Created change comes first; the Paid change (timestamped with the paying movement's booking
-        // date) is the last, so it is the current status of the Rechnung.
+        // date) is the last, so it is the current status of the Invoice.
         var created = new DateTime(2026, 1, 8, 12, 0, 0, DateTimeKind.Utc);
         var paidAt = new DateTime(2026, 2, 9, 23, 0, 0, DateTimeKind.Utc);
         var invoice = Invoice("RF340042");
@@ -78,7 +78,7 @@ public class InvoiceMappingTests
         Assert.Equal("0042", item.Number);
         Assert.Equal("Created", item.Status);
         // The list view does not show the reference (spec #59: detail view only) or PaidBy
-        // (ticket #61: the status is shown, the paying Bewegung's id is detail-only).
+        // (ticket #61: the status is shown, the paying Transaction's id is detail-only).
         Assert.False(
             typeof(InvoiceListItemDto).GetProperties().Any(p => p.Name == "Reference"),
             "InvoiceListItemDto must not gain a Reference property in this change."
@@ -109,7 +109,7 @@ public class InvoiceMappingTests
         Assert.Single(migrationFiles);
         var migration = File.ReadAllText(migrationFiles.Single());
 
-        // AddColumn on Invoices: varchar(35), not nullable, default '' so pre-existing Rechnungen never
+        // AddColumn on Invoices: varchar(35), not nullable, default '' so pre-existing Invoices never
         // match a payment.
         Assert.Contains("name: \"Reference\"", migration);
         Assert.Contains("table: \"Invoices\"", migration);

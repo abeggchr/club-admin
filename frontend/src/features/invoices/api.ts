@@ -34,9 +34,9 @@ export type InvoiceDetail = {
 	lines: { text: string; amount: number; accountNumber: number }[];
 	total: number;
 	status: string;
-	/** Swiss QR-bill Gläubigerreferenz (RF8008); "" for Rechnungen created before it was stored. */
+	/** Swiss QR-bill Creditor Reference (RF8008); "" for Invoices created before it was stored. */
 	reference: string;
-	/** The id of the Bewegung that first covered the total, or null. */
+	/** The id of the Transaction that first covered the total, or null. */
 	paidBy: number | null;
 	statusHistory: { status: string; timestamp: string }[];
 };
@@ -51,7 +51,7 @@ export function invoicePdfUrl(id: number): string {
 	return `/api/invoices/${id}/pdf`;
 }
 
-/** Creates the Rechnung (the backend renders and stores the PDF); rejects with the backend's message. */
+/** Creates the Invoice (the backend renders and stores the PDF); rejects with the backend's message. */
 export function createInvoice(input: InvoiceInput): Promise<unknown> {
 	return requestJson("/api/invoices", "POST", input);
 }
@@ -62,7 +62,7 @@ export type AnnualFeesSummary = {
 	warnings: string[];
 };
 
-/** Prefixed with the discounts key so that changing an Ermässigung refreshes it. */
+/** Prefixed with the discounts key so that changing a Discount refreshes it. */
 export const annualFeesPreviewQueryOptions = queryOptions({
 	queryKey: ["membership-discounts", "annual-fees-preview"],
 	queryFn: () =>
@@ -72,14 +72,14 @@ export const annualFeesPreviewQueryOptions = queryOptions({
 		}>("/api/invoices/annual-fees/preview"),
 });
 
-/** Creates the Jahresbeitrag Rechnungen for all active members (no preview, no duplicate check). */
+/** Creates the Annual Fee Invoices for all active members (no preview, no duplicate check). */
 export function createAnnualFeeInvoices(
 	templateId: number,
 ): Promise<AnnualFeesSummary> {
 	return requestJson("/api/invoices/annual-fees", "POST", { templateId });
 }
 
-/** Ermässigung: a Person's percentage discount on the Jahresbeitrag. */
+/** Discount: a Person's percentage discount on the Annual Fee. */
 export type MembershipDiscount = {
 	personId: number;
 	percent: number;
@@ -88,21 +88,22 @@ export type MembershipDiscount = {
 
 export const membershipDiscountsQueryOptions = queryOptions({
 	queryKey: ["membership-discounts"],
-	queryFn: () => getJson<MembershipDiscount[]>("/api/membership-discounts"),
+	queryFn: () =>
+		getJson<MembershipDiscount[]>("/api/invoices/membership-discounts"),
 });
 
-/** Adds or replaces the Ermässigung of a Person; rejects with the backend's message. */
+/** Adds or replaces the Discount of a Person; rejects with the backend's message. */
 export function saveMembershipDiscount(
 	discount: MembershipDiscount,
 ): Promise<MembershipDiscount> {
-	return requestJson("/api/membership-discounts", "PUT", discount);
+	return requestJson("/api/invoices/membership-discounts", "PUT", discount);
 }
 
 export async function deleteMembershipDiscount(
 	personId: number,
 ): Promise<void> {
 	await ensureOk(
-		await apiFetch(`/api/membership-discounts/${personId}`, {
+		await apiFetch(`/api/invoices/membership-discounts/${personId}`, {
 			method: "DELETE",
 		}),
 	);

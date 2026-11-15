@@ -1,4 +1,4 @@
-/** The selected row: a Bewegung, or a Buchung (with the Bewegung it belongs to). */
+/** The selected row: a Transaction, or an Entry (with the Transaction it belongs to). */
 export type Selection =
 	| { kind: "transaction"; id: number }
 	| { kind: "entry"; id: number; transactionId: number };
@@ -6,7 +6,7 @@ export type Selection =
 /** The rows shown in the lighter highlight tint (the selected row itself is not included). */
 export type Highlight = { transactionIds: number[]; entryIds: number[] };
 
-/** Which Bewegungen and Buchungen are highlighted because of the selection. */
+/** Which Transactions and Entries are highlighted because of the selection. */
 export function highlightOf(
 	selection: Selection | null,
 	entries: { id: number; transactionId: number }[],

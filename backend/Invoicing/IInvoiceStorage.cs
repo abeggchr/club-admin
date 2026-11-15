@@ -1,6 +1,6 @@
 namespace backend.Invoicing;
 
-/// <summary>Stores the rendered Rechnung PDFs, addressed by Rechnungsnummer.</summary>
+/// <summary>Stores the rendered Invoice PDFs, addressed by Invoice Number.</summary>
 public interface IInvoiceStorage
 {
     Task PutAsync(int number, byte[] pdf, CancellationToken ct = default);

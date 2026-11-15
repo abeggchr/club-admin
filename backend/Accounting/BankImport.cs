@@ -4,17 +4,18 @@ using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
+using backend.Shared;
 
 namespace backend.Accounting;
 
+using backend.Invoicing;
 using Camt = Iso20022.Contracts.Camt05300110;
 using Person = backend.Person.Person;
-using backend.Invoicing;
 
-/// <summary>A position of an open Rechnung as seen by the import: its Kontoplan hint and amount.</summary>
+/// <summary>A position of an open Invoice as seen by the import: its Account hint and amount.</summary>
 public record ImportInvoiceLine(string Text, int AccountNumber, decimal Amount);
 
-/// <summary>An open Rechnung as seen by the import: the QR-bill reference, the total, the positions, how much is already paid, and whether it is already Bezahlt (terminal: it never matches again).</summary>
+/// <summary>An open Invoice as seen by the import: the QR-bill reference, the total, the positions, how much is already paid, and whether it is already Paid (terminal: it never matches again).</summary>
 public record ImportInvoice(
     int Id,
     string Reference,
@@ -24,26 +25,24 @@ public record ImportInvoice(
     IReadOnlyList<ImportInvoiceLine> Lines
 );
 
-/// <summary>A Buchung the import proposes for a matched Bewegung: the position text, the Kontoplan account and the signed amount.</summary>
+/// <summary>An Entry the import proposes for a matched Transaction: the position text, the Account and the signed amount.</summary>
 public record ImportEntry(string Text, int AccountNumber, decimal Amount);
 
 /// <summary>
-/// The state the bank import validates against: the club settings (Klub-IBAN, Startdatum), the
+/// The state the bank import validates against: the club settings (Iban, start date), the
 /// BankReferences already stored, all Persons (including former members) for counterparty matching, the
-/// open Rechnungen and their positions (for matching a payment to its Rechnung), and the Kontoplan
-/// (to resolve the Konten the auto-entries would book to).
+/// open Invoices and their positions (for matching a payment to its Invoice), and the Chart of Accounts
+/// (to resolve the Accounts the auto-entries would book to).
 /// </summary>
 public record ImportSnapshot(
-    Settings Settings,
+    Settings.Settings Settings,
     IReadOnlyCollection<string> ExistingBankReferences,
     IReadOnlyCollection<Person> Persons,
     IReadOnlyCollection<ImportInvoice> Invoices,
     ChartOfAccounts? Chart
-)
-{
-}
+) { }
 
-/// <summary>One imported Bewegung to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId. A matched Bewegung additionally carries the Rechnung it covers, the Buchungen the import proposes for it, — when this Bewegung overpays, the excess booked to Konto 3600 (Spenden) — and, when this Bewegung is the first to cover the total, the UTC timestamp of the Paid status change (the movement's booking date in Zurich time).</summary>
+/// <summary>One imported Transaction to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId. A matched Transaction additionally carries the Invoice it covers, the Entries the import proposes for it, — when this Transaction overpays, the excess booked to Account 3600 (Spenden) — and, when this Transaction is the first to cover the total, the UTC timestamp of the Paid status change (the movement's booking date in Zurich time).</summary>
 public record ImportedTransaction(
     DateOnly Date,
     decimal Amount,
@@ -59,7 +58,7 @@ public record ImportedTransaction(
 /// <summary>One problem found in one file; File is null for a problem of the zip itself.</summary>
 public record ImportError(string? File, string Message);
 
-/// <summary>The outcome of the bank import: the new Bewegungen plus the skipped duplicates, or the per-file errors. When Errors is non-empty, nothing may be saved.</summary>
+/// <summary>The outcome of the bank import: the new Transactions plus the skipped duplicates, or the per-file errors. When Errors is non-empty, nothing may be saved.</summary>
 public record BankImportResult(
     List<ImportedTransaction> Transactions,
     int SkippedDuplicates,
@@ -68,7 +67,7 @@ public record BankImportResult(
 
 /// <summary>
 /// The pure bank import: reads every CAMT.053 file of an eBanking zip entirely in memory and creates one
-/// Bewegung per transaction: an entry without TxDtls, or one of its TxDtls for a batch entry.
+/// Transaction per transaction: an entry without TxDtls, or one of its TxDtls for a batch entry.
 /// It does no database access, parses the CAMT.053 files with the Iso20022 library's contracts, and never uses
 /// entry names as file paths. The counterparty of each transaction is linked to the matching Person when the bank
 /// address matches; the parser and the matcher are internal details of this module.
@@ -89,10 +88,10 @@ public static class BankImport
     /// <summary>...and about this many bytes in total, uncompressed.</summary>
     private const long MaxUncompressedBytes = 10 * 1024 * 1024;
 
-    /// <summary>The Kontoplan account the overpayment of a matched credit is booked to (Spenden).</summary>
+    /// <summary>The Chart of Accounts Account the overpayment of a matched credit is booked to (Spenden).</summary>
     private const int OverpaymentAccount = 3600;
 
-    /// <summary>The maximum length of a Bewegung text, the same limit as the Text column.</summary>
+    /// <summary>The maximum length of a Transaction text, the same limit as the Text column.</summary>
     private const int MaxTextLength = 500;
 
     /// <summary>The minimum similarity for a street or house number to count as nearly identical.</summary>
@@ -195,7 +194,6 @@ public static class BankImport
             ? new BankImportResult([], 0, context.Errors)
             : new BankImportResult(context.Transactions, context.SkippedDuplicates, []);
     }
-
 
     /// <summary>
     /// Reads one CAMT.053 file into the library's contracts. The library has no camt.053.001.08 contracts, only
@@ -356,7 +354,7 @@ public static class BankImport
 
         if (txDtls.Count > 1)
         {
-            // A batch entry: one Bewegung per TxDtls; the sign and the booking date come from the entry.
+            // A batch entry: one Transaction per TxDtls; the sign and the booking date come from the entry.
             var txAmounts = new decimal[txDtls.Count];
             for (var i = 0; i < txDtls.Count; i++)
             {
@@ -400,7 +398,7 @@ public static class BankImport
     }
 
     /// <summary>
-    /// One Bewegung for one transaction: for a simple entry the entry itself (transaction is null when it has
+    /// One Transaction for one transaction: for a simple entry the entry itself (transaction is null when it has
     /// no TxDtls), for a batch entry one of its TxDtls. The transaction's own amount, Ustrd text and
     /// TxDtls/Refs/AcctSvcrRef are used; the sign comes from the entry's CdtDbtInd.
     /// </summary>
@@ -423,7 +421,7 @@ public static class BankImport
 
         var credit = direction == Camt.CreditDebitCode.CRDT;
         var signedAmount = credit ? amount : -amount;
-        // An imported Bewegung has no Buchungen, so only the date and amount rules apply.
+        // An imported Transaction has no Entries, so only the date and amount rules apply.
         if (TransactionRules.Validate(context.Snapshot.Settings, date, signedAmount) is { } error)
         {
             context.Errors.Add(new ImportError(file, error));
@@ -460,7 +458,7 @@ public static class BankImport
         // The Text column is varchar(500), so the final text must fit it, prefixed or not.
         text = text is null ? null : (text.Length > MaxTextLength ? text[..MaxTextLength] : text);
 
-        // Try to match the payment to its open Rechnung and auto-book it.
+        // Try to match the payment to its open Invoice and auto-book it.
         var match = MatchInvoice(transaction, signedAmount, credit, date, context.Snapshot);
         context.Transactions.Add(
             new ImportedTransaction(
@@ -485,7 +483,9 @@ public static class BankImport
     private static Camt.PartyIdentification135? CounterpartyPartyOf(
         Camt.EntryTransaction12? transaction,
         bool credit
-    ) => (credit ? transaction?.RltdPties?.Dbtr : transaction?.RltdPties?.Cdtr)?.Item as Camt.PartyIdentification135;
+    ) =>
+        (credit ? transaction?.RltdPties?.Dbtr : transaction?.RltdPties?.Cdtr)?.Item
+        as Camt.PartyIdentification135;
 
     private static string? CounterpartyNameOf(Camt.PartyIdentification135? party)
     {
@@ -794,11 +794,11 @@ public static class BankImport
     }
 
     /// <summary>
-    /// Tries to match a payment to its open Rechnung and build the auto-entries. Returns null (no match) when:
-    /// there is no QR-bill reference, no matching Rechnung, the Rechnung is already paid, the credit is an
-    /// underpayment, the debit's magnitude differs from the outstanding amount, a line's Konto is missing or
-    /// inactive, an overpayment Buchung is needed but Konto 3600 is missing or inactive, or the Buchungen
-    /// do not sum to the movement's amount. An overpaying credit additionally books the excess to Konto 3600.
+    /// Tries to match a payment to its open Invoice and build the auto-entries. Returns null (no match) when:
+    /// there is no QR-bill reference, no matching Invoice, the Invoice is already paid, the credit is an
+    /// underpayment, the debit's magnitude differs from the outstanding amount, a line's Account is missing or
+    /// inactive, an overpayment Entry is needed but Account 3600 is missing or inactive, or the Entries
+    /// do not sum to the movement's amount. An overpaying credit additionally books the excess to Account 3600.
     /// A credit that completes the total returns the PaidAt timestamp
     /// (the booking date as a UTC instant) for the Paid status change; a debit never does.
     /// </summary>
@@ -827,7 +827,7 @@ public static class BankImport
             return null;
         }
 
-        // A reference collision: two Rechnungen with the same non-empty reference → no match.
+        // A reference collision: two Invoices with the same non-empty reference → no match.
         var matches = snapshot.Invoices.Where(inv => inv.Reference == reference).ToList();
         if (matches.Count == 0 || matches.Count > 1)
         {
@@ -835,7 +835,7 @@ public static class BankImport
         }
         var invoice = matches[0];
 
-        // Once Bezahlt, always Bezahlt: no further match, so a re-import never re-books or re-sets PaidBy.
+        // Once Paid, always Paid: no further match, so a re-import never re-books or re-sets PaidBy.
         if (invoice.AlreadyPaid)
         {
             return null;
@@ -852,7 +852,7 @@ public static class BankImport
         var entries = new List<ImportEntry>();
         foreach (var line in invoice.Lines)
         {
-            // A missing or inactive line Konto → no match.
+            // A missing or inactive line Account → no match.
             var account = chart.Find(line.AccountNumber);
             if (account is null || !account.Active)
             {
@@ -863,7 +863,7 @@ public static class BankImport
             entries.Add(new ImportEntry(line.Text, line.AccountNumber, line.Amount * sign));
         }
 
-        // Overpayment (spec §3/§5): an overpaying credit books the excess to Konto 3600 (Spenden).
+        // Overpayment (spec §3/§5): an overpaying credit books the excess to Account 3600 (Spenden).
         decimal? overpaymentAmount = null;
         var excess = signedAmount - outstanding;
         if (excess > 0)
@@ -883,7 +883,7 @@ public static class BankImport
             );
         }
 
-        // The Buchungen must sum to the movement's amount.
+        // The Entries must sum to the movement's amount.
         if (entries.Sum(e => e.Amount) != signedAmount)
         {
             return null;
@@ -897,14 +897,14 @@ public static class BankImport
         return (invoice.Id, entries.AsReadOnly(), overpaymentAmount, paidAt);
     }
 
-    /// <summary>The Rechnungsnummern of the movements that were auto-booked, in import order (spec #44 §7, the response's bookedInvoices).</summary>
+    /// <summary>The Invoice Numbers of the movements that were auto-booked, in import order (spec #44 §7, the response's bookedInvoices).</summary>
     public static List<int> BookedInvoiceIds(BankImportResult result) =>
-        result.Transactions
-            .Where(t => t.MatchedInvoiceId is not null)
+        result
+            .Transactions.Where(t => t.MatchedInvoiceId is not null)
             .Select(t => t.MatchedInvoiceId!.Value)
             .ToList();
 
-    /// <summary>The count of imported movements (credits and debits) without Buchungen (spec #44 §7, the response's unmatched).</summary>
+    /// <summary>The count of imported movements (credits and debits) without Entries (spec #44 §7, the response's unmatched).</summary>
     public static int UnmatchedCount(BankImportResult result) =>
         result.Transactions.Count(t => t.AutoEntries.Count == 0);
 

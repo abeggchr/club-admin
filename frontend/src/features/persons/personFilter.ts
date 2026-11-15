@@ -31,22 +31,22 @@ export function filterPersons(
 		);
 }
 
-/** Whether `candidate` may be the Zahler of `person`: not the Person themselves, and not someone who already has a Zahler. */
+/** Whether `candidate` may be the Payer of `person`: not the Person themselves, and not someone who already has a Payer. */
 export function canBePayerOf(candidate: Person, person: Person): boolean {
 	return candidate.id !== person.id && candidate.payerId === null;
 }
 
-/** Persons who can be the Zahler of `person`. */
+/** Persons who can be the Payer of `person`. */
 export function payerCandidates(persons: Person[], person: Person): Person[] {
 	return persons.filter((p) => canBePayerOf(p, person));
 }
 
-/** Whether `person` may have a Zahler: a Person who is someone's Zahler may not. */
+/** Whether `person` may have a Payer: a Person who is someone's Payer may not. */
 export function canHavePayer(persons: Person[], person: Person): boolean {
 	return personsPaidBy(persons, person).length === 0;
 }
 
-/** The Persons for whom `payer` is the Zahler. */
+/** The Persons for whom `payer` is the Payer. */
 export function personsPaidBy(persons: Person[], payer: Person): Person[] {
 	return persons.filter((p) => p.payerId === payer.id);
 }

@@ -24,7 +24,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 export const personsSummaryQueryOptions = queryOptions({
 	queryKey: ["dashboard", "persons-summary"],
-	queryFn: () => fetchJson<PersonsSummary>("/api/persons/summary"),
+	queryFn: () => fetchJson<PersonsSummary>("/api/person/summary"),
 });
 
 export const invoicesSummaryQueryOptions = queryOptions({
@@ -32,7 +32,7 @@ export const invoicesSummaryQueryOptions = queryOptions({
 	queryFn: () => fetchJson<InvoicesSummary>("/api/invoices/summary"),
 });
 
-/** The fixed color of each Mitgliedschaft, pie slice and legend alike. */
+/** The fixed color of each Membership, pie slice and legend alike. */
 export const membershipColors: Record<MembershipType, string> = {
 	family: "#0369a1",
 	single: "#0ea5e9",
@@ -50,9 +50,9 @@ export type MembershipPieSlice = PieSlice & {
 };
 
 /**
- * The active Personen per Mitgliedschaft as pie slices: ordered by count descending,
+ * The active Persons per Membership as pie slices: ordered by count descending,
  * ties in enum order (the backend already delivers this order), 0 counts left out,
- * each slice in the fixed color of its Mitgliedschaft. Unbekannt counts toward the total
+ * each slice in the fixed color of its Membership. Unknown counts toward the total
  * but gets no slice (no fixed color).
  */
 export function membershipPie(summary: PersonsSummary): MembershipPieSlice[] {

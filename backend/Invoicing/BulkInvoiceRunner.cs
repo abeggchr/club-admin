@@ -3,7 +3,7 @@ namespace backend.Invoicing;
 public record BulkInvoiceSummary(int Created, IReadOnlyList<string> Failed, IReadOnlyList<string> Warnings);
 
 /// <summary>
-/// Creates the planned Rechnungen one by one; a failure is reported and never stops the run.
+/// Creates the planned Invoices one by one; a failure is reported and never stops the run.
 /// Payers are created Z to A, so the newest-first invoice list reads A to Z.
 /// </summary>
 public static class BulkInvoiceRunner

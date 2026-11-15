@@ -7,20 +7,20 @@ namespace backend.Person;
 public static class ClubNewsRecipientRules
 {
     /// <summary>
-    /// Active (Austritt in the future or none) at <paramref name="at"/>, or flagged with
-    /// "Newsletter": the Jahresbeiträge activity rule does not apply, so a Person who never
+    /// Active (exit date in the future or none) at <paramref name="at"/>, or flagged with
+    /// "Newsletter": the Annual Fees activity rule does not apply, so a Person who never
     /// joined but is flagged still receives the club news.
     /// </summary>
     public static bool ReceivesNews(Person p, DateOnly at) =>
         p.ReceivesClubNews || MembershipFeeRules.IsActive(p, at);
 
-    /// <summary>Every recipient, in Id order (the order the Personen appear in the table).</summary>
+    /// <summary>Every recipient, in Id order (the order the Persons appear in the table).</summary>
     public static IEnumerable<Person> Recipients(IEnumerable<Person> persons, DateOnly at) =>
         persons.Where(p => ReceivesNews(p, at)).OrderBy(p => p.Id);
 }
 
 /// <summary>
-/// Builds the Versandliste: one row per postal address, "Strasse Hausnummer", "PLZ Ort" and the
+/// Builds the Mailing List: one row per postal address, "Strasse Hausnummer", "PLZ Ort" and the
 /// stored Land. All recipients at one complete address (Strasse, Hausnummer, PLZ, Ort) share a row
 /// with their names, one per line; a recipient with an incomplete address gets a row of their own
 /// with whatever address parts exist. No warning is emitted for incomplete addresses.
@@ -92,7 +92,7 @@ public static class MailingListRules
     /// <summary>
     /// The grouping key: all four address parts present, trimmed, case-insensitive; null when
     /// any part is missing (such a recipient is a row of their own). The Land is deliberately
-    /// not part of the key: the Jahresbeiträge run groups by the postal address only as well.
+    /// not part of the key: the Annual Fees run groups by the postal address only as well.
     /// </summary>
     private static string? AddressKey(Person p)
     {
@@ -104,7 +104,7 @@ public static class MailingListRules
 }
 
 /// <summary>
-/// The Versandliste CSV: ";"-separated and CRLF, like the Personen export, so it opens in the
+/// The Mailing List CSV: ";"-separated and CRLF, like the Persons export, so it opens in the
 /// local German Excel. A name row is one cell with one name per line. The string is BOM-free;
 /// the endpoint prepends the UTF-8 BOM.
 /// </summary>

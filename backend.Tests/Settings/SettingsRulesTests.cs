@@ -1,6 +1,6 @@
-using backend.Accounting;
+using backend.Settings;
 
-namespace backend.Tests.Accounting;
+namespace backend.Tests.Settings;
 
 public class SettingsRulesTests
 {

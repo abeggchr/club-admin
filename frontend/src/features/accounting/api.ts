@@ -47,7 +47,7 @@ export async function getJson<T>(url: string): Promise<T> {
 export const accountsQueryOptions = queryOptions({
 	queryKey: ["accounts"],
 	queryFn: () => getJson<Account[]>("/api/accounts"),
-	staleTime: Infinity, // the Kontoplan only changes with a deploy
+	staleTime: Infinity, // the Chart of Accounts only changes with a deploy
 });
 
 async function fetchSettings(): Promise<Settings | null> {
@@ -100,7 +100,7 @@ export const transactionsQueryOptions = queryOptions({
 	queryFn: () => getJson<Transaction[]>("/api/transactions"),
 });
 
-/** Creates a Bewegung (id null) or replaces an existing one, with all its Buchungen in one request. */
+/** Creates a Transaction (id null) or replaces an existing one, with all its Entries in one request. */
 export function saveTransaction(
 	id: number | null,
 	input: TransactionInput,
@@ -112,7 +112,7 @@ export function saveTransaction(
 	);
 }
 
-/** Deletes a Bewegung together with any Buchungen still stored for it. */
+/** Deletes a Transaction together with any Entries still stored for it. */
 export async function deleteTransaction(id: number): Promise<void> {
 	await ensureOk(
 		await apiFetch(`/api/transactions/${id}`, { method: "DELETE" }),
@@ -122,9 +122,9 @@ export async function deleteTransaction(id: number): Promise<void> {
 export type TransactionImportResult = {
 	imported: number;
 	skippedDuplicates: number;
-	/** The Rechnungsnummern of the movements that were auto-booked, in import order. */
+	/** The Invoice Numbers of the movements that were auto-booked, in import order. */
 	bookedInvoices: number[];
-	/** The count of imported movements that came in without Buchungen. */
+	/** The count of imported movements that came in without Entries. */
 	unmatched: number;
 };
 
@@ -144,7 +144,7 @@ export class TransactionImportFailed extends Error {
 	}
 }
 
-/** Uploads the eBanking zip as-is; the backend creates one Bewegung per simple CAMT entry. */
+/** Uploads the eBanking zip as-is; the backend creates one Transaction per simple CAMT entry. */
 export async function importTransactions(
 	file: File,
 ): Promise<TransactionImportResult> {
@@ -161,7 +161,7 @@ export async function importTransactions(
 	throw new Error(data?.error ?? `Backend returned ${res.status}`);
 }
 
-/** Refreshes everything derived from the journal after a Bewegung or the settings changed. */
+/** Refreshes everything derived from the journal after a Transaction or the settings changed. */
 export async function invalidateJournalQueries(
 	queryClient: QueryClient,
 ): Promise<void> {
@@ -176,9 +176,9 @@ export async function invalidateJournalQueries(
 
 export type ExpectedBalance = {
 	date: string;
-	/** Erwarteter Kontostand from the Buchungen as of the date. */
+	/** Expected Balance from the Entries as of the date. */
 	balance: number | null;
-	/** Kontostand from the Bewegungen (the bank's view) as of the date. */
+	/** running balance from the Transactions (the bank's view) as of the date. */
 	transactionBalance: number | null;
 	/** True when the two views disagree; "Kontostand heute" turns red. */
 	differs: boolean;

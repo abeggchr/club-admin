@@ -16,22 +16,22 @@ export type Entry = {
 	amount: number;
 };
 
-/** A journal row: the Buchung plus the running Erwarteter Kontostand up to and including it. */
+/** A journal row: the Entry plus the running Expected Balance up to and including it. */
 export type JournalEntry = Entry & { transactionId: number; balance: number };
 
-/** A Bewegung with the Kontostand after it; its Buchungen are the journal rows with the same transactionId. */
+/** A Transaction with the running balance after it; its Entries are the journal rows with the same transactionId. */
 export type Transaction = {
 	id: number;
 	date: string;
-	/** Signed from the bank's point of view: Einzahlung positive, Auszahlung negative. */
+	/** Signed from the bank's point of view: Deposit positive, Withdrawal negative. */
 	amount: number;
-	/** Optional free text describing this Bewegung. */
+	/** Optional free text describing this Transaction. */
 	text: string | null;
-	/** The optional Person this Bewegung is linked to. */
+	/** The optional Person this Transaction is linked to. */
 	personId: number | null;
-	/** The bank's reference of an imported Bewegung; null for manual ones. */
+	/** The bank's reference of an imported Transaction; null for manual ones. */
 	bankReference: string | null;
-	/** The Ids of its Buchungen; empty means it is not booked yet ("Keine Buchung"). */
+	/** The Ids of its Entries; empty means it is not booked yet ("Keine Buchung"). */
 	entryIds: number[];
 	balance: number;
 };

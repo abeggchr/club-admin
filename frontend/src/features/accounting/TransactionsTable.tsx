@@ -12,7 +12,7 @@ type Props = {
 	onSelect: (id: number) => void;
 };
 
-/** The Bewegungen, newest first, each with the Kontostand after it. */
+/** The Transactions, newest first, each with the running balance after it. */
 export function TransactionsTable({
 	transactions,
 	selectedId,

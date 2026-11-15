@@ -2,6 +2,7 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { MdClose } from "react-icons/md";
 import { PersonPicker } from "../persons/PersonPicker";
+import { AccountPicker } from "./AccountPicker";
 import { formatChf } from "./amount";
 import {
 	accountsQueryOptions,
@@ -10,7 +11,6 @@ import {
 	saveTransaction,
 	settingsQueryOptions,
 } from "./api";
-import { KontoPicker } from "./KontoPicker";
 import {
 	addEntry,
 	canDelete,
@@ -37,14 +37,14 @@ function today(): string {
 const input = "rounded border border-slate-300 p-2";
 
 type Props = {
-	/** When set, the form edits this saved Bewegung (with its Buchungen) instead of creating a new one. */
+	/** When set, the form edits this saved Transaction (with its Entries) instead of creating a new one. */
 	transaction?: Transaction;
 	entries?: JournalEntry[];
-	/** The Buchung whose row gets the focus when set or changed. */
+	/** The Entry whose row gets the focus when set or changed. */
 	focusEntryId?: number | null;
 	/** Closes the form: "Abbrechen", and automatically after saving. */
 	onDone: () => void;
-	/** Called after the Bewegung was deleted (the form closes afterwards). */
+	/** Called after the Transaction was deleted (the form closes afterwards). */
 	onDeleted?: () => void;
 	/** Reports whether the form holds unsaved changes. */
 	onDirtyChange?: (dirty: boolean) => void;
@@ -69,14 +69,14 @@ export function EditPanel({
 	const [draft, setDraft] = useState(baseline);
 	const [errors, setErrors] = useState<DraftErrors | null>(null);
 	const [serverError, setServerError] = useState<string>();
-	// The date, amount, text and person of an imported Bewegung are bank facts; the form shows them read-only.
+	// The date, amount, text and person of an imported Transaction are bank facts; the form shows them read-only.
 	const imported = transaction?.bankReference != null;
 	const dirty = isDraftDirty(baseline, draft, accounts);
 	const rest = remainder(draft, accounts);
 	const deletable = canDelete(draft);
 	const savable = canSave(draft, accounts, settings?.startDate);
 	const textInputs = useRef<(HTMLInputElement | null)[]>([]);
-	// Latest draft for the focus effect, which must only re-run when the focused Buchung changes.
+	// Latest draft for the focus effect, which must only re-run when the focused Entry changes.
 	const draftRef = useRef(draft);
 	draftRef.current = draft;
 
@@ -224,7 +224,7 @@ export function EditPanel({
 					<div className="flex gap-3">
 						<label className="flex flex-[2] flex-col text-sm">
 							Konto
-							<KontoPicker
+							<AccountPicker
 								value={row.accountNumber}
 								onChange={(accountNumber) => patchRow(i, { accountNumber })}
 								className={input}

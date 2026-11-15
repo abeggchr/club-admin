@@ -1,42 +1,42 @@
 namespace backend.Invoicing;
 
 /// <summary>
-/// Rechnung: belongs to one Person, has one or more lines and status changes. Immutable after creation;
+/// Invoice: belongs to one Person, has one or more lines and status changes. Immutable after creation;
 /// no template reference, no copied person data and no stored total.
 /// </summary>
 public class Invoice
 {
     public int Id { get; set; }
     public int PersonId { get; set; }
-    /// <summary>Swiss QR-bill Gläubigerreferenz (RF8008), stored at creation; '' for Rechnungen created before it was stored.</summary>
+    /// <summary>Swiss QR-bill Creditor Reference (RF8008), stored at creation; '' for Invoices created before it was stored.</summary>
     public string Reference { get; set; } = "";
-    /// <summary>The id of the Bewegung that first covered the total; plain column, no foreign key (set only by the import).</summary>
+    /// <summary>The id of the Transaction that first covered the total; plain column, no foreign key (set only by the import).</summary>
     public int? PaidBy { get; set; }
     public List<InvoiceLine> Lines { get; set; } = [];
     public List<InvoiceStatusChange> StatusChanges { get; set; } = [];
 }
 
-/// <summary>Rechnungsposition.</summary>
+/// <summary>Invoice Line.</summary>
 public class InvoiceLine
 {
     public int Id { get; set; }
     public int InvoiceId { get; set; }
     public string Text { get; set; } = "";
     public decimal Amount { get; set; }
-    /// <summary>The Kontoplan account the amount will be booked to; a booking hint, not a Buchung (ADR 0004).</summary>
+    /// <summary>The Chart of Accounts Account the amount will be booked to; a booking hint, not an Entry (ADR 0004).</summary>
     public int AccountNumber { get; set; }
-    /// <summary>Zero-based position within the Rechnung.</summary>
+    /// <summary>Zero-based position within the Invoice.</summary>
     public int Position { get; set; }
 }
 
 public enum InvoiceStatus
 {
     Created,
-    /// <summary>Bezahlt: terminal, recorded when a Bewegung's signed amount covers the total; the paying Bewegung's id is in <see cref="Invoice.PaidBy"/>.</summary>
+    /// <summary>Paid: terminal, recorded when a Transaction's signed amount covers the total; the paying Transaction's id is in <see cref="Invoice.PaidBy"/>.</summary>
     Paid,
 }
 
-/// <summary>One lifecycle step of a Rechnung. The Rechnungsdatum is the date of the Created row.</summary>
+/// <summary>One lifecycle step of an Invoice. The Invoice Date is the date of the Created row.</summary>
 public class InvoiceStatusChange
 {
     public int Id { get; set; }
