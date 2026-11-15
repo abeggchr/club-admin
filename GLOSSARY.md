@@ -4,6 +4,8 @@ Language of the club's revenue-expenses accounting (Einnahmen-Ausgaben-Rechnung)
 
 ## Terms
 
+### Kontoplan & Buchhaltung
+
 **Kontoplan** (code: _ChartOfAccounts_):
 The club's list of accounts that every Buchung is assigned to.
 
@@ -12,6 +14,23 @@ One account in the Kontoplan, identified by a number and a name (e.g. 3400 Jahre
 
 **Kategorie** (code: _Category_):
 The grouping of Konten in the Kontoplan: Einnahmen (_Income_) or Ausgaben (_Expense_). The Kategorie of a Buchung's Konto decides whether it is revenue or expense.
+
+**Buchung** (code: _Entry_):
+One line of a Bewegung: a text, a Konto and a signed amount (money in is positive, money out is negative). It belongs to exactly one Bewegung and has no date of its own; it takes the date of its Bewegung. Whether it is revenue or expense follows from the Kategorie of its Konto.
+
+**Buchungsjournal** (code: _Journal_):
+The chronological list of all Buchungen, ordered by the date of their Bewegung. It is the only record of money movements; it can be edited freely.
+
+**Anfangssaldo** (code: _OpeningBalance_):
+The bank account balance (an amount and a start date) from which the Erwarteter Kontostand is counted. The Anfangssaldo, its start date, the club's IBAN (Klub-IBAN, code: _Iban_) and the Klubadresse are stored together as the club settings (code: _Settings_); all are required.
+
+**Erwarteter Kontostand** (code: _ExpectedBalance_):
+The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen whose Bewegung is dated up to that date. The user compares it by eye against the bank statement.
+
+**Zuvielzahlung** (code: the extra Buchung to Konto 3600 on an overpayment):
+When an imported payment exceeds the outstanding amount of its Rechnung, the excess is booked as an additional Buchung "Rechnung 0042" to Konto 3600 (Spenden).
+
+### Bank & Import
 
 **Bewegung** (code: _Transaction_):
 One money movement on the bank account: the bank's booking date and a signed amount, split into Buchungen. It may have zero Buchungen, in which case it is not booked yet and the table shows it as "Keine Buchung"; once it has at least one, the signed amounts of its Buchungen sum to its amount. Its direction follows from the sign of the amount and is not stored: it is an Einzahlung or an Auszahlung.
@@ -31,23 +50,10 @@ The bank's account server reference (AcctSvcrRef) of an imported booking. Unique
 **Keine Buchung** (code: a _Transaction_ without Entries):
 The state of a Bewegung without Buchungen: it is not booked yet. The Bewegungen table marks it with a "Keine Buchung" badge; it counts in the running Kontostand and adds nothing to the Buchungsjournal until Buchungen are added.
 
-**Buchung** (code: _Entry_):
-One line of a Bewegung: a text, a Konto and a signed amount (money in is positive, money out is negative). It belongs to exactly one Bewegung and has no date of its own; it takes the date of its Bewegung. Whether it is revenue or expense follows from the Kategorie of its Konto.
-
-**Buchungsjournal** (code: _Journal_):
-The chronological list of all Buchungen, ordered by the date of their Bewegung. It is the only record of money movements; it can be edited freely.
-
-**Anfangssaldo** (code: _OpeningBalance_):
-The bank account balance (an amount and a start date) from which the Erwarteter Kontostand is counted. The Anfangssaldo, its start date, the club's IBAN (Klub-IBAN, code: _Iban_) and the Klubadresse are stored together as the club settings (code: _Settings_); all are required.
-
 **Klub-IBAN** (code: _Iban_):
-The IBAN of the club's bank account (CH or LI, 21 characters, valid mod-97 checksum). The import checks each bank statement against it. A QR-IBAN (institution ID 30000-31999) is rejected.
+The IBAN of the club's bank account (CH or LI, 21 characters, valid mod-97 checksum). The import checks each bank statement against it. A QR-IBAN (institution ID 30000-31999) is rejected. Stored with the club settings (see Anfangssaldo).
 
-**Klubadresse** (code: _Name_, _Address_, _PostalCode_ and _City_ in _Settings_):
-The club's address as creditor of the QR-bill: Name, Adresse (one free-text line, e.g. "Sportweg 12"), PLZ and Ort. All four are required, with the QR-bill limits Name ≤ 70, Adresse ≤ 70, PLZ ≤ 16, Ort ≤ 35. The country is always CH. It is stored with the club settings and printed on every new Rechnung as the creditor of its QR-bill; creating a Rechnung without it is rejected.
-
-**Erwarteter Kontostand** (code: _ExpectedBalance_):
-The amount the bank account should hold on a given date: the Anfangssaldo plus all Buchungen whose Bewegung is dated up to that date. The user compares it by eye against the bank statement.
+### Personen & Mitgliedschaft
 
 **Person** (code: _Person_):
 A club member or contact: a name, membership dates and contact data. The address is stored as Strasse plus Hausnummer (code: _Street_ and _Number_), not as one line, so that imported bank addresses can be matched against it. The flag "Newsletter" (code: _ReceivesClubNews_) marks a Person who receives the club news by snail mail even though they are no longer active.
@@ -60,6 +66,20 @@ The Person who pays for another Person. Optional, set on the paid-for Person; th
 
 **Hauptzahler** (code: _IsMainPayer_ on _Person_):
 A flag on a Person without Zahler: they are the Rechnungsempfänger of their address and pay the Familie fee in the Jahresbeiträge run, ahead of the longest-standing Familie member. In the UI it is one choice of the Zahler picker, next to "Regulär" and the Personen. Choosing a named Zahler clears the flag. A Person who is someone's Zahler cannot get a Zahler or the flag: the picker is locked for them.
+
+**Mitgliedschaft** (code: _MembershipType_):
+The kind of membership of a Person (Familie, Einzel, Junior, Ehren, Frei, Gönner, or Unbekannt), which decides the Jahresbeitrag. Unbekannt is never invoiced.
+
+**Jahresbeitrag** (code: _MembershipFeeRules_), plural **Jahresbeiträge**:
+The yearly membership fee of a Person, set per Mitgliedschaft (a constant in the code) and booked to Konto 3400. "Jahresbeiträge" is also the run that creates the Rechnungen for all active Personen at once: one Rechnung per address with one Rechnungsposition per Person, where a Familie pays once per address and a Person with a Zahler is billed on the Zahler's Rechnung (ADR 0005). A Rechnungsposition of 0 (an Ehren member, a further Familie member of the address, or a 100 % Ermässigung) is kept, but no Rechnung is created when its total is 0.
+
+**Ermässigung** (code: _MembershipDiscount_):
+A percentage (1-100) with a text that reduces one Person's Jahresbeitrag in the Jahresbeiträge run. It is stored per Person until removed, and its text is printed on the Rechnungsposition.
+
+### Rechnungen
+
+**Klubadresse** (code: _Name_, _Address_, _PostalCode_ and _City_ in _Settings_):
+The club's address as creditor of the QR-bill: Name, Adresse (one free-text line, e.g. "Sportweg 12"), PLZ and Ort. All four are required, with the QR-bill limits Name ≤ 70, Adresse ≤ 70, PLZ ≤ 16, Ort ≤ 35. The country is always CH. It is stored with the club settings (see Anfangssaldo) and printed on every new Rechnung as the creditor of its QR-bill; creating a Rechnung without it is rejected.
 
 **Textvorlage** (code: _TextTemplate_):
 A reusable set of Betreff, Text and Grüsse that a Rechnung is written with. Managed under Einstellungen; all three fields are required. The texts may contain Platzhalter, which are replaced when a Rechnung is created; an unknown Platzhalter is rejected on save. Zero Textvorlagen is a valid state.
@@ -85,20 +105,8 @@ A terminal Rechnungsstatus, recorded as a status change when the first imported 
 **PaidBy** (code: _PaidBy_ on _Invoice_):
 The id of the Bewegung that first covered a Rechnung's total (null while open).
 
-**Mitgliedschaft** (code: _MembershipType_):
-The kind of membership of a Person (Familie, Einzel, Junior, Ehren, Frei, Gönner, or Unbekannt), which decides the Jahresbeitrag. Unbekannt is never invoiced.
-
-**Jahresbeitrag** (code: _MembershipFeeRules_), plural **Jahresbeiträge**:
-The yearly membership fee of a Person, set per Mitgliedschaft (a constant in the code) and booked to Konto 3400. "Jahresbeiträge" is also the run that creates the Rechnungen for all active Personen at once: one Rechnung per address with one Rechnungsposition per Person, where a Familie pays once per address and a Person with a Zahler is billed on the Zahler's Rechnung (ADR 0005). A Rechnungsposition of 0 (an Ehren member, a further Familie member of the address, or a 100 % Ermässigung) is kept, but no Rechnung is created when its total is 0.
-
-**Ermässigung** (code: _MembershipDiscount_):
-A percentage (1-100) with a text that reduces one Person's Jahresbeitrag in the Jahresbeiträge run. It is stored per Person until removed, and its text is printed on the Rechnungsposition.
-
 **Gläubigerreferenz** (code: _Reference_ on _Invoice_):
 The Swiss QR-bill creditor reference (RF + check digits + Rechnungsnummer) stored at Rechnung creation. It is the sole key by which the bank import matches a payment to its Rechnung.
-
-**Zuvielzahlung** (code: the extra Buchung to Konto 3600 on an overpayment):
-When an imported payment exceeds the outstanding amount of its Rechnung, the excess is booked as an additional Buchung "Rechnung 0042" to Konto 3600 (Spenden).
 
 ## Relationships
 
