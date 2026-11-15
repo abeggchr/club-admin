@@ -12,7 +12,7 @@ public class BankImportTests
 
     private const string OtherIban = "CH9300762011623852951";
 
-    private static readonly Settings Settings = new()
+    private static readonly backend.Settings.Settings Settings = new()
     {
         OpeningBalance = 0m,
         StartDate = new DateOnly(2026, 1, 1),
@@ -28,7 +28,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1", ustrd: "Jahresbeitrag")
+                    CamtTestHelpers.TxDtlsNtry(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        ustrd: "Jahresbeitrag"
+                    )
                 )
             )
         );
@@ -46,7 +52,11 @@ public class BankImportTests
         var zip = CamtTestFiles.Zip(
             (
                 "20260210.xml",
-                CamtTestHelpers.CamtFile("20260210", ClubIban, CamtTestHelpers.TxDtlsNtry("45.20", "DBIT", "2026-02-10", "TX1"))
+                CamtTestHelpers.CamtFile(
+                    "20260210",
+                    ClubIban,
+                    CamtTestHelpers.TxDtlsNtry("45.20", "DBIT", "2026-02-10", "TX1")
+                )
             )
         );
 
@@ -99,7 +109,9 @@ public class BankImportTests
               </TxDtls></NtryDtls>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         Assert.Equal("Einschreibung 2026", Assert.Single(Import(zip).Transactions).Text);
     }
@@ -149,7 +161,9 @@ public class BankImportTests
               </TxDtls></NtryDtls>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         Assert.Equal("M. Muster – Jahresbeitrag", Assert.Single(Import(zip).Transactions).Text);
     }
@@ -176,7 +190,9 @@ public class BankImportTests
               </TxDtls></NtryDtls>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         Assert.Equal(
             "Bäckerei Beispiel – Miete Februar",
@@ -193,7 +209,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1", ustrd: "Jahresbeitrag")
+                    CamtTestHelpers.TxDtlsNtry(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        ustrd: "Jahresbeitrag"
+                    )
                 )
             )
         );
@@ -222,7 +244,9 @@ public class BankImportTests
               </TxDtls></NtryDtls>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var text = Assert.Single(Import(zip).Transactions).Text!;
         Assert.Equal(500, text.Length);
@@ -247,7 +271,9 @@ public class BankImportTests
               </TxDtls></NtryDtls>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var text = Assert.Single(Import(zip).Transactions).Text!;
         Assert.Equal(500, text.Length);
@@ -309,7 +335,9 @@ public class BankImportTests
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip);
         var error = Assert.Single(result.Errors);
@@ -333,7 +361,9 @@ public class BankImportTests
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip);
         var error = Assert.Single(result.Errors);
@@ -355,7 +385,9 @@ public class BankImportTests
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip);
         Assert.Single(result.Transactions);
@@ -375,7 +407,9 @@ public class BankImportTests
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip);
         var error = Assert.Single(result.Errors);
@@ -427,7 +461,9 @@ public class BankImportTests
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip);
         var error = Assert.Single(result.Errors);
@@ -447,7 +483,9 @@ public class BankImportTests
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip);
         var error = Assert.Single(result.Errors);
@@ -467,7 +505,9 @@ public class BankImportTests
               <AcctSvcrRef>TX1</AcctSvcrRef>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip);
         var error = Assert.Single(result.Errors);
@@ -487,7 +527,9 @@ public class BankImportTests
               <BookgDt><Dt>2026-02-10</Dt></BookgDt>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip);
         var error = Assert.Single(result.Errors);
@@ -502,7 +544,11 @@ public class BankImportTests
         var zip = CamtTestFiles.Zip(
             (
                 "20260210.xml",
-                CamtTestHelpers.CamtFile("20260210", OtherIban, CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"))
+                CamtTestHelpers.CamtFile(
+                    "20260210",
+                    OtherIban,
+                    CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")
+                )
             )
         );
 
@@ -538,7 +584,11 @@ public class BankImportTests
         var zip = CamtTestFiles.Zip(
             (
                 "20251231.xml",
-                CamtTestHelpers.CamtFile("20251231", ClubIban, CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2025-12-31", "TX1"))
+                CamtTestHelpers.CamtFile(
+                    "20251231",
+                    ClubIban,
+                    CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2025-12-31", "TX1")
+                )
             )
         );
 
@@ -554,7 +604,11 @@ public class BankImportTests
         var zip = CamtTestFiles.Zip(
             (
                 "20260210.xml",
-                CamtTestHelpers.CamtFile("20260210", ClubIban, CamtTestHelpers.TxDtlsNtry("0.00", "CRDT", "2026-02-10", "TX1"))
+                CamtTestHelpers.CamtFile(
+                    "20260210",
+                    ClubIban,
+                    CamtTestHelpers.TxDtlsNtry("0.00", "CRDT", "2026-02-10", "TX1")
+                )
             )
         );
 
@@ -570,7 +624,11 @@ public class BankImportTests
         var zip = CamtTestFiles.Zip(
             (
                 "20260210.xml",
-                CamtTestHelpers.CamtFile("20260210", ClubIban, CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"))
+                CamtTestHelpers.CamtFile(
+                    "20260210",
+                    ClubIban,
+                    CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")
+                )
             )
         );
 
@@ -606,7 +664,11 @@ public class BankImportTests
             ClubIban,
             CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")
         );
-        var bad = CamtTestHelpers.CamtFile("20260211", OtherIban, CamtTestHelpers.TxDtlsNtry("50.00", "CRDT", "2026-02-11", "TX2"));
+        var bad = CamtTestHelpers.CamtFile(
+            "20260211",
+            OtherIban,
+            CamtTestHelpers.TxDtlsNtry("50.00", "CRDT", "2026-02-11", "TX2")
+        );
         var zip = CamtTestFiles.Zip(("a.xml", good), ("b.xml", bad));
 
         var result = Import(zip);
@@ -625,7 +687,9 @@ public class BankImportTests
             ("B1", "100.00", "Mitgliedsbeitrag", "A. Anna"),
             ("B2", "50.00", "Verbandsbeitrag", "B. Beat")
         );
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip);
         Assert.Empty(result.Errors);
@@ -643,7 +707,9 @@ public class BankImportTests
             ("B1", "100.00", "Miete Februar", null),
             ("B2", "50.00", "Strom", null)
         );
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip);
         Assert.Empty(result.Errors);
@@ -671,7 +737,9 @@ public class BankImportTests
             ("B1", "100.00", "Miete Februar", null),
             ("B2", "40.00", "Strom", null)
         );
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip);
         var error = Assert.Single(result.Errors);
@@ -690,7 +758,9 @@ public class BankImportTests
             ("B1", "100.00", "Miete Februar", null),
             ("B2", "50.00", "Strom", null)
         );
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
 
         var result = Import(zip, ["B1"]);
         var transaction = Assert.Single(result.Transactions);
@@ -799,7 +869,11 @@ public class BankImportTests
             ("20260210/", ""),
             (
                 "20260210.xml",
-                CamtTestHelpers.CamtFile("20260210", ClubIban, CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"))
+                CamtTestHelpers.CamtFile(
+                    "20260210",
+                    ClubIban,
+                    CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")
+                )
             )
         );
 
@@ -815,7 +889,11 @@ public class BankImportTests
             ("readme.txt", "Kein XML"),
             (
                 "20260210.xml",
-                CamtTestHelpers.CamtFile("20260210", ClubIban, CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1"))
+                CamtTestHelpers.CamtFile(
+                    "20260210",
+                    ClubIban,
+                    CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1")
+                )
             )
         );
 
@@ -954,7 +1032,15 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.AddressNtry("TX1", "M. Muster", null, null, null, "Bahnhofstr. 7", "8004 Zug")
+                    CamtTestHelpers.AddressNtry(
+                        "TX1",
+                        "M. Muster",
+                        null,
+                        null,
+                        null,
+                        "Bahnhofstr. 7",
+                        "8004 Zug"
+                    )
                 )
             )
         );
@@ -976,7 +1062,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.AddressNtry("TX1", "M. Muster", "Bahnhofstrasse 7", null, "8004")
+                    CamtTestHelpers.AddressNtry(
+                        "TX1",
+                        "M. Muster",
+                        "Bahnhofstrasse 7",
+                        null,
+                        "8004"
+                    )
                 )
             )
         );
@@ -1026,7 +1118,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.AddressNtry("TX1", "Familie Muster", "Bahnhofstrasse", "7", "8004")
+                    CamtTestHelpers.AddressNtry(
+                        "TX1",
+                        "Familie Muster",
+                        "Bahnhofstrasse",
+                        "7",
+                        "8004"
+                    )
                 )
             )
         );
@@ -1058,7 +1156,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.AddressNtry("TX1", "Erika Muster", "Bahnhofstrasse", "7", "8004")
+                    CamtTestHelpers.AddressNtry(
+                        "TX1",
+                        "Erika Muster",
+                        "Bahnhofstrasse",
+                        "7",
+                        "8004"
+                    )
                 )
             )
         );
@@ -1102,7 +1206,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.PlainNtry("5.00", "DBIT", "2026-02-10", "E1", addtl: "Zahlungsverkehrspreise")
+                    CamtTestHelpers.PlainNtry(
+                        "5.00",
+                        "DBIT",
+                        "2026-02-10",
+                        "E1",
+                        addtl: "Zahlungsverkehrspreise"
+                    )
                 )
             )
         );
@@ -1158,7 +1268,9 @@ public class BankImportTests
               </TxDtls></NtryDtls>
             </Ntry>
             """;
-        var zip = CamtTestFiles.Zip(("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry)));
+        var zip = CamtTestFiles.Zip(
+            ("20260210.xml", CamtTestHelpers.CamtFile("20260210", ClubIban, ntry))
+        );
         var result = Import(zip);
         Assert.Single(result.Transactions);
         Assert.Empty(result.Errors);
@@ -1185,7 +1297,14 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042", ustrd: "Jahresbeitrag")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042",
+                        ustrd: "Jahresbeitrag"
+                    )
                 )
             )
         );
@@ -1222,7 +1341,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("115.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "115.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1263,7 +1388,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1307,7 +1438,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("115.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "115.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1342,7 +1479,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("115.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "115.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1376,7 +1519,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("150.00", "DBIT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "150.00",
+                        "DBIT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1409,7 +1558,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("80.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "80.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1442,7 +1597,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtry("100.00", "CRDT", "2026-02-10", "TX1", ustrd: "Jahresbeitrag")
+                    CamtTestHelpers.TxDtlsNtry(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        ustrd: "Jahresbeitrag"
+                    )
                 )
             )
         );
@@ -1475,7 +1636,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340999")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340999"
+                    )
                 )
             )
         );
@@ -1508,7 +1675,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "DBIT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "DBIT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1542,7 +1715,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1584,7 +1763,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1602,8 +1787,22 @@ public class BankImportTests
         var chart = TestChart();
         var invoices = new[]
         {
-            new ImportInvoice(42, "RF340042", 100m, 0m, false, [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]),
-            new ImportInvoice(43, "RF340042", 200m, 0m, false, [new ImportInvoiceLine("Beitrag", 3400, 200m)]),
+            new ImportInvoice(
+                42,
+                "RF340042",
+                100m,
+                0m,
+                false,
+                [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
+            ),
+            new ImportInvoice(
+                43,
+                "RF340042",
+                200m,
+                0m,
+                false,
+                [new ImportInvoiceLine("Beitrag", 3400, 200m)]
+            ),
         };
         var zip = CamtTestFiles.Zip(
             (
@@ -1611,7 +1810,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1647,7 +1852,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("150.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "150.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1687,7 +1898,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1724,7 +1941,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "DBIT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "DBIT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1758,7 +1981,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1794,7 +2023,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );
@@ -1841,7 +2076,13 @@ public class BankImportTests
                 CamtTestHelpers.CamtFile(
                     "20260210",
                     ClubIban,
-                    CamtTestHelpers.TxDtlsNtryWithReference("100.00", "CRDT", "2026-02-10", "TX1", "RF340042")
+                    CamtTestHelpers.TxDtlsNtryWithReference(
+                        "100.00",
+                        "CRDT",
+                        "2026-02-10",
+                        "TX1",
+                        "RF340042"
+                    )
                 )
             )
         );

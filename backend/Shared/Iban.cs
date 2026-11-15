@@ -1,4 +1,4 @@
-namespace backend.Accounting;
+namespace backend.Shared;
 
 /// <summary>The club's bank account IBAN: a Swiss (CH) or Liechtenstein (LI) IBAN of 21 characters with a valid mod-97 checksum.</summary>
 public static class Iban
@@ -7,7 +7,11 @@ public static class Iban
 
     /// <summary>Normalises before validation and storage: removes spaces and upper cases.</summary>
     public static string? Normalize(string? raw) =>
-        raw is null ? null : new string(raw.Where(c => !char.IsWhiteSpace(c)).Select(char.ToUpperInvariant).ToArray());
+        raw is null
+            ? null
+            : new string(
+                raw.Where(c => !char.IsWhiteSpace(c)).Select(char.ToUpperInvariant).ToArray()
+            );
 
     /// <summary>Returns an error message when the IBAN is not a CH/LI IBAN of 21 characters with a valid checksum, or null when valid.</summary>
     public static string? Validate(string? raw)
@@ -29,7 +33,9 @@ public static class Iban
 
     /// <summary>True when the (valid) IBAN is a QR-IBAN: its institution ID (characters 5-9) is 30000-31999.</summary>
     public static bool IsQrIban(string? raw) =>
-        Normalize(raw) is { Length: >= 9 } iban && int.TryParse(iban[4..9], out var iid) && iid is >= 30000 and <= 31999;
+        Normalize(raw) is { Length: >= 9 } iban
+        && int.TryParse(iban[4..9], out var iid)
+        && iid is >= 30000 and <= 31999;
 
     /// <summary>ISO 7064 mod 97-10: move the first four characters to the end, letters become digits (A=10 … Z=35), the remainder must be 1.</summary>
     static int Mod97(string iban)
@@ -38,7 +44,9 @@ public static class Iban
         var value = 0L;
         foreach (var c in rearranged)
         {
-            value = c is >= 'A' and <= 'Z' ? (value * 100 + (c - 'A' + 10)) % 97 : (value * 10 + (c - '0')) % 97;
+            value = c is >= 'A' and <= 'Z'
+                ? (value * 100 + (c - 'A' + 10)) % 97
+                : (value * 10 + (c - '0')) % 97;
         }
         return (int)value;
     }

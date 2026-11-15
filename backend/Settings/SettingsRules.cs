@@ -1,9 +1,21 @@
-namespace backend.Accounting;
+using backend.Accounting;
+using backend.Shared;
+
+namespace backend.Settings;
 
 /// <summary>Pure validation for the club settings (Anfangssaldo, Startdatum, IBAN, Klubadresse). Returns a German error message, or null when valid.</summary>
 public static class SettingsRules
 {
-    public static string? Validate(decimal openingBalance, DateOnly startDate, string? iban, string? name, string? address, string? postalCode, string? city, DateOnly? earliestTransaction)
+    public static string? Validate(
+        decimal openingBalance,
+        DateOnly startDate,
+        string? iban,
+        string? name,
+        string? address,
+        string? postalCode,
+        string? city,
+        DateOnly? earliestTransaction
+    )
     {
         if (openingBalance != decimal.Round(openingBalance, 2))
         {
@@ -46,6 +58,8 @@ public static class SettingsRules
         {
             return $"{label} ist erforderlich.";
         }
-        return value.Trim().Length > maxLength ? $"{label} darf höchstens {maxLength} Zeichen lang sein." : null;
+        return value.Trim().Length > maxLength
+            ? $"{label} darf höchstens {maxLength} Zeichen lang sein."
+            : null;
     }
 }

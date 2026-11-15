@@ -1,6 +1,7 @@
 using backend.Accounting;
 using backend.Invoicing;
 using backend.Person;
+using backend.Settings;
 using Microsoft.EntityFrameworkCore;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
@@ -40,14 +41,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         });
         modelBuilder.Entity<Person>(e =>
         {
-            e.HasOne<Person>().WithMany().HasForeignKey(x => x.PayerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Person>()
+                .WithMany()
+                .HasForeignKey(x => x.PayerId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<MembershipDiscount>(e =>
         {
             e.HasKey(d => d.PersonId);
             e.Property(d => d.PersonId).ValueGeneratedNever();
             e.Property(d => d.Text).IsRequired();
-            e.HasOne<Person>().WithMany().HasForeignKey(d => d.PersonId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Person>()
+                .WithMany()
+                .HasForeignKey(d => d.PersonId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<Invoice>(e =>
         {
@@ -55,18 +62,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Reference).IsRequired().HasMaxLength(35);
             // Plain nullable column, deliberately no foreign key to Transactions: the Bewegung may be edited or deleted.
             e.Property(x => x.PaidBy);
-            e.HasOne<Person>().WithMany().HasForeignKey(x => x.PersonId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Person>()
+                .WithMany()
+                .HasForeignKey(x => x.PersonId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<InvoiceLine>(e =>
         {
             e.Property(x => x.Text).IsRequired().HasMaxLength(500);
             e.Property(x => x.Amount).HasPrecision(18, 2);
-            e.HasOne<Invoice>().WithMany(i => i.Lines).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Invoice>()
+                .WithMany(i => i.Lines)
+                .HasForeignKey(x => x.InvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<InvoiceStatusChange>(e =>
         {
             e.Property(x => x.Status).HasConversion<string>();
-            e.HasOne<Invoice>().WithMany(i => i.StatusChanges).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Invoice>()
+                .WithMany(i => i.StatusChanges)
+                .HasForeignKey(x => x.InvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<Transaction>(e =>
         {
@@ -76,14 +93,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Several manual Bewegungen have no BankReference; the database lets them coexist.
             e.HasIndex(x => x.BankReference).IsUnique();
             e.HasIndex(x => x.Date);
-            e.HasOne<Person>().WithMany().HasForeignKey(x => x.PersonId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne<Person>()
+                .WithMany()
+                .HasForeignKey(x => x.PersonId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
         // The database does not enforce that a Bewegung has Buchungen or that they sum to its Betrag (ADR 0003).
         modelBuilder.Entity<Entry>(e =>
         {
             e.Property(x => x.Amount).HasPrecision(18, 2);
             e.Property(x => x.Text).HasMaxLength(500);
-            e.HasOne(x => x.Transaction).WithMany(t => t.Entries).HasForeignKey(x => x.TransactionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Transaction)
+                .WithMany(t => t.Entries)
+                .HasForeignKey(x => x.TransactionId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

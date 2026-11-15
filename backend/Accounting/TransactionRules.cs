@@ -1,13 +1,18 @@
 namespace backend.Accounting;
 
 /// <summary>A Buchung as submitted with a Bewegung. <paramref name="ExistingAccountNumber"/> is the Konto an already stored Buchung has.</summary>
-public record EntryDraft(string? Text, int AccountNumber, decimal Amount, int? ExistingAccountNumber = null);
+public record EntryDraft(
+    string? Text,
+    int AccountNumber,
+    decimal Amount,
+    int? ExistingAccountNumber = null
+);
 
 /// <summary>Pure validation rules for Bewegungen (creating and editing). Return a German error message, or null when valid.</summary>
 public static class TransactionRules
 {
     public static string? Validate(
-        Settings? opening,
+        Settings.Settings? opening,
         ChartOfAccounts chart,
         DateOnly date,
         decimal amount,
@@ -24,7 +29,16 @@ public static class TransactionRules
         }
         foreach (var entry in entries)
         {
-            if (EntryRules.ValidateLine(chart, entry.Text, entry.AccountNumber, entry.Amount, entry.ExistingAccountNumber) is { } error)
+            if (
+                EntryRules.ValidateLine(
+                    chart,
+                    entry.Text,
+                    entry.AccountNumber,
+                    entry.Amount,
+                    entry.ExistingAccountNumber
+                ) is
+                { } error
+            )
             {
                 return error;
             }
@@ -42,10 +56,10 @@ public static class TransactionRules
     }
 
     /// <summary>The date and amount rules only, for a Bewegung without Buchungen (e.g. an imported one) where the Kontoplan is not needed.</summary>
-    public static string? Validate(Settings? opening, DateOnly date, decimal amount) =>
+    public static string? Validate(Settings.Settings? opening, DateOnly date, decimal amount) =>
         ValidateDate(opening, date) ?? ValidateAmount(amount);
 
-    private static string? ValidateDate(Settings? opening, DateOnly date)
+    private static string? ValidateDate(Settings.Settings? opening, DateOnly date)
     {
         if (opening is null)
         {
@@ -83,20 +97,22 @@ public static class TransactionRules
         string? newText,
         int? newPersonId
     ) =>
-        existing.BankReference is null
-            ? null
-            : newDate != existing.Date
-                ? "Das Datum einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
-                : newAmount != existing.Amount
-                    ? "Der Betrag einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
-                    : newText != existing.Text
-                        ? "Der Text einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
-                        : newPersonId != existing.PersonId
-                            ? "Die Person einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
-                            : null;
+        existing.BankReference is null ? null
+        : newDate != existing.Date
+            ? "Das Datum einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+        : newAmount != existing.Amount
+            ? "Der Betrag einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+        : newText != existing.Text
+            ? "Der Text einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+        : newPersonId != existing.PersonId
+            ? "Die Person einer importierten Bewegung ist eine Bankangabe und kann nicht geändert werden."
+        : null;
 
     /// <summary>The Anfangssaldo date must not be later than the earliest Bewegung.</summary>
-    public static string? ValidateOpeningStartDate(DateOnly startDate, DateOnly? earliestTransaction) =>
+    public static string? ValidateOpeningStartDate(
+        DateOnly startDate,
+        DateOnly? earliestTransaction
+    ) =>
         earliestTransaction is { } earliest && startDate > earliest
             ? $"Das Startdatum darf nicht nach der frühesten Bewegung ({earliest:dd.MM.yyyy}) liegen."
             : null;

@@ -10,7 +10,7 @@ public class BankImportReimportTests
 {
     private const string ClubIban = "CH9300762011623852957";
 
-    private static readonly Settings Settings = new()
+    private static readonly backend.Settings.Settings Settings = new()
     {
         OpeningBalance = 0m,
         StartDate = new DateOnly(2026, 1, 1),
@@ -22,9 +22,13 @@ public class BankImportReimportTests
     {
         var zip = CamtTestFiles.Zip(("20260210.xml", CamtFile()));
 
-        var imported = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], [], [], null)).Transactions);
+        var imported = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], [], [], null)).Transactions
+        );
         // The Bewegung was deleted, so its BankReference is no longer stored and the same file imports it again.
-        var reimported = Assert.Single(BankImport.Import(zip, new ImportSnapshot(Settings, [], [], [], null)).Transactions);
+        var reimported = Assert.Single(
+            BankImport.Import(zip, new ImportSnapshot(Settings, [], [], [], null)).Transactions
+        );
 
         Assert.Equal(imported.Date, reimported.Date);
         Assert.Equal(imported.Amount, reimported.Amount);
@@ -32,33 +36,34 @@ public class BankImportReimportTests
         Assert.Equal(imported.BankReference, reimported.BankReference);
     }
 
-    private static string CamtFile() => $"""
-        <?xml version="1.0" encoding="UTF-8"?>
-        <Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
-            <BkToCstmrStmt>
-                <Stmt>
-                  <Id>20260210</Id>
-                  <CreDtTm>2026-02-11T00:00:00</CreDtTm>
-                  <Acct>
-                    <Id>
-                      <IBAN>{ClubIban}</IBAN>
-                    </Id>
-                  </Acct>
-                  <Ntry>
-                    <Amt Ccy="CHF">100.00</Amt>
-                    <CdtDbtInd>CRDT</CdtDbtInd>
-                    <Sts><Cd>BOOK</Cd></Sts>
-                    <BookgDt><Dt>2026-02-10</Dt></BookgDt>
-                    <NtryDtls><TxDtls>
-                      <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
-                      <Amt Ccy="CHF">100.00</Amt>
-                      <RmtInf>
-                      <Ustrd>Jahresbeitrag</Ustrd>
-                      </RmtInf>
-                    </TxDtls></NtryDtls>
-                  </Ntry>
-                </Stmt>
-            </BkToCstmrStmt>
-        </Document>
-        """;
+    private static string CamtFile() =>
+        $"""
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+                <BkToCstmrStmt>
+                    <Stmt>
+                      <Id>20260210</Id>
+                      <CreDtTm>2026-02-11T00:00:00</CreDtTm>
+                      <Acct>
+                        <Id>
+                          <IBAN>{ClubIban}</IBAN>
+                        </Id>
+                      </Acct>
+                      <Ntry>
+                        <Amt Ccy="CHF">100.00</Amt>
+                        <CdtDbtInd>CRDT</CdtDbtInd>
+                        <Sts><Cd>BOOK</Cd></Sts>
+                        <BookgDt><Dt>2026-02-10</Dt></BookgDt>
+                        <NtryDtls><TxDtls>
+                          <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
+                          <Amt Ccy="CHF">100.00</Amt>
+                          <RmtInf>
+                          <Ustrd>Jahresbeitrag</Ustrd>
+                          </RmtInf>
+                        </TxDtls></NtryDtls>
+                      </Ntry>
+                    </Stmt>
+                </BkToCstmrStmt>
+            </Document>
+            """;
 }

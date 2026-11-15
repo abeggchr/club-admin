@@ -7,7 +7,7 @@ public static class AccountingCalculator
     /// Erwarteter Kontostand on <paramref name="date"/>: the Anfangssaldo plus all Buchungen up to that date.
     /// Returns null before the Anfangssaldo start date, where no balance is defined.
     /// </summary>
-    public static decimal? ExpectedBalance(Settings opening, DateOnly date)
+    public static decimal? ExpectedBalance(Settings.Settings opening, DateOnly date)
     {
         if (date < opening.StartDate)
         {
@@ -21,7 +21,11 @@ public static class AccountingCalculator
     /// Erwarteter Kontostand on <paramref name="date"/>, counting all Buchungen whose Bewegung is dated up to
     /// and including it. The entries need their Bewegung loaded.
     /// </summary>
-    public static decimal? ExpectedBalance(Settings opening, IEnumerable<Entry> entries, DateOnly date)
+    public static decimal? ExpectedBalance(
+        Settings.Settings opening,
+        IEnumerable<Entry> entries,
+        DateOnly date
+    )
     {
         if (ExpectedBalance(opening, date) is not { } start)
         {
@@ -35,7 +39,11 @@ public static class AccountingCalculator
     /// The bank's balance on <paramref name="date"/>: the Anfangssaldo plus all Bewegungen up to and including
     /// that date. Returns null before the Anfangssaldo start date, where no balance is defined.
     /// </summary>
-    public static decimal? TransactionBalance(Settings opening, IEnumerable<Transaction> transactions, DateOnly date)
+    public static decimal? TransactionBalance(
+        Settings.Settings opening,
+        IEnumerable<Transaction> transactions,
+        DateOnly date
+    )
     {
         if (ExpectedBalance(opening, date) is not { } start)
         {
@@ -60,11 +68,19 @@ public static class AccountingCalculator
     /// that row. Ordered by Bewegung date, then Bewegung Id, then Buchung Id (creation order). Always takes the
     /// unfiltered journal; the entries need their Bewegung loaded.
     /// </summary>
-    public static IReadOnlyList<JournalRow> RunningBalances(Settings opening, IEnumerable<Entry> entries)
+    public static IReadOnlyList<JournalRow> RunningBalances(
+        Settings.Settings opening,
+        IEnumerable<Entry> entries
+    )
     {
         var balance = opening.OpeningBalance;
         var rows = new List<JournalRow>();
-        foreach (var entry in entries.OrderBy(e => e.Date).ThenBy(e => e.Transaction.Id).ThenBy(e => e.Id))
+        foreach (
+            var entry in entries
+                .OrderBy(e => e.Date)
+                .ThenBy(e => e.Transaction.Id)
+                .ThenBy(e => e.Id)
+        )
         {
             balance += entry.Amount;
             rows.Add(new JournalRow(entry, balance));
@@ -78,7 +94,10 @@ public static class AccountingCalculator
     /// All Bewegungen, newest first (same-day ties by creation order, i.e. Id), each row carrying the Kontostand
     /// after it: the Anfangssaldo plus the amounts of all Bewegungen up to and including that one.
     /// </summary>
-    public static IReadOnlyList<TransactionRow> TransactionBalances(Settings opening, IEnumerable<Transaction> transactions)
+    public static IReadOnlyList<TransactionRow> TransactionBalances(
+        Settings.Settings opening,
+        IEnumerable<Transaction> transactions
+    )
     {
         var balance = opening.OpeningBalance;
         var rows = new List<TransactionRow>();

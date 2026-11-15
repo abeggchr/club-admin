@@ -11,54 +11,6 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
     [HttpGet("accounts")]
     public IActionResult GetAccounts() => Ok(chart.Accounts);
 
-    [HttpGet("settings")]
-    public async Task<IActionResult> GetSettings() =>
-        await db.Settings.FindAsync(Settings.SingletonId) is { } settings
-            ? Ok(settings)
-            : NotFound();
-
-    [HttpPut("settings")]
-    public async Task<IActionResult> UpdateSettings(SettingsUpdate update)
-    {
-        var earliest = await db.Transactions.AnyAsync()
-            ? await db.Transactions.MinAsync(t => t.Date)
-            : (DateOnly?)null;
-        if (
-            SettingsRules.Validate(
-                update.OpeningBalance,
-                update.StartDate,
-                update.Iban,
-                update.Name,
-                update.Address,
-                update.PostalCode,
-                update.City,
-                earliest
-            ) is
-            { } error
-        )
-        {
-            return BadRequest(new { error });
-        }
-
-        var settings = await db.Settings.FindAsync(Settings.SingletonId);
-        if (settings is null)
-        {
-            settings = new Settings();
-            db.Settings.Add(settings);
-        }
-
-        settings.OpeningBalance = update.OpeningBalance;
-        settings.StartDate = update.StartDate;
-        settings.Iban = Iban.Normalize(update.Iban)!;
-        settings.Name = update.Name!.Trim();
-        settings.Address = update.Address!.Trim();
-        settings.PostalCode = update.PostalCode!.Trim();
-        settings.City = update.City!.Trim();
-
-        await db.SaveChangesAsync();
-        return Ok(settings);
-    }
-
     [HttpGet("entries")]
     public async Task<IActionResult> GetEntries(
         DateOnly? from,
@@ -67,7 +19,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
         [FromQuery(Name = "q")] string? search
     )
     {
-        var opening = await db.Settings.FindAsync(Settings.SingletonId);
+        var opening = await db.Settings.FindAsync(Settings.Settings.SingletonId);
         if (opening is null)
         {
             return Ok(Array.Empty<JournalEntryDto>());
@@ -100,7 +52,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
     [HttpGet("expected-balance")]
     public async Task<IActionResult> GetExpectedBalance(DateOnly date)
     {
-        var opening = await db.Settings.FindAsync(Settings.SingletonId);
+        var opening = await db.Settings.FindAsync(Settings.Settings.SingletonId);
         if (opening is null)
         {
             return NotFound();
@@ -132,7 +84,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
     [HttpGet("transactions")]
     public async Task<IActionResult> GetTransactions()
     {
-        var opening = await db.Settings.FindAsync(Settings.SingletonId);
+        var opening = await db.Settings.FindAsync(Settings.Settings.SingletonId);
         return Ok(opening is null ? [] : await LoadTransactionDtosAsync(opening));
     }
 
@@ -144,7 +96,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
         {
             return BadRequest(new { error = "Neue Buchungen dürfen keine Id haben." });
         }
-        var opening = await db.Settings.FindAsync(Settings.SingletonId);
+        var opening = await db.Settings.FindAsync(Settings.Settings.SingletonId);
         var drafts = lines.Select(l => new EntryDraft(l.Text, l.AccountNumber, l.Amount)).ToList();
         if (
             TransactionRules.Validate(opening, chart, input.Date, input.Amount, drafts) is { } error
@@ -213,7 +165,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
             return BadRequest(new { error = "Eine Buchung kommt mehrfach vor." });
         }
 
-        var opening = await db.Settings.FindAsync(Settings.SingletonId);
+        var opening = await db.Settings.FindAsync(Settings.Settings.SingletonId);
         var drafts = lines
             .Select(l => new EntryDraft(
                 l.Text,
@@ -278,7 +230,7 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
     [HttpPost("transactions/import")]
     public async Task<IActionResult> ImportTransactions(IFormFile file)
     {
-        var settings = await db.Settings.FindAsync(Settings.SingletonId);
+        var settings = await db.Settings.FindAsync(Settings.Settings.SingletonId);
         if (settings is null)
         {
             return BadRequest(
@@ -404,11 +356,11 @@ public class AccountingController(AppDbContext db, ChartOfAccounts chart) : Cont
     private static string? NormalizeText(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
-    private async Task<TransactionDto> LoadTransactionDtoAsync(Settings opening, int id) =>
+    private async Task<TransactionDto> LoadTransactionDtoAsync(Settings.Settings opening, int id) =>
         (await LoadTransactionDtosAsync(opening)).Single(t => t.Id == id);
 
     // All Bewegungen, newest first, each with the Kontostand after it.
-    private async Task<List<TransactionDto>> LoadTransactionDtosAsync(Settings opening)
+    private async Task<List<TransactionDto>> LoadTransactionDtosAsync(Settings.Settings opening)
     {
         var transactions = await db
             .Transactions.Include(t => t.Entries)
@@ -459,14 +411,4 @@ public record TransactionDto(
     string? BankReference,
     decimal Balance,
     List<int> EntryIds
-);
-
-public record SettingsUpdate(
-    decimal OpeningBalance,
-    DateOnly StartDate,
-    string? Iban,
-    string? Name,
-    string? Address,
-    string? PostalCode,
-    string? City
 );

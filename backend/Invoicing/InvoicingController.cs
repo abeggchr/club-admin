@@ -104,7 +104,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
             return BadRequest(new { error = "Die Textvorlage existiert nicht." });
         }
 
-        var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
+        var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct);
         var (creditor, creditorError) = QrBillCreditor.Resolve(settings);
         if (creditor is null)
         {
@@ -121,7 +121,10 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         );
         if (result.Invoice is not { } invoice)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = result.Error });
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { error = result.Error }
+            );
         }
         return Created(
             $"/api/invoices/{invoice.Id}",
@@ -140,7 +143,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
     [HttpGet("invoices/annual-fees/preview")]
     public async Task<IActionResult> PreviewAnnualFees(CancellationToken ct)
     {
-        var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
+        var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct);
         var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
         var discounts = await db
             .MembershipDiscounts.AsNoTracking()
@@ -173,7 +176,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         {
             return BadRequest(new { error = "Die Textvorlage existiert nicht." });
         }
-        var settings = await db.Settings.FindAsync([Settings.SingletonId], ct);
+        var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct);
         var (creditor, creditorError) = QrBillCreditor.Resolve(settings);
         if (creditor is null)
         {

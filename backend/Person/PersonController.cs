@@ -141,7 +141,7 @@ public class PersonController(AppDbContext db) : ControllerBase
     [HttpGet("persons/mailing-list")]
     public async Task<IActionResult> GetMailingList(CancellationToken ct)
     {
-        var settings = await db.Settings.FindAsync([Accounting.Settings.SingletonId], ct);
+        var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct);
         var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
         // Recipients: every active Person plus every Person flagged "Newsletter".
         var recipients = ClubNewsRecipientRules.Recipients(persons, settings!.StartDate).ToList();
@@ -159,7 +159,7 @@ public class PersonController(AppDbContext db) : ControllerBase
     [HttpGet("jubilees")]
     public async Task<IActionResult> GetJubilees()
     {
-        var settings = await db.Settings.FindAsync(Accounting.Settings.SingletonId);
+        var settings = await db.Settings.FindAsync(Settings.Settings.SingletonId);
         if (settings is null)
         {
             return NotFound();

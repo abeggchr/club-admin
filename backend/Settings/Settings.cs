@@ -1,4 +1,4 @@
-namespace backend.Accounting;
+namespace backend.Settings;
 
 /// <summary>The club's settings, stored as a single record: the Name, the Anfangssaldo, its start date, the IBAN and the Klubadresse. All are required.</summary>
 public class Settings

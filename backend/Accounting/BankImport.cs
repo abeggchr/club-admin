@@ -4,12 +4,13 @@ using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
+using backend.Shared;
 
 namespace backend.Accounting;
 
+using backend.Invoicing;
 using Camt = Iso20022.Contracts.Camt05300110;
 using Person = backend.Person.Person;
-using backend.Invoicing;
 
 /// <summary>A position of an open Rechnung as seen by the import: its Kontoplan hint and amount.</summary>
 public record ImportInvoiceLine(string Text, int AccountNumber, decimal Amount);
@@ -34,14 +35,12 @@ public record ImportEntry(string Text, int AccountNumber, decimal Amount);
 /// (to resolve the Konten the auto-entries would book to).
 /// </summary>
 public record ImportSnapshot(
-    Settings Settings,
+    Settings.Settings Settings,
     IReadOnlyCollection<string> ExistingBankReferences,
     IReadOnlyCollection<Person> Persons,
     IReadOnlyCollection<ImportInvoice> Invoices,
     ChartOfAccounts? Chart
-)
-{
-}
+) { }
 
 /// <summary>One imported Bewegung to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId. A matched Bewegung additionally carries the Rechnung it covers, the Buchungen the import proposes for it, — when this Bewegung overpays, the excess booked to Konto 3600 (Spenden) — and, when this Bewegung is the first to cover the total, the UTC timestamp of the Paid status change (the movement's booking date in Zurich time).</summary>
 public record ImportedTransaction(
@@ -195,7 +194,6 @@ public static class BankImport
             ? new BankImportResult([], 0, context.Errors)
             : new BankImportResult(context.Transactions, context.SkippedDuplicates, []);
     }
-
 
     /// <summary>
     /// Reads one CAMT.053 file into the library's contracts. The library has no camt.053.001.08 contracts, only
@@ -485,7 +483,9 @@ public static class BankImport
     private static Camt.PartyIdentification135? CounterpartyPartyOf(
         Camt.EntryTransaction12? transaction,
         bool credit
-    ) => (credit ? transaction?.RltdPties?.Dbtr : transaction?.RltdPties?.Cdtr)?.Item as Camt.PartyIdentification135;
+    ) =>
+        (credit ? transaction?.RltdPties?.Dbtr : transaction?.RltdPties?.Cdtr)?.Item
+        as Camt.PartyIdentification135;
 
     private static string? CounterpartyNameOf(Camt.PartyIdentification135? party)
     {
@@ -899,8 +899,8 @@ public static class BankImport
 
     /// <summary>The Rechnungsnummern of the movements that were auto-booked, in import order (spec #44 §7, the response's bookedInvoices).</summary>
     public static List<int> BookedInvoiceIds(BankImportResult result) =>
-        result.Transactions
-            .Where(t => t.MatchedInvoiceId is not null)
+        result
+            .Transactions.Where(t => t.MatchedInvoiceId is not null)
             .Select(t => t.MatchedInvoiceId!.Value)
             .ToList();
 

@@ -4,7 +4,11 @@ namespace backend.Tests.Accounting;
 
 public class JournalFilterTests
 {
-    private static readonly Settings Opening = new() { OpeningBalance = 1000m, StartDate = new DateOnly(2026, 1, 1) };
+    private static readonly backend.Settings.Settings Opening = new()
+    {
+        OpeningBalance = 1000m,
+        StartDate = new DateOnly(2026, 1, 1),
+    };
 
     private static Entry E(int id, DateOnly date, string text, int account, decimal amount) =>
         new()
@@ -16,27 +20,42 @@ public class JournalFilterTests
             Amount = amount,
         };
 
-    private static readonly IReadOnlyList<JournalRow> Rows = AccountingCalculator.RunningBalances(Opening,
-    [
-        E(1, new DateOnly(2026, 2, 1), "Jahresbeitrag Müller", 3400, 100m),
-        E(2, new DateOnly(2026, 3, 1), "Miete März", 6010, -30m),
-        E(3, new DateOnly(2026, 4, 1), "Spende", 3600, 7m),
-    ]);
+    private static readonly IReadOnlyList<JournalRow> Rows = AccountingCalculator.RunningBalances(
+        Opening,
+        [
+            E(1, new DateOnly(2026, 2, 1), "Jahresbeitrag Müller", 3400, 100m),
+            E(2, new DateOnly(2026, 3, 1), "Miete März", 6010, -30m),
+            E(3, new DateOnly(2026, 4, 1), "Spende", 3600, 7m),
+        ]
+    );
 
-    private static int[] Ids(IEnumerable<JournalRow> rows) => rows.Select(r => r.Entry.Id).ToArray();
+    private static int[] Ids(IEnumerable<JournalRow> rows) =>
+        rows.Select(r => r.Entry.Id).ToArray();
 
     [Fact]
     public void Date_range_is_inclusive_on_both_ends()
     {
-        var result = JournalFilter.Apply(Rows, new DateOnly(2026, 2, 1), new DateOnly(2026, 3, 1), null, null);
+        var result = JournalFilter.Apply(
+            Rows,
+            new DateOnly(2026, 2, 1),
+            new DateOnly(2026, 3, 1),
+            null,
+            null
+        );
         Assert.Equal([2, 1], Ids(result));
     }
 
     [Fact]
     public void Open_ended_ranges_work()
     {
-        Assert.Equal([3, 2], Ids(JournalFilter.Apply(Rows, new DateOnly(2026, 3, 1), null, null, null)));
-        Assert.Equal([1], Ids(JournalFilter.Apply(Rows, null, new DateOnly(2026, 2, 28), null, null)));
+        Assert.Equal(
+            [3, 2],
+            Ids(JournalFilter.Apply(Rows, new DateOnly(2026, 3, 1), null, null, null))
+        );
+        Assert.Equal(
+            [1],
+            Ids(JournalFilter.Apply(Rows, null, new DateOnly(2026, 2, 28), null, null))
+        );
     }
 
     [Fact]
