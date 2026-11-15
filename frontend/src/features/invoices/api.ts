@@ -1,4 +1,5 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
+import { apiFetch } from "../../lib/apiFetch";
 import { ensureOk, getJson, requestJson } from "../accounting/api";
 import type { InvoiceInput } from "./invoiceDraft";
 
@@ -101,7 +102,9 @@ export async function deleteMembershipDiscount(
 	personId: number,
 ): Promise<void> {
 	await ensureOk(
-		await fetch(`/api/membership-discounts/${personId}`, { method: "DELETE" }),
+		await apiFetch(`/api/membership-discounts/${personId}`, {
+			method: "DELETE",
+		}),
 	);
 }
 

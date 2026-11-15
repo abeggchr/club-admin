@@ -1,4 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
+import { apiFetch } from "../../lib/apiFetch";
 import { ensureOk, getJson, requestJson } from "../accounting/api";
 import type { TextTemplateDraft } from "./textTemplateDraft";
 
@@ -23,6 +24,6 @@ export function saveTextTemplate(
 
 export async function deleteTextTemplate(id: number): Promise<void> {
 	await ensureOk(
-		await fetch(`/api/text-templates/${id}`, { method: "DELETE" }),
+		await apiFetch(`/api/text-templates/${id}`, { method: "DELETE" }),
 	);
 }
