@@ -1,4 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { MdAttachFile } from "react-icons/md";
 import { personsQueryOptions } from "../persons/api";
 import { personLabel } from "../persons/personFilter";
 import { formatChf } from "./amount";
@@ -63,6 +64,19 @@ export function TransactionsTable({
 										{t.entryIds.length === 0 && (
 											<span className="ml-2 whitespace-nowrap rounded bg-amber-100 px-1.5 text-xs text-amber-800">
 												Keine Buchung
+											</span>
+										)}
+										{t.receipts.length > 0 && (
+											<span
+												className="ml-2 inline-flex items-center whitespace-nowrap text-xs text-slate-500"
+												title={
+													t.receipts.length === 1
+														? "1 Beleg"
+														: `${t.receipts.length} Belege`
+												}
+											>
+												<MdAttachFile className="size-4" aria-hidden />
+												{t.receipts.length}
 											</span>
 										)}
 									</td>

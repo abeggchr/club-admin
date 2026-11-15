@@ -11,6 +11,8 @@ import {
 	saveTransaction,
 	settingsQueryOptions,
 } from "./api";
+import { ReceiptsSection } from "./ReceiptsSection";
+import { deleteWarning } from "./receipts";
 import {
 	addEntry,
 	canDelete,
@@ -104,6 +106,8 @@ export function EditPanel({
 
 	async function onDelete() {
 		if (!transaction) return;
+		const warning = deleteWarning(transaction.receipts.length);
+		if (warning && !window.confirm(`Bewegung löschen? ${warning}`)) return;
 		setServerError(undefined);
 		try {
 			await deleteTransaction(transaction.id);
@@ -265,6 +269,8 @@ export function EditPanel({
 				</p>
 			)}
 			{errors?.remainder && <p className="text-red-600">{errors.remainder}</p>}
+
+			{transaction && <ReceiptsSection transaction={transaction} />}
 
 			<div className="flex justify-end gap-2">
 				{transaction && (

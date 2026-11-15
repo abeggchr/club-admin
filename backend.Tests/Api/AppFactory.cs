@@ -1,3 +1,4 @@
+using backend.Accounting;
 using backend.Tests.Invoicing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -15,6 +16,9 @@ namespace backend.Tests.Api;
 /// </summary>
 public sealed class AppFactory(LocalPostgresFixture postgres) : WebApplicationFactory<Program>
 {
+    /// <summary>Receipt PDFs of this app instance; the S3 endpoint is unreachable, so tests use memory.</summary>
+    public InMemoryReceiptStorage Receipts { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -30,6 +34,8 @@ public sealed class AppFactory(LocalPostgresFixture postgres) : WebApplicationFa
         // Entra is replaced by a test handler: a request is signed in when it carries the
         // TestAuthHandler.UserHeader header.
         builder.ConfigureTestServices(services =>
+        {
+            services.AddSingleton<IReceiptStorage>(Receipts);
             services
                 .AddAuthentication(options =>
                 {
@@ -40,7 +46,7 @@ public sealed class AppFactory(LocalPostgresFixture postgres) : WebApplicationFa
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
                     TestAuthHandler.SchemeName,
                     _ => { }
-                )
-        );
+                );
+        });
     }
 }
