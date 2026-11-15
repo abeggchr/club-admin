@@ -55,7 +55,7 @@ export function DetailPanel({
 			{invoice && (
 				<>
 					<p className="text-sm">
-						<span className="text-slate-500">Invoice Date:</span>{" "}
+						<span className="text-slate-500">Datum:</span>{" "}
 						{formatDate(invoice.date)}
 					</p>
 
