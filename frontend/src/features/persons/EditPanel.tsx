@@ -67,7 +67,10 @@ export function EditPanel({
 	// Clicking outside closes the panel, unless that would discard unsaved changes.
 	useEffect(() => {
 		if (dirty) return;
+		const attachedAt = performance.now();
 		function onDocumentClick(e: MouseEvent) {
+			// The click that opened the panel is still bubbling when this listener is attached.
+			if (e.timeStamp < attachedAt) return;
 			// composedPath is fixed at dispatch time, so it still works if the target was removed since.
 			if (panelRef.current && !e.composedPath().includes(panelRef.current))
 				onClose();
