@@ -7,7 +7,6 @@ import {
 	Link,
 	Outlet,
 } from "@tanstack/react-router";
-
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { settingsQueryOptions } from "../features/accounting/api";
 import { navItems } from "../nav";
@@ -27,7 +26,9 @@ function RootComponent() {
 		<>
 			<header className="px-4 pt-4">
 				<h1 className="text-2xl font-bold text-sky-900">
-					{settings?.name.trim() || "SCW"}
+					<Link to="/" aria-label="Übersicht">
+						{settings?.name.trim() || "Admin"}
+					</Link>
 				</h1>
 				<nav className="mt-2 flex gap-1 rounded-lg bg-sky-500 p-2 shadow">
 					{navItems.map((item) => (

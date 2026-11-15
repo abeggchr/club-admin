@@ -5,6 +5,9 @@ namespace backend.Invoicing;
 /// <summary>One Rechnungsposition as supplied by the client.</summary>
 public record InvoiceLineDraft(string? Text, decimal Amount, int AccountNumber);
 
+/// <summary>The dashboard's Rechnungen: how many are open and what their full totals sum to.</summary>
+public record InvoiceSummary(int OpenCount, decimal OpenAmount);
+
 /// <summary>Pure rules for creating a Rechnung. Errors are German messages, or null when valid.</summary>
 public static class InvoiceRules
 {
@@ -42,4 +45,37 @@ public static class InvoiceRules
     public static string FormatNumber(int id) => id.ToString("D4");
 
     public static decimal Total(IEnumerable<InvoiceLineDraft> lines) => lines.Sum(l => l.Amount);
+
+    /// <summary>
+    /// The Rechnungsstatus a Rechnung currently has: the newest status change, or Created for a
+    /// Rechnung without any status change yet.
+    /// </summary>
+    public static InvoiceStatus LatestStatus(Invoice invoice) =>
+        invoice.StatusChanges.Count == 0
+            ? InvoiceStatus.Created
+            : invoice.StatusChanges
+                .OrderBy(s => s.Timestamp)
+                .ThenBy(s => s.Id)
+                .Last()
+                .Status;
+
+    /// <summary>Open: the latest Rechnungsstatus is not Bezahlt.</summary>
+    public static bool IsOpen(Invoice invoice) => LatestStatus(invoice) != InvoiceStatus.Paid;
+
+    /// <summary>
+    /// The dashboard's Rechnungen: how many are open and what their full totals sum to. Partial
+    /// payments are not subtracted, since they are not tracked against a Rechnung.
+    /// </summary>
+    public static InvoiceSummary Summarize(IEnumerable<Invoice> invoices) =>
+        invoices
+            .Where(IsOpen)
+            .Select(i => i.Lines.Sum(l => l.Amount))
+            .Aggregate(
+                new InvoiceSummary(0, 0m),
+                (summary, total) => summary with
+                {
+                    OpenCount = summary.OpenCount + 1,
+                    OpenAmount = summary.OpenAmount + total,
+                }
+            );
 }
