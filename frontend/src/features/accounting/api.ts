@@ -133,7 +133,7 @@ export type TransactionImportError = {
 	message: string;
 };
 
-/** Thrown when the backend rejects the eBanking zip; the errors name their file. */
+/** Thrown when the backend rejects the eBanking zip or XML file; the errors name their file. */
 export class TransactionImportFailed extends Error {
 	constructor(public readonly errors: TransactionImportError[]) {
 		super(
@@ -144,7 +144,7 @@ export class TransactionImportFailed extends Error {
 	}
 }
 
-/** Uploads the eBanking zip as-is; the backend creates one Transaction per simple CAMT entry. */
+/** Uploads the eBanking zip or a single CAMT.053 XML file as-is; the backend creates one Transaction per simple CAMT entry. */
 export async function importTransactions(
 	file: File,
 ): Promise<TransactionImportResult> {

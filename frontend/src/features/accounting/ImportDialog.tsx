@@ -56,11 +56,12 @@ export function ImportDialog({
 			<form onSubmit={submit}>
 				<h2 className="text-xl font-bold">Bewegungen importieren</h2>
 				<p className="mt-1 text-sm text-neutral-600">
-					Die ZIP-Datei aus dem eBanking (CAMT.053) wird direkt hochgeladen.
+					Die ZIP- oder XML-Datei (CAMT.053) aus dem eBanking wird direkt
+					hochgeladen.
 				</p>
 				<input
 					type="file"
-					accept=".zip,application/zip"
+					accept=".zip,.xml,application/zip,text/xml,application/xml"
 					onChange={(e) => {
 						setFile(e.target.files?.[0] ?? null);
 						setError(null);
