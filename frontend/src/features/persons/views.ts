@@ -18,6 +18,7 @@ export const views = {
 			"landlinePhone",
 			"country",
 			"notes",
+			"receivesClubNews"
 		),
 	},
 	contacts: {
@@ -25,6 +26,7 @@ export const views = {
 		filter: (p: Person) => !p.joinedOn,
 		columns: hideColumns(
 			"dateOfBirth",
+			"membership",
 			"joinedOn",
 			"leftOn",
 			"country",
@@ -34,7 +36,7 @@ export const views = {
 	former: {
 		label: "Ehemalige",
 		filter: (p: Person) => !!p.leftOn,
-		columns: hideColumns("dateOfBirth", "country", "notes"),
+		columns: hideColumns("membership", "dateOfBirth", "country", "notes"),
 	},
 	all: {
 		label: "Alle",
