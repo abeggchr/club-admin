@@ -122,8 +122,7 @@ api.MapPut(
                 update.Address,
                 update.PostalCode,
                 update.City,
-                earliest,
-                update.Title
+                earliest
             ) is
             { } error
         )
@@ -138,7 +137,6 @@ api.MapPut(
             db.Settings.Add(settings);
         }
 
-        settings.Title = update.Title?.Trim() ?? "";
         settings.OpeningBalance = update.OpeningBalance;
         settings.StartDate = update.StartDate;
         settings.Iban = Iban.Normalize(update.Iban)!;
@@ -985,8 +983,7 @@ record SettingsUpdate(
     string? Name,
     string? Address,
     string? PostalCode,
-    string? City,
-    string? Title
+    string? City
 );
 
 record MembershipDiscountInput(int? PersonId, int? Percent, string? Text);

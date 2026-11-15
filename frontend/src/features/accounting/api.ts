@@ -7,7 +7,6 @@ import type {
 } from "./types";
 
 export type Settings = {
-	title: string;
 	openingBalance: number;
 	startDate: string;
 	iban: string;

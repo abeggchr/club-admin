@@ -12,8 +12,7 @@ public class SettingsRulesTests
         string? name = "SC Wiedikon",
         string? address = "Sportweg 12",
         string? postalCode = "8000",
-        string? city = "Zürich",
-        string? title = null
+        string? city = "Zürich"
     ) =>
         SettingsRules.Validate(
             openingBalance,
@@ -23,8 +22,7 @@ public class SettingsRulesTests
             address,
             postalCode,
             city,
-            earliestTransaction,
-            title
+            earliestTransaction
         );
 
     [Fact]
@@ -103,23 +101,6 @@ public class SettingsRulesTests
     [Fact]
     public void A_city_over_35_characters_is_rejected() =>
         Assert.Contains("35", Validate(city: new string('a', 36)));
-
-    [Fact]
-    public void No_title_is_accepted() => Assert.Null(Validate(title: null));
-
-    [Fact]
-    public void A_title_is_accepted() => Assert.Null(Validate(title: "Skiclub Waidberg"));
-
-    [Fact]
-    public void An_empty_title_is_accepted() => Assert.Null(Validate(title: ""));
-
-    [Fact]
-    public void A_title_at_70_characters_is_accepted() =>
-        Assert.Null(Validate(title: new string('a', 70)));
-
-    [Fact]
-    public void A_title_over_70_characters_is_rejected() =>
-        Assert.Contains("70", Validate(title: new string('a', 71)));
 
     [Fact]
     public void A_QR_IBAN_is_rejected() =>

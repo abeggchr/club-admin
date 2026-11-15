@@ -20,7 +20,6 @@ export function SettingsPage() {
 	const [address, setAddress] = useState(settings?.address ?? "");
 	const [postalCode, setPostalCode] = useState(settings?.postalCode ?? "");
 	const [city, setCity] = useState(settings?.city ?? "");
-	const [title, setTitle] = useState(settings?.title ?? "");
 	const [error, setError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
 
@@ -42,7 +41,6 @@ export function SettingsPage() {
 				address: address.trim(),
 				postalCode: postalCode.trim(),
 				city: city.trim(),
-				title: title.trim(),
 			});
 			queryClient.setQueryData(settingsQueryOptions.queryKey, result);
 			await invalidateJournalQueries(queryClient);
@@ -52,7 +50,6 @@ export function SettingsPage() {
 			setAddress(result.address);
 			setPostalCode(result.postalCode);
 			setCity(result.city);
-			setTitle(result.title);
 			setSaved(true);
 		} catch (err) {
 			setError(
@@ -70,12 +67,12 @@ export function SettingsPage() {
 				className="mt-6 flex max-w-sm flex-col gap-3"
 			>
 				<label className="flex flex-col text-sm">
-					Titel
+					Name
 					<input
 						required
 						maxLength={70}
-						value={title}
-						onChange={(e) => setTitle(e.target.value)}
+						value={name}
+						onChange={(e) => setName(e.target.value)}
 						className="rounded border border-slate-300 p-2"
 					/>
 				</label>
@@ -109,16 +106,6 @@ export function SettingsPage() {
 					/>
 				</label>
 				<h3 className="mt-2 font-medium">Klubadresse</h3>
-				<label className="flex flex-col text-sm">
-					Name
-					<input
-						required
-						maxLength={70}
-						value={name}
-						onChange={(e) => setName(e.target.value)}
-						className="rounded border border-slate-300 p-2"
-					/>
-				</label>
 				<label className="flex flex-col text-sm">
 					Adresse
 					<input

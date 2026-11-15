@@ -1,14 +1,10 @@
 namespace backend.Accounting;
 
-/// <summary>Pure validation for the club settings (Titel, Anfangssaldo, Startdatum, IBAN, Klubadresse). Returns a German error message, or null when valid.</summary>
+/// <summary>Pure validation for the club settings (Anfangssaldo, Startdatum, IBAN, Klubadresse). Returns a German error message, or null when valid.</summary>
 public static class SettingsRules
 {
-    public static string? Validate(decimal openingBalance, DateOnly startDate, string? iban, string? name, string? address, string? postalCode, string? city, DateOnly? earliestTransaction, string? title = null)
+    public static string? Validate(decimal openingBalance, DateOnly startDate, string? iban, string? name, string? address, string? postalCode, string? city, DateOnly? earliestTransaction)
     {
-        if (title is not null && title.Trim().Length > 70)
-        {
-            return "Der Titel darf höchstens 70 Zeichen lang sein.";
-        }
         if (openingBalance != decimal.Round(openingBalance, 2))
         {
             return "Der Betrag darf höchstens zwei Dezimalstellen haben.";
