@@ -46,9 +46,9 @@ public class BankImporter(AppDbContext db, ChartOfAccounts chart)
         // Invoices for matching: QR-bill reference, total, and positions. An Invoice that already
         // has a Paid status change is terminal (once Paid, always Paid) and is flagged so the matcher
         // never re-books or re-sets PaidBy, e.g. when the paying movement was deleted and re-imported.
-        // existingPaid is 0 here: re-imports of the same movement are skipped via BankReference, so
-        // the Entries of an already-imported movement are attributed to the Invoice by its Paid
-        // status change, not by a foreign key.
+        // Re-imports of the same movement are skipped via BankReference, so the Entries of an
+        // already-imported movement are attributed to the Invoice by its Paid status change, not by a
+        // foreign key.
         var invoices = await db
             .Invoices.Include(i => i.Lines)
             .Include(i => i.StatusChanges)
@@ -59,7 +59,6 @@ public class BankImporter(AppDbContext db, ChartOfAccounts chart)
                 i.Id,
                 i.Reference,
                 i.Lines.Sum(l => l.Amount),
-                0m,
                 i.StatusChanges.Any(s => s.Status == InvoiceStatus.Paid),
                 i.Lines.OrderBy(l => l.Position)
                     .Select(l => new ImportInvoiceLine(l.Text, l.AccountNumber, l.Amount))

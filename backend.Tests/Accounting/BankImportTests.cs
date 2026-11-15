@@ -1286,7 +1286,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1330,7 +1329,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1377,7 +1375,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1427,7 +1424,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1468,7 +1464,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1508,7 +1503,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1547,7 +1541,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1586,7 +1579,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1625,7 +1617,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1664,7 +1655,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1704,7 +1694,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 9999, 100m)]
             ),
@@ -1752,7 +1741,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1791,7 +1779,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1799,7 +1786,6 @@ public class BankImportTests
                 43,
                 "RF340042",
                 200m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Beitrag", 3400, 200m)]
             ),
@@ -1838,7 +1824,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 150m,
-                0m,
                 false,
                 [
                     new ImportInvoiceLine("Jahresbeitrag", 3400, 100m),
@@ -1887,7 +1872,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1930,7 +1914,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -1970,7 +1953,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 true,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -2012,7 +1994,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 true,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -2054,7 +2035,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -2065,7 +2045,6 @@ public class BankImportTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 true,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),

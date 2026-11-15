@@ -37,7 +37,6 @@ public class ImportResponseFieldsTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
@@ -45,7 +44,6 @@ public class ImportResponseFieldsTests
                 43,
                 "RF340043",
                 50m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Beitrag", 3400, 50m)]
             ),
@@ -101,7 +99,6 @@ public class ImportResponseFieldsTests
                 42,
                 "RF340042",
                 100m,
-                0m,
                 false,
                 [new ImportInvoiceLine("Jahresbeitrag", 3400, 100m)]
             ),
