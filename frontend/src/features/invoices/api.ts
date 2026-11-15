@@ -88,21 +88,21 @@ export type MembershipDiscount = {
 
 export const membershipDiscountsQueryOptions = queryOptions({
 	queryKey: ["membership-discounts"],
-	queryFn: () => getJson<MembershipDiscount[]>("/api/membership-discounts"),
+	queryFn: () => getJson<MembershipDiscount[]>("/api/invoices/membership-discounts"),
 });
 
 /** Adds or replaces the Ermässigung of a Person; rejects with the backend's message. */
 export function saveMembershipDiscount(
 	discount: MembershipDiscount,
 ): Promise<MembershipDiscount> {
-	return requestJson("/api/membership-discounts", "PUT", discount);
+	return requestJson("/api/invoices/membership-discounts", "PUT", discount);
 }
 
 export async function deleteMembershipDiscount(
 	personId: number,
 ): Promise<void> {
 	await ensureOk(
-		await apiFetch(`/api/membership-discounts/${personId}`, {
+		await apiFetch(`/api/invoices/membership-discounts/${personId}`, {
 			method: "DELETE",
 		}),
 	);

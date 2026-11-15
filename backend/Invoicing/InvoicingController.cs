@@ -157,12 +157,12 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         return Ok(summary);
     }
 
-    [HttpGet("membership-discounts")]
+    [HttpGet("invoices/membership-discounts")]
     public async Task<IActionResult> GetMembershipDiscounts() =>
         Ok(await db.MembershipDiscounts.AsNoTracking().OrderBy(d => d.PersonId).ToListAsync());
 
     // Saves (adds or replaces) the one Ermässigung of a Person.
-    [HttpPut("membership-discounts")]
+    [HttpPut("invoices/membership-discounts")]
     public async Task<IActionResult> SaveMembershipDiscount(
         MembershipDiscountInput input,
         CancellationToken ct
@@ -190,7 +190,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         return Ok(discount);
     }
 
-    [HttpDelete("membership-discounts/{personId:int}")]
+    [HttpDelete("invoices/membership-discounts/{personId:int}")]
     public async Task<IActionResult> DeleteMembershipDiscount(int personId, CancellationToken ct)
     {
         var discount = await db.MembershipDiscounts.FindAsync([personId], ct);
