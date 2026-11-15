@@ -1,5 +1,5 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
 import { formatChf, parseAmount } from "../accounting/amount";
 import {
 	invalidateJournalQueries,
@@ -8,26 +8,75 @@ import {
 } from "../accounting/api";
 import { TextTemplatesSection } from "./TextTemplatesSection";
 
+type FormState = {
+	name: string;
+	address: string;
+	postalCode: string;
+	city: string;
+	iban: string;
+	amount: string;
+	startDate: string;
+};
+
+function Field({
+	label,
+	children,
+}: {
+	label: string;
+	children: ReactNode;
+}) {
+	return (
+		<label className="flex flex-col gap-1 text-sm">
+			{label}
+			{children}
+		</label>
+	);
+}
+
+function FormSection({
+	title,
+	children,
+}: {
+	title: string;
+	children: ReactNode;
+}) {
+	return (
+		<fieldset className="flex flex-col gap-3">
+			<legend className="mb-3 font-medium text-sky-900">{title}</legend>
+			{children}
+		</fieldset>
+	);
+}
+
+const inputClass = "rounded border border-slate-300 p-2";
+
 export function SettingsPage() {
 	const queryClient = useQueryClient();
 	const { data: settings } = useSuspenseQuery(settingsQueryOptions);
-	const [amount, setAmount] = useState(
-		settings ? formatChf(settings.openingBalance) : "",
-	);
-	const [startDate, setStartDate] = useState(settings?.startDate ?? "");
-	const [iban, setIban] = useState(settings?.iban ?? "");
-	const [name, setName] = useState(settings?.name ?? "");
-	const [address, setAddress] = useState(settings?.address ?? "");
-	const [postalCode, setPostalCode] = useState(settings?.postalCode ?? "");
-	const [city, setCity] = useState(settings?.city ?? "");
+	const [form, setForm] = useState<FormState>({
+		name: settings?.name ?? "",
+		address: settings?.address ?? "",
+		postalCode: settings?.postalCode ?? "",
+		city: settings?.city ?? "",
+		iban: settings?.iban ?? "",
+		amount: settings ? formatChf(settings.openingBalance) : "",
+		startDate: settings?.startDate ?? "",
+	});
 	const [error, setError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
+
+	const bind = (key: keyof FormState) => ({
+		value: form[key],
+		onChange: (e: { target: { value: string } }) =>
+			setForm((prev) => ({ ...prev, [key]: e.target.value })),
+		className: inputClass,
+	});
 
 	async function onSubmit(e: FormEvent) {
 		e.preventDefault();
 		setError(null);
 		setSaved(false);
-		const parsed = parseAmount(amount, { allowZero: true });
+		const parsed = parseAmount(form.amount, { allowZero: true });
 		if (!parsed.ok) {
 			setError(parsed.error);
 			return;
@@ -35,21 +84,24 @@ export function SettingsPage() {
 		try {
 			const result = await saveSettings({
 				openingBalance: parsed.value,
-				startDate,
-				iban: iban.trim(),
-				name: name.trim(),
-				address: address.trim(),
-				postalCode: postalCode.trim(),
-				city: city.trim(),
+				startDate: form.startDate,
+				iban: form.iban.trim(),
+				name: form.name.trim(),
+				address: form.address.trim(),
+				postalCode: form.postalCode.trim(),
+				city: form.city.trim(),
 			});
 			queryClient.setQueryData(settingsQueryOptions.queryKey, result);
 			await invalidateJournalQueries(queryClient);
-			setAmount(formatChf(result.openingBalance));
-			setIban(result.iban);
-			setName(result.name);
-			setAddress(result.address);
-			setPostalCode(result.postalCode);
-			setCity(result.city);
+			setForm((prev) => ({
+				...prev,
+				name: result.name,
+				address: result.address,
+				postalCode: result.postalCode,
+				city: result.city,
+				iban: result.iban,
+				amount: formatChf(result.openingBalance),
+			}));
 			setSaved(true);
 		} catch (err) {
 			setError(
@@ -59,91 +111,55 @@ export function SettingsPage() {
 	}
 
 	return (
-		<div className="px-8">
+		<div className="px-8 pb-8">
 			<h2 className="mt-4 text-xl font-semibold text-sky-900">Einstellungen</h2>
 			<form
 				onSubmit={onSubmit}
 				noValidate
-				className="mt-6 flex max-w-sm flex-col gap-3"
+				className="mt-6 flex max-w-sm flex-col gap-6"
 			>
-				<label className="flex flex-col text-sm">
-					Name
-					<input
-						required
-						maxLength={70}
-						value={name}
-						onChange={(e) => setName(e.target.value)}
-						className="rounded border border-slate-300 p-2"
-					/>
-				</label>
-				<h3 className="mt-2 font-medium">Anfangssaldo</h3>
-				<label className="flex flex-col text-sm">
-					Betrag
-					<input
-						inputMode="decimal"
-						value={amount}
-						onChange={(e) => setAmount(e.target.value)}
-						className="rounded border border-slate-300 p-2"
-					/>
-				</label>
-				<label className="flex flex-col text-sm">
-					Startdatum
-					<input
-						type="date"
-						required
-						value={startDate}
-						onChange={(e) => setStartDate(e.target.value)}
-						className="rounded border border-slate-300 p-2"
-					/>
-				</label>
-				<label className="flex flex-col text-sm">
-					IBAN
-					<input
-						required
-						value={iban}
-						onChange={(e) => setIban(e.target.value)}
-						className="rounded border border-slate-300 p-2"
-					/>
-				</label>
-				<h3 className="mt-2 font-medium">Klubadresse</h3>
-				<label className="flex flex-col text-sm">
-					Adresse
-					<input
-						required
-						maxLength={70}
-						value={address}
-						onChange={(e) => setAddress(e.target.value)}
-						className="rounded border border-slate-300 p-2"
-					/>
-				</label>
-				<label className="flex flex-col text-sm">
-					PLZ
-					<input
-						required
-						maxLength={16}
-						value={postalCode}
-						onChange={(e) => setPostalCode(e.target.value)}
-						className="rounded border border-slate-300 p-2"
-					/>
-				</label>
-				<label className="flex flex-col text-sm">
-					Ort
-					<input
-						required
-						maxLength={35}
-						value={city}
-						onChange={(e) => setCity(e.target.value)}
-						className="rounded border border-slate-300 p-2"
-					/>
-				</label>
-				<button
-					type="submit"
-					className="self-start rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
-				>
-					Speichern
-				</button>
-				{saved && <p className="text-green-700">Gespeichert.</p>}
-				{error && <p className="text-red-600">{error}</p>}
+				<FormSection title="Klub">
+					<Field label="Name">
+						<input required maxLength={70} {...bind("name")} />
+					</Field>
+					<Field label="Adresse">
+						<input required maxLength={70} {...bind("address")} />
+					</Field>
+					<div className="grid grid-cols-[1fr_2fr] gap-3">
+						<Field label="PLZ">
+							<input required maxLength={16} {...bind("postalCode")} />
+						</Field>
+						<Field label="Ort">
+							<input required maxLength={35} {...bind("city")} />
+						</Field>
+					</div>
+				</FormSection>
+
+				<FormSection title="Bankverbindung">
+					<Field label="IBAN">
+						<input required {...bind("iban")} />
+					</Field>
+				</FormSection>
+
+				<FormSection title="Anfangssaldo">
+					<Field label="Betrag">
+						<input inputMode="decimal" {...bind("amount")} />
+					</Field>
+					<Field label="Startdatum">
+						<input type="date" required {...bind("startDate")} />
+					</Field>
+				</FormSection>
+
+				<div className="flex flex-col gap-3">
+					<button
+						type="submit"
+						className="self-start rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
+					>
+						Speichern
+					</button>
+					{saved && <p className="text-green-700">Gespeichert.</p>}
+					{error && <p className="text-red-600">{error}</p>}
+				</div>
 			</form>
 			<TextTemplatesSection />
 		</div>
