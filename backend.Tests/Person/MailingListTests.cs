@@ -1,4 +1,3 @@
-using backend.Accounting;
 using backend.Person;
 using backend.Tests.Invoicing;
 using Microsoft.EntityFrameworkCore;
@@ -90,7 +89,7 @@ public class MailingListTests : IClassFixture<LocalPostgresFixture>
                 OpeningBalance = 0,
                 StartDate = StartDate,
                 Iban = "CH9300000000000000000",
-                Name = "SCW",
+                Name = "Skiclub",
                 Address = "Sportweg 1",
                 PostalCode = "8000",
                 City = "Zürich",

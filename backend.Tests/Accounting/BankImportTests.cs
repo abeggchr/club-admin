@@ -181,7 +181,7 @@ public class BankImportTests
                 <Refs><AcctSvcrRef>TX1</AcctSvcrRef></Refs>
                 <Amt Ccy="CHF">45.20</Amt>
                 <RltdPties>
-                <Dbtr><Pty><Nm>SCW Zug</Nm></Pty></Dbtr>
+                <Dbtr><Pty><Nm>Skiclub Zug</Nm></Pty></Dbtr>
                 <Cdtr><Pty><Nm>Bäckerei Beispiel</Nm></Pty></Cdtr>
                 </RltdPties>
                 <RmtInf>
