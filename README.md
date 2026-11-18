@@ -1,101 +1,42 @@
-# SCW Backoffice
+# Club Admin
 
-Backoffice for the club: persons, bookkeeping and invoices. ASP.NET Core backend (`backend/`), React frontend (`frontend/`), Postgres, and S3-compatible object storage for invoice PDFs.
+> simple club administration, open-source
 
-## Productive development
+## Features
 
-### 1. Railway
+- Addresses (active members, former members, contacts)
+  - Add/Edit
+  - Import/Export
+  - Download addresses grouped by the same address (Versand)
+- Invoices
+  - Create single invoices
+  - Create batch invoices for yearly fee (grouped by address, other payer functionality)
+- Accounting
+  - Cash basis accounting (Einnahmen-Ausgaben-Rechnung)
+- German user interface.
 
-Deploy the app to [Railway] as follows:
+### Planned features
 
-1. Create a Railway account.
-2. Create a new project, connect to the GitHub repository. 
-3. Setup public networking. This is where you set the `<railway-domain>`.
-4. Add a Bucket. 
-5. Add a Postgres database.
-6. Set the following variables in the App:
-    *  `ConnectionStrings__Default="Host=${{Postgres.PGHOST}};Port=${{Postgres.PGPORT}};Database=${{Postgres.POSTGRES_DB}};Username=${{Postgres.POSTGRES_USER}};Password=${{Postgres.POSTGRES_PASSWORD}}"`
-    * `BUCKET=${{<bucket>BUCKET}}`
-    * `ENDPOINT=${{<bucket>ENDPOINT}}`
-    * `ACCESS_KEY_ID=${{<bucket>ACCESS_KEY_ID}}`
-    * `SECRET_ACCESS_KEY=${{<bucket>SECRET_ACCESS_KEY}}`
-    * `REGION=${{<bucket>REGION}}`
+- Send invoices by email and snail mail
+- Reporting
+- Export of all data
 
-If desired:
-- use the serverless flag on database and app
-- set up a staging environment on a different branch
+## This is not for you
 
-### 2. Entra
+- your club has more than 1000 addresses
+- you need customisation and don't know how to code
+- you need support operating a webapp
 
-The app requires a Microsoft Entra login and has no user table (ADR 0006).
+## Stack
 
-1. Create an Azure account for your club. So that you get an Entra Directory for the club.
-2. App registration in the club tenant, single tenant ("Accounts in this organizational directory only"), platform "Web".
-3. Redirect URIs: `https://<railway-domain>/signin-oidc` and `http://localhost:3000/signin-oidc`
-4. Certificates & secrets: create a client secret.
-5. In the [Entra Admin Center](https://entra.microsoft.com/) under Enterprise application: Properties, switch "Assignment required" on.
-6. Users and groups: assign users directly (free tier). Invite outside addresses (gmail, outlook.com) as guests first.
-7. Set the following variables in the Railway-App:
-    * `Authentication__Microsoft__TenantId="<clientId>"`
-    * `Authentication__Microsoft__ClientSecret="<clientSecret>"`
-    * `Authentication__Microsoft__ClientId="<tenantId>"`
+- Frontend: React
+- Backend: C#
+- DB: Postgres
+- Object Storage: S3
+- IAM: Azure Entra
 
-## Local development
+## Getting started
 
-Prerequisites: 
-* .NET 11 SDK
-* Node.js
-* [Apple Container](https://github.com/apple/container) (or docker).
-
-### 1. MinIO (object storage)
-
-```sh
-container registry login --username xxx dhi.io
-container run --name scw-minio -d -p 9000:9000 -p 9001:9001 \
-  -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
-  dhi.io/minio server /data --console-address ":9001"
-```
-
-- S3 API: http://localhost:9000, web console: http://localhost:9001
-- Dev credentials: `minioadmin` / `minioadmin`
-- Bucket name: `club-admin`. In Development the backend creates it on startup if missing. It stays private; PDFs are served through the backend.
-
-These values are configured in `backend/appsettings.Development.json` (section `ObjectStorage`).
-
-### 2. Postgres
-
-```sh
-container run --name scw-postgres -d -p 5432:5432 \
-  -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=railway postgres:18
-```
-
-This matches the connection string in `backend/appsettings.Development.json`. Migrations are applied on backend startup.
-
-### 3. Entra login
-
-The app requires a Microsoft Entra login and has no user table (ADR 0006). First setup Entra (see above).
-
-The backend refuses to start without these settings. Set them with `dotnet user-secrets` locally:
-
-```sh
-cd backend
-dotnet user-secrets set "Authentication:Microsoft:TenantId" "<tenant id>"
-dotnet user-secrets set "Authentication:Microsoft:ClientId" "<application (client) id>"
-dotnet user-secrets set "Authentication:Microsoft:ClientSecret" "<client secret value>"
-```
-
-Every restart of the backend logs you out.
-
-### 4. Backend
-
-```sh
-dotnet run --project backend
-```
-
-### 5. Frontend
-
-```sh
-cd frontend
-npm install
-npm run dev
-```
+The easiest way to get started is to [deploy](./docs/manual/deployment.md) to Railway
+with switched off authentication. Ask your agent how to switch off authentication.
+For local deployment option, see [deployment.md](./docs/manual/deployment.md).
