@@ -75,10 +75,6 @@ export const columns = helper.columns([
 		header: "Strasse",
 		cell: (info) => orDash(info.getValue()),
 	}),
-	helper.accessor("receivesClubNews", {
-		header: "Newsletter",
-		cell: (info) => (info.getValue() ? "✔" : ""),
-	}),
 	helper.accessor("number", {
 		header: "Hausnummer",
 		cell: (info) => orDash(info.getValue()),
@@ -94,6 +90,10 @@ export const columns = helper.columns([
 	helper.accessor("country", {
 		header: "Land",
 		cell: (info) => orDash(info.getValue()),
+	}),
+	helper.accessor("receivesClubNews", {
+		header: "Club-News",
+		cell: (info) => (info.getValue() ? "✔" : ""),
 	}),
 	helper.accessor("notes", {
 		header: "Notizen",

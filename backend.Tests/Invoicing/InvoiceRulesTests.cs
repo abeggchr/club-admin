@@ -126,6 +126,7 @@ public class InvoiceRulesTests
     {
         Assert.False(InvoiceRules.IsOpen(Invoice(InvoiceStatus.Paid)));
         Assert.True(InvoiceRules.IsOpen(Invoice(InvoiceStatus.Created)));
+        Assert.False(InvoiceRules.IsOpen(Invoice(InvoiceStatus.Cancelled)));
     }
 
     [Fact]

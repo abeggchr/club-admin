@@ -847,7 +847,7 @@ public static class BankImport
     /// underpayment, the debit's magnitude differs from the total, a line's Account is missing or
     /// inactive, an overpayment Entry is needed but Account 3600 is missing or inactive, or the Entries
     /// do not sum to the movement's amount. An overpaying credit additionally books the excess to Account 3600.
-    /// A credit that completes the total returns the PaidAt timestamp
+    /// A credit that covers the total (including an overpayment) returns the PaidAt timestamp
     /// (the booking date as a UTC instant) for the Paid status change; a debit never does.
     /// </summary>
     private static (
@@ -936,9 +936,9 @@ public static class BankImport
             return null;
         }
 
-        // Only a credit that completes the total exactly records the Paid status change, timestamped with the
-        // movement's booking date (Zurich midnight as a UTC instant); an overpayment does not set Paid.
-        var covered = credit && signedAmount == invoice.Total;
+        // A credit that covers the total (exactly or with an overpayment) records the Paid status change,
+        // timestamped with the movement's booking date (Zurich midnight as a UTC instant).
+        var covered = credit && signedAmount >= invoice.Total;
         DateTime? paidAt = covered ? InvoiceTime.TimestampFor(date) : null;
 
         return (invoice.Id, entries.AsReadOnly(), overpaymentAmount, paidAt);

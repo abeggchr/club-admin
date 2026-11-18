@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	addEntry,
+	applyInvoice,
 	canDelete,
 	canSave,
 	draftFromTransaction,
@@ -28,6 +29,7 @@ function filled(overrides: Partial<TransactionDraft> = {}): TransactionDraft {
 		amount: "-120",
 		text: "",
 		personId: null,
+		invoiceId: null,
 		entries: [{ id: null, text: "Miete", accountNumber: 6010, amount: null }],
 		...overrides,
 	};
@@ -151,7 +153,13 @@ describe("isDraftDirty", () => {
 
 	it("is clean for a loaded Bewegung until something is changed", () => {
 		const loaded = draftFromTransaction(
-			{ date: "2026-03-01", amount: -120, text: "Hallenmiete", personId: 4 },
+			{
+				date: "2026-03-01",
+				amount: -120,
+				text: "Hallenmiete",
+				personId: 4,
+				invoiceId: null,
+			},
 			[
 				{
 					id: 7,
@@ -233,6 +241,7 @@ describe("toTransactionInput", () => {
 			amount: -120,
 			text: null,
 			personId: null,
+			invoiceId: null,
 			entries: [{ id: 7, text: "Miete", accountNumber: 6010, amount: -120 }],
 		});
 	});
@@ -344,5 +353,50 @@ describe("canDelete", () => {
 		const draft = filled();
 		expect(canDelete(draft)).toBe(false);
 		expect(canDelete(removeEntry(draft, 0))).toBe(true);
+	});
+});
+
+describe("applyInvoice", () => {
+	const invoice = {
+		id: 5,
+		person: { id: 7 },
+		total: 150,
+		lines: [
+			{ text: "Jahresbeitrag", amount: 120, accountNumber: 3400 },
+			{ text: "Eintritt", amount: 30, accountNumber: 3400 },
+		],
+	};
+
+	it("fills the Entry rows, the amount and the Person of an empty draft", () => {
+		const draft = applyInvoice(empty, invoice, accounts);
+		expect(draft.amount).toBe("150.00");
+		expect(draft.personId).toBe(7);
+		expect(draft.invoiceId).toBe(5);
+		expect(
+			draft.entries.map((e) => [e.text, e.accountNumber, e.amount]),
+		).toEqual([
+			["Jahresbeitrag", 3400, "120.00"],
+			["Eintritt", 3400, "30.00"],
+		]);
+		expect(remainder(draft, accounts)).toBe(0);
+	});
+
+	it("keeps the Transaction amount and Person and books a Withdrawal negative", () => {
+		const draft = applyInvoice(
+			{ ...empty, amount: "-150", personId: 3 },
+			{
+				...invoice,
+				lines: [{ text: "Miete", amount: 150, accountNumber: 6010 }],
+			},
+			accounts,
+		);
+		expect(draft.amount).toBe("-150");
+		expect(draft.personId).toBe(3);
+		expect(draft.entries[0].amount).toBe("150.00");
+		expect(remainder(draft, accounts)).toBe(0);
+	});
+
+	it("keeps the Person when told to", () => {
+		expect(applyInvoice(empty, invoice, accounts, true).personId).toBeNull();
 	});
 });

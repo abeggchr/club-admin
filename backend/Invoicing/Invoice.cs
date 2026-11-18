@@ -10,7 +10,7 @@ public class Invoice
     public int PersonId { get; set; }
     /// <summary>Swiss QR-bill Creditor Reference (RF8008), stored at creation; '' for Invoices created before it was stored.</summary>
     public string Reference { get; set; } = "";
-    /// <summary>The id of the Transaction that first covered the total; plain column, no foreign key (set only by the import).</summary>
+    /// <summary>The id of the Transaction that first covered the total; plain column, no foreign key (set by the import or when a Transaction is saved as paying it).</summary>
     public int? PaidBy { get; set; }
     public List<InvoiceLine> Lines { get; set; } = [];
     public List<InvoiceStatusChange> StatusChanges { get; set; } = [];
@@ -34,6 +34,8 @@ public enum InvoiceStatus
     Created,
     /// <summary>Paid: terminal, recorded when a Transaction's signed amount covers the total; the paying Transaction's id is in <see cref="Invoice.PaidBy"/>.</summary>
     Paid,
+    /// <summary>Cancelled (German: storniert): terminal, set by hand on an Invoice that is not paid; the Invoice is kept.</summary>
+    Cancelled,
 }
 
 /// <summary>One lifecycle step of an Invoice. The Invoice Date is the date of the Created row.</summary>

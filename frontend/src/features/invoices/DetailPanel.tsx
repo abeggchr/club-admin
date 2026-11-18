@@ -1,18 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { MdClose } from "react-icons/md";
 import { accountLabel } from "../accounting/AccountPicker";
 import { formatChf } from "../accounting/amount";
 import { accountsQueryOptions } from "../accounting/api";
 import {
+	cancelInvoice,
 	formatDate,
+	invalidateInvoices,
 	invoiceDetailQueryOptions,
 	invoicePdfUrl,
 	statusLabel,
 } from "./api";
 import { formatDateTime } from "./invoiceDetail";
 
-/** Read-only detail of an Invoice. Nothing here is editable or deletable. */
+/** Detail of an Invoice. Nothing is editable or deletable; an open Invoice can be cancelled (storniert). */
 export function DetailPanel({
 	id,
 	onClose,
@@ -26,6 +28,11 @@ export function DetailPanel({
 		isError,
 	} = useQuery(invoiceDetailQueryOptions(id));
 	const { data: accounts = [] } = useQuery(accountsQueryOptions);
+	const queryClient = useQueryClient();
+	const cancel = useMutation({
+		mutationFn: () => cancelInvoice(id),
+		onSettled: () => invalidateInvoices(queryClient),
+	});
 
 	const accountOf = (accountNumber: number) => {
 		const account = accounts.find((a) => a.number === accountNumber);
@@ -121,14 +128,37 @@ export function DetailPanel({
 						<p className="text-sm">Bezahlt mit Bewegung Nr. {invoice.paidBy}</p>
 					)}
 
-					<a
-						href={invoicePdfUrl(invoice.id)}
-						target="_blank"
-						rel="noreferrer"
-						className="self-start rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
-					>
-						PDF öffnen
-					</a>
+					<div className="flex items-center gap-2">
+						<a
+							href={invoicePdfUrl(invoice.id)}
+							target="_blank"
+							rel="noreferrer"
+							className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
+						>
+							PDF öffnen
+						</a>
+
+						{invoice.status === "Created" && (
+							<button
+								type="button"
+								disabled={cancel.isPending}
+								onClick={() => {
+									if (
+										window.confirm(
+											`Rechnung Nr. ${invoice.number} stornieren? Das kann nicht rückgängig gemacht werden.`,
+										)
+									)
+										cancel.mutate();
+								}}
+								className="rounded border border-red-600 px-4 py-2 text-red-700 enabled:hover:bg-red-50 disabled:opacity-40"
+							>
+								Stornieren
+							</button>
+						)}
+					</div>
+					{cancel.isError && (
+						<p className="text-sm text-red-600">{cancel.error.message}</p>
+					)}
 				</>
 			)}
 		</div>

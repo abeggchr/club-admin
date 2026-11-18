@@ -113,6 +113,11 @@ public class AccountingController(
         {
             return BadRequest(new { error = "Die Person existiert nicht." });
         }
+        var (invoice, invoiceError) = await FindInvoiceToLinkAsync(input.InvoiceId, null);
+        if (invoiceError is not null)
+        {
+            return BadRequest(new { error = invoiceError });
+        }
 
         var transaction = new Transaction
         {
@@ -125,7 +130,11 @@ public class AccountingController(
                 .ToList(),
         };
         db.Transactions.Add(transaction);
-        await AccountUsageSync.SaveEntryChangeAsync(db, chart);
+        await AccountUsageSync.SaveEntryChangeAsync(
+            db,
+            chart,
+            afterFirstSave: () => LinkInvoice(invoice, transaction)
+        );
         return Created(
             $"/api/transactions/{transaction.Id}",
             await LoadTransactionDtoAsync(opening!, transaction.Id)
@@ -189,6 +198,11 @@ public class AccountingController(
         {
             return BadRequest(new { error = "Die Person existiert nicht." });
         }
+        var (invoice, invoiceError) = await FindInvoiceToLinkAsync(input.InvoiceId, id);
+        if (invoiceError is not null)
+        {
+            return BadRequest(new { error = invoiceError });
+        }
 
         transaction.Date = input.Date;
         transaction.Amount = input.Amount;
@@ -208,7 +222,11 @@ public class AccountingController(
             }
         }
         db.JournalEntries.RemoveRange(stored.Values.Where(e => !givenIds.Contains(e.Id)));
-        await AccountUsageSync.SaveEntryChangeAsync(db, chart);
+        await AccountUsageSync.SaveEntryChangeAsync(
+            db,
+            chart,
+            afterFirstSave: () => LinkInvoice(invoice, transaction)
+        );
         return Ok(await LoadTransactionDtoAsync(opening!, id));
     }
 
@@ -369,6 +387,56 @@ public class AccountingController(
     private static string? NormalizeText(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
+    // The Invoice a Transaction is saved as paying: it must exist and be open, or already be paid by this very
+    // Transaction. A link is permanent (the Paid status is terminal), so a null id never removes it.
+    private async Task<(Invoice? Invoice, string? Error)> FindInvoiceToLinkAsync(
+        int? invoiceId,
+        int? transactionId
+    )
+    {
+        if (invoiceId is not { } id)
+        {
+            return (null, null);
+        }
+        var invoice = await db.Invoices.Include(i => i.StatusChanges).FirstOrDefaultAsync(i => i.Id == id);
+        if (invoice is null)
+        {
+            return (null, "Die Rechnung existiert nicht.");
+        }
+        if (transactionId is not null && invoice.PaidBy == transactionId)
+        {
+            return (null, null);
+        }
+        if (!InvoiceRules.IsOpen(invoice))
+        {
+            return (null, "Die Rechnung ist nicht offen.");
+        }
+        var alreadyLinked = transactionId is { } t && await db.Invoices.AnyAsync(i => i.PaidBy == t);
+        return alreadyLinked
+            ? (null, "Die Bewegung bezahlt bereits eine andere Rechnung.")
+            : (invoice, null);
+    }
+
+    // Marks the Invoice Paid by the Transaction: a Paid status change plus PaidBy.
+    private static void LinkInvoice(Invoice? invoice, Transaction transaction)
+    {
+        if (invoice is null)
+        {
+            return;
+        }
+        // Dated like the import does, but never before an earlier status change (the latest one decides the status).
+        var timestamp = InvoiceTime.TimestampFor(transaction.Date);
+        var latest = invoice.StatusChanges.Max(s => s.Timestamp);
+        invoice.StatusChanges.Add(
+            new InvoiceStatusChange
+            {
+                Status = InvoiceStatus.Paid,
+                Timestamp = timestamp > latest ? timestamp : latest,
+            }
+        );
+        invoice.PaidBy = transaction.Id;
+    }
+
     private async Task<TransactionDto> LoadTransactionDtoAsync(Settings.Settings opening, int id) =>
         (await LoadTransactionDtosAsync(opening)).Single(t => t.Id == id);
 
@@ -381,6 +449,15 @@ public class AccountingController(
             .ToListAsync();
         var receipts = (await db.Receipts.AsNoTracking().OrderBy(r => r.Id).ToListAsync())
             .ToLookup(r => r.TransactionId);
+        var invoiceIds = (
+            await db
+                .Invoices.AsNoTracking()
+                .Where(i => i.PaidBy != null)
+                .Select(i => new { i.Id, PaidBy = i.PaidBy!.Value })
+                .ToListAsync()
+        )
+            .GroupBy(i => i.PaidBy)
+            .ToDictionary(g => g.Key, g => g.Min(i => i.Id));
         return AccountingCalculator
             .TransactionBalances(opening, transactions)
             .Select(r => new TransactionDto(
@@ -392,7 +469,8 @@ public class AccountingController(
                 r.Transaction.BankReference,
                 r.Balance,
                 r.Transaction.Entries.Select(e => e.Id).Order().ToList(),
-                receipts[r.Transaction.Id].Select(x => new ReceiptDto(x.Id, x.UploadedAt)).ToList()
+                receipts[r.Transaction.Id].Select(x => new ReceiptDto(x.Id, x.UploadedAt)).ToList(),
+                invoiceIds.TryGetValue(r.Transaction.Id, out var invoiceId) ? invoiceId : null
             ))
             .ToList();
     }
@@ -415,7 +493,8 @@ public record TransactionInput(
     decimal Amount,
     string? Text,
     int? PersonId,
-    List<TransactionEntryInput>? Entries
+    List<TransactionEntryInput>? Entries,
+    int? InvoiceId = null
 );
 
 public record TransactionDto(
@@ -427,7 +506,8 @@ public record TransactionDto(
     string? BankReference,
     decimal Balance,
     List<int> EntryIds,
-    List<ReceiptDto> Receipts
+    List<ReceiptDto> Receipts,
+    int? InvoiceId
 );
 
 public record ReceiptDto(int Id, DateTime UploadedAt);

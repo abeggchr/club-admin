@@ -35,6 +35,8 @@ export type Transaction = {
 	entryIds: number[];
 	/** The PDF Receipts (Belege) attached to it, in upload order. */
 	receipts: Receipt[];
+	/** The Invoice this Transaction paid (the Invoice's PaidBy), or null. */
+	invoiceId: number | null;
 	balance: number;
 };
 
@@ -49,6 +51,8 @@ export type TransactionInput = {
 	amount: number;
 	text: string | null;
 	personId: number | null;
+	/** The open Invoice this Transaction pays; once saved the link cannot be removed. */
+	invoiceId: number | null;
 	entries: {
 		id: number | null;
 		text: string;

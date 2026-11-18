@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import {
-	type MembershipType,
+	type KnownMembershipType,
 	membershipLabels,
 	membershipTypes,
 } from "../persons/membership";
@@ -33,7 +33,7 @@ export const invoicesSummaryQueryOptions = queryOptions({
 });
 
 /** The fixed color of each Membership, pie slice and legend alike. */
-export const membershipColors: Record<MembershipType, string> = {
+export const membershipColors: Record<KnownMembershipType, string> = {
 	family: "#0369a1",
 	single: "#0ea5e9",
 	junior: "#10b981",
@@ -43,7 +43,7 @@ export const membershipColors: Record<MembershipType, string> = {
 };
 
 export type MembershipPieSlice = PieSlice & {
-	membership: MembershipType;
+	membership: KnownMembershipType;
 	label: string;
 	count: number;
 	color: string;
@@ -58,11 +58,12 @@ export type MembershipPieSlice = PieSlice & {
 export function membershipPie(summary: PersonsSummary): MembershipPieSlice[] {
 	const known = summary.byMembership.filter(
 		(m) =>
-			m.count > 0 && membershipTypes.includes(m.membership as MembershipType),
+			m.count > 0 &&
+			membershipTypes.includes(m.membership as KnownMembershipType),
 	);
 	const geometry = pieSlices(known.map((m) => m.count));
 	return known.map((m, i) => {
-		const membership = m.membership as MembershipType;
+		const membership = m.membership as KnownMembershipType;
 		return {
 			...geometry[i],
 			membership,

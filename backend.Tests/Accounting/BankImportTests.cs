@@ -1455,7 +1455,7 @@ public class BankImportTests
     }
 
     [Fact]
-    public void An_overpayment_does_not_set_Paid()
+    public void An_overpayment_sets_Paid()
     {
         var chart = TestChart();
         var invoices = new[]
@@ -1490,7 +1490,7 @@ public class BankImportTests
         var tx = Assert.Single(result.Transactions);
         Assert.Equal(42, tx.MatchedInvoiceId);
         Assert.Equal(15m, tx.OverpaymentAmount);
-        Assert.Null(tx.PaidAt);
+        Assert.Equal(new DateTime(2026, 2, 9, 23, 0, 0, DateTimeKind.Utc), tx.PaidAt);
     }
 
     [Fact]

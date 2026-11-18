@@ -11,10 +11,15 @@ Deploy the app to [Railway] as follows:
 1. Create a Railway account.
 2. Create a new project, connect to the GitHub repository. 
 3. Setup public networking. This is where you set the `<railway-domain>`.
-4. Add a Bucket. Storage is configured from the variables Railway injects for a bucket: `BUCKET`, `ENDPOINT`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`. No extra setup is needed.
+4. Add a Bucket. 
 5. Add a Postgres database.
 6. Set the following variables in the App:
     *  `ConnectionStrings__Default="Host=${{Postgres.PGHOST}};Port=${{Postgres.PGPORT}};Database=${{Postgres.POSTGRES_DB}};Username=${{Postgres.POSTGRES_USER}};Password=${{Postgres.POSTGRES_PASSWORD}}"`
+    * `BUCKET=${{<bucket>BUCKET}}`
+    * `ENDPOINT=${{<bucket>ENDPOINT}}`
+    * `ACCESS_KEY_ID=${{<bucket>ACCESS_KEY_ID}}`
+    * `SECRET_ACCESS_KEY=${{<bucket>SECRET_ACCESS_KEY}}`
+    * `REGION=${{<bucket>REGION}}`
 
 If desired:
 - use the serverless flag on database and app

@@ -1,7 +1,9 @@
 import {
 	createFileRoute,
 	type ErrorComponentProps,
+	redirect,
 } from "@tanstack/react-router";
+import { settingsQueryOptions } from "../features/accounting/api";
 import {
 	invoicesSummaryQueryOptions,
 	personsSummaryQueryOptions,
@@ -10,6 +12,11 @@ import { Dashboard } from "../features/dashboard/Dashboard";
 import { jubileesQueryOptions } from "../features/jubilees/api";
 
 export const Route = createFileRoute("/")({
+	beforeLoad: async ({ context: { queryClient } }) => {
+		if (!(await queryClient.ensureQueryData(settingsQueryOptions))) {
+			throw redirect({ to: "/settings" });
+		}
+	},
 	loader: ({ context: { queryClient } }) =>
 		Promise.all([
 			queryClient.ensureQueryData(jubileesQueryOptions),
