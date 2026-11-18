@@ -12,36 +12,43 @@ namespace backend.Tests.Invoicing;
 /// </summary>
 public sealed class LocalPostgresFixture : IAsyncLifetime
 {
-
-    private const string DefaultServer = "Host=localhost;Port=5432;Username=postgres;Password=secret";
+    private const string DefaultServer =
+        "Host=localhost;Port=5432;Username=postgres;Password=secret";
 
     private NpgsqlConnection? _connection;
     private string? _databaseName;
     private string _server = DefaultServer;
 
     public string ConnectionString { get; private set; } = "";
-    public string Server { get => _server; }
+    public string Server
+    {
+        get => _server;
+    }
     public bool Available { get; private set; }
 
     /// <summary>Skips the calling test class when no database is reachable.</summary>
     public void SkipUnlessAvailable()
     {
         if (!Available)
-            throw new SkipException("No local PostgreSQL available (README: localhost:5432, postgres/secret).");
+            throw new SkipException(
+                "No local PostgreSQL available (README: localhost:5432, postgres/secret)."
+            );
     }
 
     public async Task InitializeAsync()
     {
         // In sandboxes localhost is the sandbox itself; the developer Postgres runs on the host; in
         // CI the GitHub service container answers on localhost:5432 (see .github/workflows/ci.yml).
-        foreach (var server in new[]
-        {
-            DefaultServer,
-            "Host=host.docker.internal;Port=5432;Username=postgres;Password=secret",
-        })
+        foreach (
+            var server in new[]
+            {
+                DefaultServer,
+                "Host=host.docker.internal;Port=5432;Username=postgres;Password=secret",
+            }
+        )
         {
             _server = server;
-            _databaseName = $"scw_backoffice_test_{Guid.NewGuid():N}";
+            _databaseName = $"club_admin_test_{Guid.NewGuid():N}";
             try
             {
                 await using var admin = new NpgsqlConnection($"{_server};Database=postgres");
@@ -66,8 +73,10 @@ public sealed class LocalPostgresFixture : IAsyncLifetime
         await _connection.OpenAsync();
 
         // Apply the production migrations to the fresh database, exactly like Program.cs does at startup.
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(ConnectionString, b => b.MigrationsAssembly(typeof(AppDbContext).Assembly));
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(
+            ConnectionString,
+            b => b.MigrationsAssembly(typeof(AppDbContext).Assembly)
+        );
         var db = new AppDbContext(options.Options);
         await db.Database.MigrateAsync();
         await db.DisposeAsync();
