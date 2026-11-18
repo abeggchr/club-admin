@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Issues are tracked in GitHub Issues (`abeggchr/scw-backoffice`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues are tracked in GitHub Issues (`abeggchr/club-admin`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
