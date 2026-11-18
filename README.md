@@ -43,7 +43,7 @@ For local deployment option, see [deployment.md](./docs/manual/deployment.md).
 
 ## Contributing with an agent
 
-This repository works best with the [Matt Pocock skills](./.claude/skills/) for coding agents. Start with `/ask-matt` to find the right one. Conventions for review are in [CODING_STANDARDS.md](./CODING_STANDARDS.md), the domain language in [GLOSSARY.md](./GLOSSARY.md).
+This repository works best with the [Matt Pocock skills](https://www.aihero.dev/skills) for coding agents. Conventions for review are in [CODING_STANDARDS.md](./CODING_STANDARDS.md), the domain language in [GLOSSARY.md](./GLOSSARY.md).
 
 ## Screenshots
 
