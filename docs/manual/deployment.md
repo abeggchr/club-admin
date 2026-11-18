@@ -27,7 +27,7 @@ The app requires a Microsoft Entra login and has no user table (ADR 0006).
 3. Redirect URIs: `https://<railway-domain>/signin-oidc` and `http://localhost:3000/signin-oidc`
 4. Certificates & secrets: create a client secret.
 5. In the [Entra Admin Center](https://entra.microsoft.com/) under Enterprise application: Properties, switch "Assignment required" on.
-6. Users and groups: assign users directly (free tier). Invite outside addresses (gmail, outlook.com) as guests first.
+6. In the [Entra Admin Center](https://entra.microsoft.com/) under Enterprise application: Users and groups, assign users directly. Invite outside addresses (gmail, outlook.com) as guests first.
 7. Set the following variables in the Railway-App:
     * `Authentication__Microsoft__TenantId="<clientId>"`
     * `Authentication__Microsoft__ClientSecret="<clientSecret>"`
