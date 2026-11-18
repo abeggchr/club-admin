@@ -26,9 +26,10 @@ The app requires a Microsoft Entra login and has no user table (ADR 0006).
 2. App registration in the club tenant, single tenant ("Accounts in this organizational directory only"), platform "Web".
 3. Redirect URIs: `https://<railway-domain>/signin-oidc` and `http://localhost:3000/signin-oidc`
 4. Certificates & secrets: create a client secret.
-5. In the [Entra Admin Center](https://entra.microsoft.com/) under Enterprise application: Properties, switch "Assignment required" on.
-6. In the [Entra Admin Center](https://entra.microsoft.com/) under Enterprise application: Users and groups, assign users directly. Invite outside addresses (gmail, outlook.com) as guests first.
-7. Set the following variables in the Railway-App:
+5. [Entra Admin Center](https://entra.microsoft.com/) → Enterprise application → Properties → switch "Assignment required" on.
+6. [Entra Admin Center](https://entra.microsoft.com/) → Enterprise application → <your-app> → Permissions → click "Grant admin consent for <tenant>" and approve.
+7. [Entra Admin Center](https://entra.microsoft.com/) → Enterprise application → Users and groups → assign users directly (invite outside addresses (gmail, outlook.com) as guests first).
+8. Set the following variables in the Railway-App:
     * `Authentication__Microsoft__TenantId="<clientId>"`
     * `Authentication__Microsoft__ClientSecret="<clientSecret>"`
     * `Authentication__Microsoft__ClientId="<tenantId>"`
