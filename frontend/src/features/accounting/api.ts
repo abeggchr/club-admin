@@ -1,5 +1,6 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "../../lib/apiFetch";
+import type { SmtpPayload, SmtpSettings } from "../settings/smtpDraft";
 import type {
 	Account,
 	JournalEntry,
@@ -15,6 +16,13 @@ export type Settings = {
 	address: string;
 	postalCode: string;
 	city: string;
+	smtp: SmtpSettings;
+	/** Whether the SMTP group is complete, i.e. the email channel can send. */
+	emailConfigured: boolean;
+};
+
+export type SettingsUpdate = Omit<Settings, "smtp" | "emailConfigured"> & {
+	smtp: SmtpPayload;
 };
 
 /** Throws the backend's German error message, or a generic one, for a non-OK response. */
@@ -62,7 +70,7 @@ export const settingsQueryOptions = queryOptions({
 	queryFn: fetchSettings,
 });
 
-export function saveSettings(settings: Settings): Promise<Settings> {
+export function saveSettings(settings: SettingsUpdate): Promise<Settings> {
 	return requestJson("/api/settings", "PUT", settings);
 }
 
@@ -215,3 +223,17 @@ export const expectedBalanceQueryOptions = (date: string) =>
 				`/api/expected-balance?date=${encodeURIComponent(date)}`,
 			),
 	});
+
+/** Sends the fixed test message with the SMTP values of the form; throws the SMTP error on failure. */
+export async function sendTestEmail(
+	receiver: string,
+	smtp: SmtpPayload,
+): Promise<void> {
+	await ensureOk(
+		await apiFetch("/api/settings/smtp/test", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ receiver, smtp }),
+		}),
+	);
+}

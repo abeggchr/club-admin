@@ -4,8 +4,16 @@ import { formatChf, parseAmount } from "../accounting/amount";
 import {
 	invalidateJournalQueries,
 	saveSettings,
+	sendTestEmail,
 	settingsQueryOptions,
 } from "../accounting/api";
+import {
+	emptySmtpDraft,
+	type SmtpDraft,
+	type SmtpSecurity,
+	smtpDraftFrom,
+	smtpPayload,
+} from "./smtpDraft";
 import { TextTemplatesSection } from "./TextTemplatesSection";
 
 type FormState = {
@@ -43,6 +51,12 @@ function FormSection({
 	);
 }
 
+const securityOptions: [SmtpSecurity, string][] = [
+	["StartTls", "StartTLS"],
+	["Ssl", "SSL"],
+	["None", "Keine"],
+];
+
 const inputClass = "rounded border border-slate-300 p-2";
 
 export function SettingsPage() {
@@ -57,6 +71,14 @@ export function SettingsPage() {
 		amount: settings ? formatChf(settings.openingBalance) : "",
 		startDate: settings?.startDate ?? "",
 	});
+	const [smtp, setSmtp] = useState<SmtpDraft>(
+		settings ? smtpDraftFrom(settings.smtp) : emptySmtpDraft,
+	);
+	const [receiver, setReceiver] = useState("");
+	const [testResult, setTestResult] = useState<{
+		ok: boolean;
+		message: string;
+	} | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
 
@@ -67,6 +89,34 @@ export function SettingsPage() {
 		className: inputClass,
 	});
 
+	const bindSmtp = (key: keyof SmtpDraft) => ({
+		value: smtp[key],
+		onChange: (e: { target: { value: string } }) =>
+			setSmtp((prev) => ({ ...prev, [key]: e.target.value })),
+		className: inputClass,
+	});
+
+	// The receiver is pre-filled with the from address until the user types one.
+	const testReceiver = receiver || smtp.fromAddress;
+
+	async function onSendTest() {
+		setTestResult(null);
+		const payload = smtpPayload(smtp);
+		if (!payload.ok) {
+			setTestResult({ ok: false, message: payload.error });
+			return;
+		}
+		try {
+			await sendTestEmail(testReceiver.trim(), payload.value);
+			setTestResult({ ok: true, message: "Test-E-Mail gesendet." });
+		} catch (err) {
+			setTestResult({
+				ok: false,
+				message: err instanceof Error ? err.message : "Senden fehlgeschlagen.",
+			});
+		}
+	}
+
 	async function onSubmit(e: FormEvent) {
 		e.preventDefault();
 		setError(null);
@@ -74,6 +124,11 @@ export function SettingsPage() {
 		const parsed = parseAmount(form.amount, { allowZero: true });
 		if (!parsed.ok) {
 			setError(parsed.error);
+			return;
+		}
+		const smtpParsed = smtpPayload(smtp);
+		if (!smtpParsed.ok) {
+			setError(smtpParsed.error);
 			return;
 		}
 		try {
@@ -85,6 +140,7 @@ export function SettingsPage() {
 				address: form.address.trim(),
 				postalCode: form.postalCode.trim(),
 				city: form.city.trim(),
+				smtp: smtpParsed.value,
 			});
 			queryClient.setQueryData(settingsQueryOptions.queryKey, result);
 			await invalidateJournalQueries(queryClient);
@@ -97,6 +153,7 @@ export function SettingsPage() {
 				iban: result.iban,
 				amount: formatChf(result.openingBalance),
 			}));
+			setSmtp(smtpDraftFrom(result.smtp));
 			setSaved(true);
 		} catch (err) {
 			setError(
@@ -143,6 +200,72 @@ export function SettingsPage() {
 					<Field label="Startdatum">
 						<input type="date" required {...bind("startDate")} />
 					</Field>
+				</FormSection>
+
+				<FormSection title="E-Mail (SMTP)">
+					<p className="text-sm text-slate-600">
+						Optional: entweder alle Pflichtfelder ausfüllen oder alle leer
+						lassen.
+					</p>
+					<Field label="Server">
+						<input {...bindSmtp("host")} />
+					</Field>
+					<div className="grid grid-cols-[1fr_2fr] gap-3">
+						<Field label="Port">
+							<input inputMode="numeric" {...bindSmtp("port")} />
+						</Field>
+						<Field label="Verschlüsselung">
+							<select {...bindSmtp("security")}>
+								<option value="" />
+								{securityOptions.map(([value, label]) => (
+									<option key={value} value={value}>
+										{label}
+									</option>
+								))}
+							</select>
+						</Field>
+					</div>
+					<Field label="Benutzername">
+						<input autoComplete="off" {...bindSmtp("username")} />
+					</Field>
+					<Field
+						label={`Passwort (${settings?.smtp.passwordSet ? "gesetzt" : "nicht gesetzt"})`}
+					>
+						<input
+							type="password"
+							autoComplete="new-password"
+							placeholder={
+								settings?.smtp.passwordSet ? "leer lassen = unverändert" : ""
+							}
+							{...bindSmtp("password")}
+						/>
+					</Field>
+					<Field label="Absenderadresse">
+						<input type="email" {...bindSmtp("fromAddress")} />
+					</Field>
+					<Field label="Absendername">
+						<input {...bindSmtp("fromName")} />
+					</Field>
+					<Field label="Empfänger der Test-E-Mail">
+						<input
+							type="email"
+							className={inputClass}
+							value={testReceiver}
+							onChange={(e) => setReceiver(e.target.value)}
+						/>
+					</Field>
+					<button
+						type="button"
+						onClick={onSendTest}
+						className="self-start rounded border border-sky-600 px-4 py-2 text-sky-700 hover:bg-sky-50"
+					>
+						Test-E-Mail senden
+					</button>
+					{testResult && (
+						<p className={testResult.ok ? "text-green-700" : "text-red-600"}>
+							{testResult.message}
+						</p>
+					)}
 				</FormSection>
 
 				<div className="flex flex-col gap-3">

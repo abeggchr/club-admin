@@ -333,6 +333,27 @@ namespace backend.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<string>("SmtpFromAddress")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SmtpFromName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SmtpHost")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SmtpPassword")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SmtpPort")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SmtpSecurity")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SmtpUsername")
+                        .HasColumnType("text");
+
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
 
