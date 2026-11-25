@@ -45,9 +45,7 @@ export function IncomeStatementPage() {
 						<div className="mt-2 space-y-3">
 							{section.groups.map((group) => (
 								<div key={group.label} className="pl-4">
-									<h4 className="text-sm">
-										{group.label} … {formatChf(group.total)}
-									</h4>
+									<h4 className="text-sm">{group.label}</h4>
 									<dl className="mt-1 space-y-0.5 pl-8">
 										{group.lines.map((line) => (
 											<div
@@ -60,6 +58,10 @@ export function IncomeStatementPage() {
 												</dd>
 											</div>
 										))}
+										<div className="flex justify-between text-sm text-gray-500">
+											<dt>Summe</dt>
+											<dd className="tabular-nums">{formatChf(group.total)}</dd>
+										</div>
 									</dl>
 								</div>
 							))}
