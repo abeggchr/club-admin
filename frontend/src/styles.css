@@ -15,3 +15,15 @@ body {
   margin: 0;
 }
 
+@media print {
+  /* Screen chrome: the TanStack devtools render into this host (no DOM of our own). */
+  #tanstack_devtools,
+  #tanstack_devtools * {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+}
+

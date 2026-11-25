@@ -30,6 +30,9 @@ The amount the bank account should hold on a given date: the Opening Balance plu
 **Overpayment** (German: _Zuvielzahlung_):
 When an imported payment exceeds the outstanding amount of its Invoice, the excess is booked as an additional Entry "Rechnung 0042" to Account 3600 (Spenden). The Invoice counts as covered and is marked Paid.
 
+**Income Statement** (German: _Erfolgsrechnung_):
+The club's revenue and expense report from the Settings Start Date through today, built from the Journal Entries: an "A. Ertrag" and a "B. Aufwand" section with numbered groups and lines laid out by the checked-in YAML file, the section totals, and the Gesamtergebnis (surplus or deficit; a deficit is negative).
+
 ### Bank & Import
 
 **Transaction** (German: _Bewegung_):

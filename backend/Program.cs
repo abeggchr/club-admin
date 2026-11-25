@@ -1,5 +1,6 @@
 using backend.Accounting;
 using backend.Auth;
+using backend.IncomeStatement;
 using backend.Invoicing;
 using backend.Person;
 using backend.Settings;
@@ -50,11 +51,19 @@ builder.Services.AddScoped<InvoiceDispatcher>();
 InvoiceDocument.UseCommunityLicense();
 
 // A malformed Chart of Accounts file fails startup (see ADR 0001).
-builder.Services.AddSingleton(
+builder.Services.AddSingleton<ChartOfAccounts>(
     ChartOfAccounts.Load(
         Path.Combine(AppContext.BaseDirectory, "Accounting", "chart-of-accounts.json")
     )
 );
+
+// The Income Statement layout (ADR 0009) and the calendar date the report covers.
+builder.Services.AddSingleton<IncomeStatementConfig>(
+    IncomeStatementConfig.Load(
+        Path.Combine(AppContext.BaseDirectory, "IncomeStatement", "income-statement.yaml")
+    )
+);
+builder.Services.AddSingleton<backend.IncomeStatement.ISystemClock, backend.IncomeStatement.SystemClock>();
 
 var app = builder.Build();
 
@@ -71,6 +80,15 @@ using (var scope = app.Services.CreateScope())
     {
         throw new ChartOfAccountsException(
             $"Kontoplan passt nicht zu den Buchungen. {inconsistency}"
+        );
+    }
+
+    // Refuse to start when the Income Statement layout disagrees with the Chart of Accounts (ADR 0009).
+    var incomeStatement = scope.ServiceProvider.GetRequiredService<IncomeStatementConfig>();
+    if (IncomeStatementConfig.Validate(incomeStatement, chart) is { } layoutError)
+    {
+        throw new IncomeStatementConfigException(
+            $"Erfolgsrechnung passt nicht zum Kontoplan. {layoutError}"
         );
     }
     db.SaveChanges();

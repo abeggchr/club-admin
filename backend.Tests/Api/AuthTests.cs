@@ -18,6 +18,7 @@ public class AuthTests : IClassFixture<LocalPostgresFixture>
     [InlineData("/api/person")]
     [InlineData("/api/accounts")]
     [InlineData("/api/settings")]
+    [InlineData("/api/income-statement")]
     public async Task Anonymous_api_request_gets_401(string path)
     {
         await using var factory = new AppFactory(_postgres);

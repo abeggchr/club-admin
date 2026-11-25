@@ -1,5 +1,6 @@
 import {
 	MdAccountBalance,
+	MdAssessment,
 	MdPeople,
 	MdReceipt,
 	MdSettings,
@@ -12,6 +13,12 @@ export const navItems = [
 		to: "/accounting",
 		label: "Buchhaltung",
 		Icon: MdAccountBalance,
+		align: "start",
+	},
+	{
+		to: "/income-statement",
+		label: "Erfolgsrechnung",
+		Icon: MdAssessment,
 		align: "start",
 	},
 	{ to: "/settings", label: "Einstellungen", Icon: MdSettings, align: "end" },
