@@ -51,17 +51,19 @@ builder.Services.AddScoped<InvoiceDispatcher>();
 InvoiceDocument.UseCommunityLicense();
 
 // A malformed Chart of Accounts file fails startup (see ADR 0001).
-builder.Services.AddSingleton(
+builder.Services.AddSingleton<ChartOfAccounts>(
     ChartOfAccounts.Load(
         Path.Combine(AppContext.BaseDirectory, "Accounting", "chart-of-accounts.json")
     )
 );
-// A malformed Income Statement layout file fails startup (see ADR 0009).
-builder.Services.AddSingleton(
+
+// The Income Statement layout (ADR 0009) and the calendar date the report covers.
+builder.Services.AddSingleton<IncomeStatementConfig>(
     IncomeStatementConfig.Load(
         Path.Combine(AppContext.BaseDirectory, "IncomeStatement", "income-statement.yaml")
     )
 );
+builder.Services.AddSingleton<backend.IncomeStatement.ISystemClock, backend.IncomeStatement.SystemClock>();
 
 var app = builder.Build();
 

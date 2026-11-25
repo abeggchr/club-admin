@@ -16,7 +16,7 @@ namespace backend.Tests.Api;
 /// no running server: the S3 client is only used by invoice endpoints, and the bucket is only
 /// provisioned in Development.
 /// </summary>
-public sealed class AppFactory(LocalPostgresFixture postgres) : WebApplicationFactory<Program>
+public class AppFactory(LocalPostgresFixture postgres) : WebApplicationFactory<Program>
 {
     /// <summary>Receipt PDFs of this app instance; the S3 endpoint is unreachable, so tests use memory.</summary>
     public InMemoryReceiptStorage Receipts { get; } = new();

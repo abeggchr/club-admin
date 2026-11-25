@@ -1,13 +1,27 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using backend.Accounting;
 using backend.IncomeStatement;
 using backend.Tests.Invoicing;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace backend.Tests.Api;
+
+/// <summary>
+/// An <see cref="AppFactory"/> with a fixed clock, so the period end of the Income Statement is
+/// deterministic in endpoint tests.
+/// </summary>
+public sealed class IncomeStatementAppFactory(LocalPostgresFixture postgres, DateOnly today) : AppFactory(postgres)
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureTestServices(services => services.AddSingleton<backend.IncomeStatement.ISystemClock>(new backend.IncomeStatement.FixedClock(today)));
+    }
+}
 
 /// <summary>
 /// GET /api/income-statement: the paper report as a fixture, the date window (both boundaries
@@ -32,19 +46,32 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
 
     private sealed class Fixture : IAsyncDisposable
     {
-        public Fixture(LocalPostgresFixture postgres) => Postgres = postgres;
+        public Fixture(LocalPostgresFixture postgres, DateOnly? today = null)
+        {
+            Postgres = postgres;
+            TodayOverride = today;
+        }
 
         public LocalPostgresFixture Postgres { get; }
+        public DateOnly? TodayOverride { get; }
         public AppFactory Factory { get; private set; } = null!;
         public HttpClient Client { get; private set; } = null!;
 
         public async Task InitializeAsync()
         {
+            // The database is empty when the app starts, so the chart consistency check passes;
+            // the Entries are seeded afterwards, after the host is up.
             await using var db = new AppDbContext(
                 new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(Postgres.ConnectionString).Options
             );
             await db.Transactions.ExecuteDeleteAsync();
             await db.Settings.ExecuteDeleteAsync();
+
+            var factory = new IncomeStatementAppFactory(Postgres, TodayOverride ?? Today);
+            Factory = factory;
+            var client = factory.CreateClient();
+            client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, "anna@example.ch");
+
             db.Settings.Add(
                 new backend.Settings.Settings
                 {
@@ -58,19 +85,12 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
             );
             foreach (var (date, text, amount, accountNumber, entryText) in SeedData())
             {
-                var transaction = new Transaction { Date = date, Amount = amount, Text = text };
-                transaction.Entries.Add(new Entry { Text = entryText, AccountNumber = accountNumber, Amount = amount });
+                var transaction = new backend.Accounting.Transaction { Date = date, Amount = amount, Text = text };
+                transaction.Entries.Add(new backend.Accounting.Entry { Text = entryText, AccountNumber = accountNumber, Amount = amount });
                 db.Transactions.Add(transaction);
             }
             await db.SaveChangesAsync();
 
-            var factory = new AppFactory(Postgres);
-            factory.Services
-                .GetRequiredService<ChartOfAccounts>()
-                .AddAccounts(new Account(9990, "Testkonto", Category.Expense, true));
-            Factory = factory;
-            var client = factory.CreateClient();
-            client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, "anna@example.ch");
             Client = client;
         }
 
@@ -86,18 +106,19 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
             // Paper-report fixture, internally consistent; the period is Start..Today (both inclusive).
             yield return (Start, "Jahresbeiträge", 500m, 3400, "Jahresbeiträge");
             yield return (new DateOnly(2026, 2, 1), "Übernachtungen", 250m, 3500, "Übernachtungen");
-            yield return (new DateOnly(2026, 2, 15), "Getränke", -150m, 3510, "Getränkeeinnahmen");
+            yield return (new DateOnly(2026, 2, 15), "Getränke", 150m, 3510, "Getränkeeinnahmen");
             yield return (new DateOnly(2026, 3, 1), "Spende", 200m, 3600, "Spenden");
             yield return (new DateOnly(2026, 3, 15), "Einnahmen", 80m, 3610, "Diverse Einnahmen");
             yield return (Today, "Zinsen", 25m, 6950, "Zinsertrag");
             yield return (new DateOnly(2026, 1, 31), "Anlässe", -300m, 4000, "Anlässe");
             yield return (new DateOnly(2026, 2, 28), "Clubnews", -120m, 4010, "Clubnews");
             yield return (new DateOnly(2026, 3, 31), "Miete", -500m, 6010, "Miete");
+            yield return (new DateOnly(2026, 4, 10), "Miete", 120m, 6010, "Miete");
             yield return (new DateOnly(2026, 4, 15), "Nebenkosten", -80m, 6020, "Nebenkosten");
             yield return (new DateOnly(2026, 5, 1), "Bankgebühren", -12m, 6940, "Bankgebühren");
-            // Out-of-window Entries on account 9990 (only in the test chart): before the Start Date and after today.
-            yield return (new DateOnly(2025, 12, 31), "Vor Startdatum", 1000m, 9990, "Vor Startdatum");
-            yield return (new DateOnly(2026, 7, 1), "In der Zukunft", -1000m, 9990, "In der Zukunft");
+            // Out-of-window Entries on the Skihaus account 6000: before the Start Date and after today.
+            yield return (new DateOnly(2025, 12, 31), "Vor Startdatum", 1000m, 6000, "Vor Startdatum");
+            yield return (new DateOnly(2026, 7, 1), "In der Zukunft", -1000m, 6000, "In der Zukunft");
         }
     }
 
@@ -118,21 +139,21 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
 
         Assert.Equal("2026-01-01", report.GetProperty("period").GetProperty("from").GetString());
         Assert.Equal("2026-06-30", report.GetProperty("period").GetProperty("to").GetString());
-        Assert.Equal(1055m, report.GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(905m, report.GetProperty("totalRevenue").GetDecimal());
         Assert.Equal(1012m, report.GetProperty("totalExpense").GetDecimal());
-        Assert.Equal(43m, report.GetProperty("overallResult").GetDecimal());
+        Assert.Equal(-107m, report.GetProperty("overallResult").GetDecimal());
 
         var sections = report.GetProperty("sections").EnumerateArray().ToArray();
         Assert.Equal(2, sections.Length);
         Assert.Equal("Ertrag", sections[0].GetProperty("label").GetString());
-        Assert.Equal(1055m, sections[0].GetProperty("total").GetDecimal());
+        Assert.Equal(905m, sections[0].GetProperty("total").GetDecimal());
         Assert.Equal("Aufwand", sections[1].GetProperty("label").GetString());
         Assert.Equal(1012m, sections[1].GetProperty("total").GetDecimal());
 
         var revenueGroups = sections[0].GetProperty("groups").EnumerateArray().ToArray();
         Assert.Equal(3, revenueGroups.Length);
         Assert.Equal(500m, revenueGroups[0].GetProperty("total").GetDecimal());
-        Assert.Equal(100m, revenueGroups[1].GetProperty("total").GetDecimal());
+        Assert.Equal(400m, revenueGroups[1].GetProperty("total").GetDecimal());
         Assert.Equal(455m, revenueGroups[2].GetProperty("total").GetDecimal());
 
         var otherRevenue = revenueGroups[2].GetProperty("lines").EnumerateArray().ToArray();
@@ -141,6 +162,19 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
         // 3610-3620: 3620 is not in the chart, the line shows the entry on 3610.
         Assert.Equal(80m, otherRevenue[1].GetProperty("amount").GetDecimal());
         Assert.Equal(25m, otherRevenue[2].GetProperty("amount").GetDecimal());
+    }
+
+    [Fact]
+    public async Task A_credit_on_an_expense_account_reduces_the_expense()
+    {
+        await using var fixture = new Fixture(_postgres);
+        await fixture.InitializeAsync();
+
+        var report = await GetReport(fixture);
+
+        // 6010 (Miete): debits of 500, credits of 120 (a refund) -> 380.
+        var skihaus = report.GetProperty("sections")[1].GetProperty("groups")[1].GetProperty("lines").EnumerateArray().ToArray();
+        Assert.Equal(380m, skihaus[1].GetProperty("amount").GetDecimal());
     }
 
     [Fact]
@@ -160,15 +194,18 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
     [Fact]
     public async Task Entries_before_the_Start_Date_and_after_today_are_left_out()
     {
-        // The out-of-window Entries (2025-12-31 and 2026-07-01, both on 9990) are seeded with the
-        // fixture; 9990 is only in the in-memory test chart, so the report must carry them nowhere.
+        // The out-of-window Entries (2025-12-31: +1000 and 2026-07-01: -1000, both on 6000) are seeded
+        // with the fixture; 6000 is in the real chart, so the report would carry them if the window were off.
         await using var fixture = new Fixture(_postgres);
         await fixture.InitializeAsync();
 
         var report = await GetReport(fixture);
 
+        // 6000 (Getränke): only the in-window Entry of 80 remains.
+        var skihaus = report.GetProperty("sections")[1].GetProperty("groups")[1].GetProperty("lines").EnumerateArray().ToArray();
+        Assert.Equal(80m, skihaus[0].GetProperty("amount").GetDecimal());
         Assert.Equal(1012m, report.GetProperty("totalExpense").GetDecimal());
-        Assert.Equal(43m, report.GetProperty("overallResult").GetDecimal());
+        Assert.Equal(-107m, report.GetProperty("overallResult").GetDecimal());
     }
 
     [Fact]

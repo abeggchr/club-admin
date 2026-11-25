@@ -38,15 +38,6 @@ public class ChartOfAccounts
     /// <summary>Resolves an Account by number, including inactive ones.</summary>
     public Account? Find(int number) => _byNumber.GetValueOrDefault(number);
 
-    /// <summary>Adds Accounts to this Chart, overwriting numbers that are already mapped. Tests only.</summary>
-    public void AddAccounts(params Account[] accounts)
-    {
-        foreach (var account in accounts)
-        {
-            _byNumber[account.Number] = account;
-        }
-    }
-
     public static ChartOfAccounts Load(string path)
     {
         string json;
