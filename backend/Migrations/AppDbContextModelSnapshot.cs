@@ -194,6 +194,9 @@ namespace backend.Migrations
                     b.Property<int>("InvoiceId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Remark")
+                        .HasColumnType("text");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");

@@ -121,6 +121,25 @@ public class InvoiceRulesTests
         Assert.True(InvoiceRules.IsOpen(invoice));
     }
 
+    [Theory]
+    [InlineData(InvoiceStatus.Paid)]
+    [InlineData(InvoiceStatus.Cancelled)]
+    public void A_back_dated_terminal_status_beats_a_later_non_terminal_one(InvoiceStatus terminal)
+    {
+        var invoice = new Invoice
+        {
+            StatusChanges =
+            [
+                new InvoiceStatusChange { Id = 1, Status = InvoiceStatus.Created, Timestamp = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new InvoiceStatusChange { Id = 2, Status = terminal, Timestamp = new DateTime(2026, 6, 5, 0, 0, 0, DateTimeKind.Utc) },
+                new InvoiceStatusChange { Id = 3, Status = InvoiceStatus.Created, Timestamp = new DateTime(2026, 6, 20, 0, 0, 0, DateTimeKind.Utc) },
+            ],
+        };
+
+        Assert.Equal(terminal, InvoiceRules.LatestStatus(invoice));
+        Assert.False(InvoiceRules.IsOpen(invoice));
+    }
+
     [Fact]
     public void The_latest_status_change_decides_open_and_paid()
     {
