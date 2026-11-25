@@ -6,16 +6,17 @@ describe("parseIncomeStatementView", () => {
 		expect(parseIncomeStatementView({})).toBe("simplified");
 	});
 
-	it("returns simplified for the simplified param", () => {
+	it("returns the view for the simplified and all params", () => {
 		expect(parseIncomeStatementView({ view: "simplified" })).toBe("simplified");
-	});
-
-	it("returns all for the all param", () => {
 		expect(parseIncomeStatementView({ view: "all" })).toBe("all");
 	});
 
-	it("falls back to simplified for an unknown value", () => {
-		expect(parseIncomeStatementView({ view: "none" })).toBe("simplified");
-		expect(parseIncomeStatementView({ view: "SIMPLIFIED" })).toBe("simplified");
+	it("throws a German error for an unknown value", () => {
+		expect(() => parseIncomeStatementView({ view: "none" })).toThrowError(
+			"Unbekannte Ansicht 'none'. Bitte 'simplified' oder 'all' verwenden.",
+		);
+		expect(() => parseIncomeStatementView({ view: "SIMPLIFIED" })).toThrowError(
+			"Unbekannte Ansicht 'SIMPLIFIED'. Bitte 'simplified' oder 'all' verwenden.",
+		);
 	});
 });
