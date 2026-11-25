@@ -24,4 +24,7 @@ public class Settings
     public string? SmtpPassword { get; set; }
     public string? SmtpFromAddress { get; set; }
     public string? SmtpFromName { get; set; }
+
+    /// <summary>The optional ePost API key (post channel). Stored in plain text and never returned, like the SMTP password (ADR 0007).</summary>
+    public string? EPostApiKey { get; set; }
 }

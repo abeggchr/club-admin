@@ -23,7 +23,14 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
         new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(_postgres.ConnectionString).Options);
 
     /// <summary>Clears the database and seeds Settings (with SMTP unless told otherwise) and one Created Invoice; returns its id.</summary>
-    private async Task<int> Seed(bool smtp = true, string? email = "anna@example.ch", InvoiceStatus? status = null)
+    private async Task<int> Seed(
+        bool smtp = true,
+        string? email = "anna@example.ch",
+        InvoiceStatus? status = null,
+        bool epost = false,
+        string? street = "Bahnhofstrasse",
+        string? country = null
+    )
     {
         await using var db = NewDb();
         await db.Invoices.ExecuteDeleteAsync();
@@ -46,12 +53,19 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
             settings.SmtpFromAddress = "kasse@example.ch";
             settings.SmtpFromName = "SC Wettingen";
         }
+        if (epost)
+            settings.EPostApiKey = "key-123";
         db.Settings.Add(settings);
         var person = new PersonEntity
         {
             FirstName = "Anna",
             LastName = "Muster",
             Email = email,
+            Street = street,
+            Number = "7",
+            PostalCode = "5400",
+            City = "Baden",
+            Country = country,
         };
         db.Persons.Add(person);
         await db.SaveChangesAsync();
@@ -85,6 +99,9 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
 
     private static Task<HttpResponseMessage> Send(HttpClient client, int id, string? subject = "Rechnung", string? text = "Guten Tag") =>
         client.PostAsJsonAsync($"/api/invoices/{id}/send", new { subject, text });
+
+    private static Task<HttpResponseMessage> SendByPost(HttpClient client, int id) =>
+        client.PostAsJsonAsync($"/api/invoices/{id}/send", new { channel = "Post" });
 
     private static async Task<string> Error(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("error").GetString()!;
@@ -239,5 +256,94 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
         var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
 
         Assert.Equal("anna@example.ch", detail.GetProperty("person").GetProperty("email").GetString());
+    }
+
+    [Fact]
+    public async Task Sending_by_post_hands_the_PDF_to_ePost_and_records_Sent_with_the_delivery_id()
+    {
+        var id = await Seed(epost: true);
+        await using var factory = await FactoryWithPdf(_postgres, id);
+        using var client = SignedIn(factory);
+
+        var response = await SendByPost(client, id);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, factory.EPost.Calls);
+        Assert.Empty(factory.Emails.Invoices);
+        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
+        var last = detail.GetProperty("statusHistory").EnumerateArray().Last();
+        Assert.Equal("Sent", last.GetProperty("status").GetString());
+        Assert.Equal($"per Post ({factory.EPost.DeliveryId})", last.GetProperty("remark").GetString());
+    }
+
+    [Theory]
+    [InlineData("Schweiz")]
+    [InlineData("ch")]
+    public async Task Sending_by_post_accepts_Switzerland_in_any_spelling(string country)
+    {
+        var id = await Seed(epost: true, country: country);
+        await using var factory = await FactoryWithPdf(_postgres, id);
+        using var client = SignedIn(factory);
+
+        Assert.Equal(HttpStatusCode.OK, (await SendByPost(client, id)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_is_refused_while_ePost_is_not_configured()
+    {
+        var id = await Seed(epost: false);
+        await using var factory = await FactoryWithPdf(_postgres, id);
+        using var client = SignedIn(factory);
+
+        var response = await SendByPost(client, id);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("ePost ist nicht eingerichtet.", await Error(response));
+        Assert.Equal(0, factory.EPost.Calls);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("Bahnhofstrasse", "Deutschland")]
+    public async Task Post_is_refused_for_an_incomplete_or_foreign_address(string? street, string? country)
+    {
+        var id = await Seed(epost: true, street: street, country: country);
+        await using var factory = await FactoryWithPdf(_postgres, id);
+        using var client = SignedIn(factory);
+
+        var response = await SendByPost(client, id);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("Die Person hat keine vollständige Schweizer Adresse (Strasse, PLZ und Ort).", await Error(response));
+        Assert.Equal(0, factory.EPost.Calls);
+    }
+
+    [Fact]
+    public async Task An_ePost_failure_returns_the_message_and_records_nothing()
+    {
+        var id = await Seed(epost: true);
+        await using var factory = await FactoryWithPdf(_postgres, id);
+        factory.EPost.Status = HttpStatusCode.TooManyRequests;
+        factory.EPost.Body = """{"message":"Zu viele Anfragen"}""";
+        using var client = SignedIn(factory);
+
+        var response = await SendByPost(client, id);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("Der Brief konnte nicht versendet werden: Zu viele Anfragen", await Error(response));
+        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
+        Assert.Equal(1, detail.GetProperty("statusHistory").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Email_stays_possible_when_ePost_is_configured_too()
+    {
+        var id = await Seed(epost: true);
+        await using var factory = await FactoryWithPdf(_postgres, id);
+        using var client = SignedIn(factory);
+
+        Assert.Equal(HttpStatusCode.OK, (await Send(client, id)).StatusCode);
+        Assert.Single(factory.Emails.Invoices);
+        Assert.Equal(0, factory.EPost.Calls);
     }
 }

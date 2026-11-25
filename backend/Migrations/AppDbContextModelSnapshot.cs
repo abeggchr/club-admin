@@ -314,6 +314,9 @@ namespace backend.Migrations
                         .HasMaxLength(35)
                         .HasColumnType("character varying(35)");
 
+                    b.Property<string>("EPostApiKey")
+                        .HasColumnType("text");
+
                     b.Property<string>("Iban")
                         .IsRequired()
                         .HasMaxLength(21)

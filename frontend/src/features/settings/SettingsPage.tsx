@@ -74,6 +74,7 @@ export function SettingsPage() {
 	const [smtp, setSmtp] = useState<SmtpDraft>(
 		settings ? smtpDraftFrom(settings.smtp) : emptySmtpDraft,
 	);
+	const [ePostApiKey, setEPostApiKey] = useState("");
 	const [receiver, setReceiver] = useState("");
 	const [testResult, setTestResult] = useState<{
 		ok: boolean;
@@ -141,6 +142,7 @@ export function SettingsPage() {
 				postalCode: form.postalCode.trim(),
 				city: form.city.trim(),
 				smtp: smtpParsed.value,
+				ePostApiKey: ePostApiKey.trim(),
 			});
 			queryClient.setQueryData(settingsQueryOptions.queryKey, result);
 			await invalidateJournalQueries(queryClient);
@@ -154,6 +156,7 @@ export function SettingsPage() {
 				amount: formatChf(result.openingBalance),
 			}));
 			setSmtp(smtpDraftFrom(result.smtp));
+			setEPostApiKey("");
 			setSaved(true);
 		} catch (err) {
 			setError(
@@ -266,6 +269,27 @@ export function SettingsPage() {
 							{testResult.message}
 						</p>
 					)}
+				</FormSection>
+
+				<FormSection title="Post (ePost)">
+					<p className="text-sm text-slate-600">
+						Optional: erlaubt den Versand von Rechnungen als Brief. Jeder
+						Versand wird verrechnet, einen Test gibt es nicht.
+					</p>
+					<Field
+						label={`API-Key (${settings?.ePostConfigured ? "gesetzt" : "nicht gesetzt"})`}
+					>
+						<input
+							type="password"
+							autoComplete="new-password"
+							placeholder={
+								settings?.ePostConfigured ? "leer lassen = unverändert" : ""
+							}
+							className={inputClass}
+							value={ePostApiKey}
+							onChange={(e) => setEPostApiKey(e.target.value)}
+						/>
+					</Field>
 				</FormSection>
 
 				<div className="flex flex-col gap-3">

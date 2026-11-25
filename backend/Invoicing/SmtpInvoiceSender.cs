@@ -9,6 +9,10 @@ public class SmtpInvoiceSender(IEmailSender email) : IInvoiceSender
 {
     public DeliveryChannel Channel => DeliveryChannel.Email;
 
+    public string NotConfiguredError => "E-Mail ist nicht eingerichtet.";
+
+    public string CannotDeliverError => "Die Person hat keine E-Mail-Adresse.";
+
     // The SMTP group is all-or-nothing (SmtpRules), so a host means a complete group.
     public bool IsConfigured(SettingsEntity settings) => settings.SmtpHost is not null;
 

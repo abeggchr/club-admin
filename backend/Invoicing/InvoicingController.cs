@@ -31,11 +31,11 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         return Ok(InvoiceMapping.ToInvoiceDetail(invoice, people[invoice.PersonId]));
     }
 
-    // Sends the Invoice PDF by email; records a Sent status change only when the SMTP server accepted it.
+    // Sends the Invoice PDF by the chosen Delivery Channel; records a Sent status change only when the channel accepted it.
     [HttpPost("{id:int}/send")]
     public async Task<IActionResult> SendInvoice(
         int id,
-        InvoiceMessage message,
+        InvoiceSendRequest request,
         [FromServices] InvoiceDispatcher dispatcher,
         CancellationToken ct
     )
@@ -54,8 +54,8 @@ public class InvoicingController(AppDbContext db) : ControllerBase
             invoice,
             person,
             settings,
-            DeliveryChannel.Email,
-            message,
+            request.Channel,
+            request.Message,
             DateTime.UtcNow,
             ct
         );

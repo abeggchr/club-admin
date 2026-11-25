@@ -12,7 +12,9 @@ public class InvoiceDispatcherTests
     {
         public record Call(PersonEntity Person, InvoiceMessage Message, int Number, byte[] Pdf);
 
-        public DeliveryChannel Channel => DeliveryChannel.Email;
+        public DeliveryChannel Channel { get; init; } = DeliveryChannel.Email;
+        public string NotConfiguredError => "E-Mail ist nicht eingerichtet.";
+        public string CannotDeliverError => "Die Person hat keine E-Mail-Adresse.";
         public bool Configured { get; set; } = true;
         public bool CanDeliver { get; set; } = true;
         public string? FailWith { get; set; }
@@ -172,5 +174,34 @@ public class InvoiceDispatcherTests
 
         Assert.Empty(sender.Calls);
         Assert.Single(invoice.StatusChanges);
+    }
+
+    [Fact]
+    public async Task The_chosen_channel_picks_its_sender_and_a_post_letter_needs_no_subject_or_text()
+    {
+        var email = new RecordingSender();
+        var post = new RecordingSender { Channel = DeliveryChannel.Post };
+        var storage = new InMemoryInvoiceStorage();
+        await storage.PutAsync(42, Pdf);
+        var invoice = new Invoice
+        {
+            Id = 42,
+            StatusChanges = [new InvoiceStatusChange { Status = InvoiceStatus.Created, Timestamp = Now.AddDays(-2) }],
+        };
+
+        var error = await new InvoiceDispatcher([email, post], storage).SendAsync(
+            invoice,
+            new PersonEntity { FirstName = "Anna", LastName = "Muster" },
+            new SettingsEntity(),
+            DeliveryChannel.Post,
+            new InvoiceMessage(null, null),
+            Now,
+            CancellationToken.None
+        );
+
+        Assert.Null(error);
+        Assert.Empty(email.Calls);
+        Assert.Single(post.Calls);
+        Assert.Equal(InvoiceStatus.Sent, invoice.StatusChanges.Last().Status);
     }
 }
