@@ -47,6 +47,7 @@ export function InvoicesView() {
 					type="button"
 					onClick={() => annualFeesDialog.current?.showModal()}
 					disabled={noTemplates}
+					title="Jahresrechnungen erstellen"
 					className="rounded border border-sky-600 px-3 py-2 text-sm text-sky-700 enabled:hover:bg-sky-50 disabled:opacity-40"
 				>
 					Jahresbeiträge
@@ -56,7 +57,9 @@ export function InvoicesView() {
 					onClick={() => bulkSendDialog.current?.showModal()}
 					disabled={noChannel}
 					title={
-						noChannel ? "Weder E-Mail noch ePost ist eingerichtet." : undefined
+						noChannel
+							? "Weder E-Mail noch ePost ist eingerichtet."
+							: "Alle nicht versendeten Rechnungen versenden"
 					}
 					className="rounded border border-sky-600 px-3 py-2 text-sm text-sky-700 enabled:hover:bg-sky-50 disabled:opacity-40"
 				>
