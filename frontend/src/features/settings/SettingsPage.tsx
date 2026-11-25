@@ -281,7 +281,7 @@ export function SettingsPage() {
 
 				<FormSection
 					title="SMTP"
-					hint="Optional, erlaubt den Emailversand über einen SMTP Server. Ohne SMTP-Einstellungen versendet die App E-Mails über ePost. Railway blockiert ausgehenden SMTP Verkehr im Free-Tier."
+					hint="Optional. Versendet E-Mails über einen SMTP Server. Ohne SMTP-Einstellungen versendet die App E-Mails über ePost. Railway blockiert ausgehenden SMTP Verkehr im Free-Tier."
 				>
 					<Field label="Server">
 						<input {...bindSmtp("host")} />
@@ -333,7 +333,7 @@ export function SettingsPage() {
 				<div className="flex flex-col gap-6">
 					<FormSection
 						title="ePost"
-						hint={`Optional. Versendet Briefe (B-Post) und E-Mails (solange kein SMTP Server eingerichtet ist). Jeder Versand wird von ePost verrechnet.${settings?.emailBackend === "EPost" ? " Aktuell gehen E-Mails über ePost." : ""}`}
+						hint={`Optional. Versendet Briefe (B-Post) und E-Mails (solange kein SMTP Server eingerichtet ist) kostenpflichtig über ePost.ch. ${settings?.emailBackend === "EPost" ? " Aktuell gehen E-Mails über ePost." : ""}`}
 					>
 						<Field
 							label={`ePost API-Key (${settings?.ePostConfigured ? "gesetzt" : "nicht gesetzt"})`}
