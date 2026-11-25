@@ -4,6 +4,7 @@ import {
 	useSuspenseQuery,
 } from "@tanstack/react-query";
 import { useId, useState } from "react";
+import { settingsQueryOptions } from "../accounting/api";
 import {
 	bulkSendInvoices,
 	bulkSendPreviewQueryOptions,
@@ -21,6 +22,7 @@ export function BulkSendDialog({
 	const subjectId = useId();
 	const textId = useId();
 	const { data: preview } = useSuspenseQuery(bulkSendPreviewQueryOptions);
+	const { data: settings } = useSuspenseQuery(settingsQueryOptions);
 	const [subject, setSubject] = useState("");
 	const [text, setText] = useState("");
 	const run = useMutation({
@@ -59,6 +61,8 @@ export function BulkSendDialog({
 								<p className="mt-3 text-sm text-neutral-600">
 									Betreff und Text gehen an alle Personen, die per E-Mail
 									beliefert werden.
+									{settings?.emailBackend === "EPost" &&
+										" E-Mails gehen über ePost. Jeder Versand wird verrechnet."}
 								</p>
 								<label htmlFor={subjectId} className="mt-3 block text-sm">
 									Betreff

@@ -44,13 +44,13 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
             Address = "Sportweg 12",
             PostalCode = "5430",
             City = "Wettingen",
+            FromAddress = "kasse@example.ch",
         };
         if (smtp)
         {
             settings.SmtpHost = "smtp.example.ch";
             settings.SmtpPort = 587;
             settings.SmtpSecurity = backend.Settings.SmtpSecurity.StartTls;
-            settings.SmtpFromAddress = "kasse@example.ch";
         }
         if (epost)
             settings.EPostApiKey = "key-123";
@@ -200,7 +200,7 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
         var response = await Send(client, id);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("E-Mail ist nicht eingerichtet.", await Error(response));
+        Assert.Equal(SmtpInvoiceSender.EmailNotConfiguredError, await Error(response));
         Assert.Empty(factory.Emails.Invoices);
     }
 
@@ -344,5 +344,79 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
         Assert.Equal(HttpStatusCode.OK, (await Send(client, id)).StatusCode);
         Assert.Single(factory.Emails.Invoices);
         Assert.Equal(0, factory.EPost.Calls);
+    }
+
+    [Fact]
+    public async Task Without_an_SMTP_group_the_email_goes_through_ePost_with_the_club_as_Reply_To()
+    {
+        var id = await Seed(smtp: false, epost: true);
+        await using var factory = await FactoryWithPdf(_postgres, id);
+        using var client = SignedIn(factory);
+
+        var response = await Send(client, id);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Empty(factory.Emails.Invoices);
+        var delivery = Assert.Single(factory.EPost.Deliveries);
+        Assert.Equal("EMAIL", (string?)delivery["deliveryChannelPreferences"]![0]);
+        Assert.Equal("anna@example.ch", (string?)delivery["recipients"]![0]!["unhashedCredentials"]!["email"]);
+        var email = delivery["emailAdditionalInfo"]!;
+        Assert.Equal("Rechnung", (string?)email["emailSubject"]);
+        Assert.Equal("Guten Tag", (string?)email["emailText"]);
+        Assert.Equal("kasse@example.ch", (string?)email["replyTo"]![0]!["email"]);
+        Assert.Equal("SC Wettingen", (string?)email["replyTo"]![0]!["name"]);
+        Assert.Null(email["sender"]);
+        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
+        var last = detail.GetProperty("statusHistory").EnumerateArray().Last();
+        Assert.Equal("Sent", last.GetProperty("status").GetString());
+        Assert.Equal($"per Email (ePost, {factory.EPost.DeliveryId})", last.GetProperty("remark").GetString());
+    }
+
+    [Fact]
+    public async Task With_an_SMTP_group_the_email_goes_through_SMTP_even_when_an_ePost_key_is_stored()
+    {
+        var id = await Seed(smtp: true, epost: true);
+        await using var factory = await FactoryWithPdf(_postgres, id);
+        using var client = SignedIn(factory);
+
+        var response = await Send(client, id);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Single(factory.Emails.Invoices);
+        Assert.Equal(0, factory.EPost.Calls);
+    }
+
+    [Fact]
+    public async Task A_failing_SMTP_server_is_not_retried_through_ePost()
+    {
+        var id = await Seed(smtp: true, epost: true);
+        await using var factory = await FactoryWithPdf(_postgres, id);
+        factory.Emails.FailWith = "Connection timed out";
+        using var client = SignedIn(factory);
+
+        var response = await Send(client, id);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Connection timed out", await Error(response));
+        Assert.Equal(0, factory.EPost.Calls);
+        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
+        Assert.Equal("Created", detail.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task An_ePost_email_failure_is_reported_in_German_and_records_nothing()
+    {
+        var id = await Seed(smtp: false, epost: true);
+        await using var factory = await FactoryWithPdf(_postgres, id);
+        factory.EPost.Status = HttpStatusCode.Forbidden;
+        factory.EPost.Body = """{"message":"Ungültiger API-Key"}""";
+        using var client = SignedIn(factory);
+
+        var response = await Send(client, id);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("Die E-Mail konnte nicht gesendet werden: Ungültiger API-Key", await Error(response));
+        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
+        Assert.Equal("Created", detail.GetProperty("status").GetString());
     }
 }

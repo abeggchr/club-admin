@@ -41,7 +41,7 @@ export function deliveryChannels(
 			channel: "Email",
 			label: "E-Mail",
 			blockedReason: !emailConfigured
-				? "E-Mail ist nicht eingerichtet."
+				? "E-Mail ist nicht eingerichtet: Es braucht eine Absenderadresse und entweder SMTP oder ePost."
 				: !recipient.email?.trim()
 					? "Die Person hat keine E-Mail-Adresse."
 					: null,

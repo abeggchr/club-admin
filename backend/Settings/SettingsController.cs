@@ -32,7 +32,7 @@ public class SettingsController(AppDbContext db, IEmailSender emailSender) : Con
                 update.PostalCode,
                 update.City,
                 earliest
-            ) ?? SmtpRules.Validate(update.Smtp);
+            ) ?? SmtpRules.Validate(update.Smtp, update.FromAddress);
         if (error is not null)
         {
             return BadRequest(new { error });
@@ -52,6 +52,7 @@ public class SettingsController(AppDbContext db, IEmailSender emailSender) : Con
         settings.Address = update.Address!.Trim();
         settings.PostalCode = update.PostalCode!.Trim();
         settings.City = update.City!.Trim();
+        settings.FromAddress = NullIfBlank(update.FromAddress);
         ApplySmtp(settings, update.Smtp);
         // Write-only like the SMTP password: an empty field keeps the stored key.
         if (!string.IsNullOrWhiteSpace(update.EPostApiKey))
@@ -70,7 +71,7 @@ public class SettingsController(AppDbContext db, IEmailSender emailSender) : Con
         {
             return BadRequest(new { error = "Die SMTP-Einstellungen sind unvollständig." });
         }
-        if (SmtpRules.Validate(request.Smtp) is { } error)
+        if (SmtpRules.Validate(request.Smtp, request.FromAddress) is { } error)
         {
             return BadRequest(new { error });
         }
@@ -90,7 +91,7 @@ public class SettingsController(AppDbContext db, IEmailSender emailSender) : Con
             smtp.Security!.Value,
             NullIfBlank(smtp.Username),
             password,
-            smtp.FromAddress!.Trim(),
+            request.FromAddress!.Trim(),
             (await db.Settings.FindAsync(Settings.SingletonId))?.Name ?? ""
         );
 
@@ -109,7 +110,6 @@ public class SettingsController(AppDbContext db, IEmailSender emailSender) : Con
             settings.SmtpSecurity = null;
             settings.SmtpUsername = null;
             settings.SmtpPassword = null;
-            settings.SmtpFromAddress = null;
             return;
         }
         settings.SmtpHost = smtp!.Host!.Trim();
@@ -120,7 +120,6 @@ public class SettingsController(AppDbContext db, IEmailSender emailSender) : Con
         {
             settings.SmtpPassword = smtp.Password;
         }
-        settings.SmtpFromAddress = smtp.FromAddress!.Trim();
     }
 
     private static string? NullIfBlank(string? value) =>
@@ -194,12 +193,13 @@ public record SettingsUpdate(
     string? Address,
     string? PostalCode,
     string? City,
+    string? FromAddress = null,
     SmtpInput? Smtp = null,
     string? EPostApiKey = null
 );
 
-/// <summary>The receiver and the unsaved SMTP group to try out.</summary>
-public record TestEmailRequest(string? Receiver, SmtpInput? Smtp);
+/// <summary>The receiver, the unsaved club email address and the unsaved SMTP group to try out. Always SMTP: the test never costs an ePost delivery.</summary>
+public record TestEmailRequest(string? Receiver, string? FromAddress, SmtpInput? Smtp);
 
 /// <summary>The Settings as returned to the client: never a secret, only whether it is set.</summary>
 public record SettingsResponse(
@@ -210,8 +210,10 @@ public record SettingsResponse(
     string Address,
     string PostalCode,
     string City,
+    string? FromAddress,
     SmtpResponse Smtp,
     bool EmailConfigured,
+    EmailBackend? EmailBackend,
     bool EPostConfigured
 )
 {
@@ -224,15 +226,16 @@ public record SettingsResponse(
             s.Address,
             s.PostalCode,
             s.City,
+            s.FromAddress,
             new SmtpResponse(
                 s.SmtpHost,
                 s.SmtpPort,
                 s.SmtpSecurity,
                 s.SmtpUsername,
-                !string.IsNullOrEmpty(s.SmtpPassword),
-                s.SmtpFromAddress
+                !string.IsNullOrEmpty(s.SmtpPassword)
             ),
-            s.SmtpHost is not null,
+            EmailBackends.Resolve(s) is not null,
+            EmailBackends.Resolve(s),
             !string.IsNullOrEmpty(s.EPostApiKey)
         );
 }

@@ -16,14 +16,16 @@ public class Settings
     public string PostalCode { get; set; } = "";
     public string City { get; set; } = "";
 
-    /// <summary>The optional SMTP group (email channel): all null, or Host, Port, Security and FromAddress set. The password is stored in plain text and never returned (ADR 0007).</summary>
+    /// <summary>The club's email address: the From of SMTP mails and the Reply-To of ePost mails (ADR 0008). Required once an email backend is set up.</summary>
+    public string? FromAddress { get; set; }
+
+    /// <summary>The optional SMTP group (email channel): all null, or Host, Port and Security set. The password is stored in plain text and never returned (ADR 0007).</summary>
     public string? SmtpHost { get; set; }
     public int? SmtpPort { get; set; }
     public SmtpSecurity? SmtpSecurity { get; set; }
     public string? SmtpUsername { get; set; }
     public string? SmtpPassword { get; set; }
-    public string? SmtpFromAddress { get; set; }
 
-    /// <summary>The optional ePost API key (post channel). Stored in plain text and never returned, like the SMTP password (ADR 0007).</summary>
+    /// <summary>The optional ePost API key (post channel, and email channel when no SMTP group is set). Stored in plain text and never returned, like the SMTP password (ADR 0007).</summary>
     public string? EPostApiKey { get; set; }
 }

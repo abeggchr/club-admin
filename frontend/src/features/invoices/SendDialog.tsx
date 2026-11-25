@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
+import type { EmailBackend } from "../accounting/api";
 import { invalidateInvoices, sendInvoice } from "./api";
 import {
 	type ChannelOption,
@@ -13,11 +14,14 @@ export function SendDialog({
 	invoiceId,
 	channels,
 	recipientEmail,
+	emailBackend,
 }: {
 	dialogRef: React.RefObject<HTMLDialogElement | null>;
 	invoiceId: number;
 	channels: ChannelOption[];
 	recipientEmail: string;
+	/** Who delivers emails; ePost emails are billed, SMTP ones are not. */
+	emailBackend: EmailBackend | null;
 }) {
 	const queryClient = useQueryClient();
 	const subjectId = useId();
@@ -92,7 +96,10 @@ export function SendDialog({
 				) : (
 					<>
 						<p className="mt-3 text-sm text-neutral-600">
-							Die Rechnung wird als PDF an {recipientEmail} gesendet.
+							Die Rechnung wird als PDF an {recipientEmail} gesendet
+							{emailBackend === "EPost"
+								? " (über ePost, kostenpflichtig)."
+								: "."}
 						</p>
 						<label htmlFor={subjectId} className="mt-4 block text-sm">
 							Betreff

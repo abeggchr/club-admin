@@ -317,6 +317,9 @@ namespace backend.Migrations
                     b.Property<string>("EPostApiKey")
                         .HasColumnType("text");
 
+                    b.Property<string>("FromAddress")
+                        .HasColumnType("text");
+
                     b.Property<string>("Iban")
                         .IsRequired()
                         .HasMaxLength(21)
@@ -335,9 +338,6 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
-
-                    b.Property<string>("SmtpFromAddress")
-                        .HasColumnType("text");
 
                     b.Property<string>("SmtpHost")
                         .HasColumnType("text");

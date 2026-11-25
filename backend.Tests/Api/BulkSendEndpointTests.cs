@@ -25,7 +25,11 @@ public class BulkSendEndpointTests : IClassFixture<LocalPostgresFixture>
     private sealed record Seeded(int Email, int EmailAndPost, int PostOnly, int Nobody, int AlreadySent);
 
     /// <summary>Settings with SMTP and ePost per the flags, and five Invoices: email only, email and post, post only, no way to deliver, and one already Sent.</summary>
-    private async Task<(Seeded Ids, AppFactory Factory)> Seed(bool smtp = true, bool epost = true)
+    private async Task<(Seeded Ids, AppFactory Factory)> Seed(
+        bool smtp = true,
+        bool epost = true,
+        bool fromAddress = true
+    )
     {
         await using var db = NewDb();
         await db.Invoices.ExecuteDeleteAsync();
@@ -39,13 +43,13 @@ public class BulkSendEndpointTests : IClassFixture<LocalPostgresFixture>
             Address = "Sportweg 12",
             PostalCode = "5430",
             City = "Wettingen",
+            FromAddress = fromAddress ? "kasse@example.ch" : null,
         };
         if (smtp)
         {
             settings.SmtpHost = "smtp.example.ch";
             settings.SmtpPort = 587;
             settings.SmtpSecurity = backend.Settings.SmtpSecurity.StartTls;
-            settings.SmtpFromAddress = "kasse@example.ch";
         }
         if (epost)
             settings.EPostApiKey = "key-123";
@@ -221,7 +225,8 @@ public class BulkSendEndpointTests : IClassFixture<LocalPostgresFixture>
     [Fact]
     public async Task Subject_and_text_are_not_required_when_every_Invoice_goes_by_post()
     {
-        var (ids, factory) = await Seed(smtp: false);
+        // Without the club address there is no email at all, so every Invoice that can be sent goes by post.
+        var (ids, factory) = await Seed(smtp: false, fromAddress: false);
         await using var _f = factory;
         using var client = SignedIn(factory);
 
@@ -230,5 +235,23 @@ public class BulkSendEndpointTests : IClassFixture<LocalPostgresFixture>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(2, factory.EPost.Calls);
         Assert.Equal($"Sent per Post ({factory.EPost.DeliveryId})", await StatusRemark(client, ids.EmailAndPost));
+    }
+
+    [Fact]
+    public async Task Without_an_SMTP_group_emails_go_through_ePost_and_the_rest_by_post()
+    {
+        var (ids, factory) = await Seed(smtp: false);
+        await using var _f = factory;
+        using var client = SignedIn(factory);
+
+        var response = await BulkSend(client);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Empty(factory.Emails.Invoices);
+        Assert.Equal(3, factory.EPost.Calls);
+        var channels = factory.EPost.Deliveries.Select(d => (string?)d["deliveryChannelPreferences"]![0]).Order().ToList();
+        Assert.Equal(["EMAIL", "EMAIL", "PHYSICAL"], channels);
+        Assert.Equal($"Sent per Email (ePost, {factory.EPost.DeliveryId})", await StatusRemark(client, ids.Email));
+        Assert.Equal($"Sent per Post ({factory.EPost.DeliveryId})", await StatusRemark(client, ids.PostOnly));
     }
 }

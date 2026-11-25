@@ -6,6 +6,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { MdHelpOutline } from "react-icons/md";
 import { formatChf, parseAmount } from "../accounting/amount";
 import {
 	invalidateJournalQueries,
@@ -27,31 +28,69 @@ type FormState = {
 	address: string;
 	postalCode: string;
 	city: string;
+	fromAddress: string;
 	iban: string;
 	amount: string;
 	startDate: string;
 };
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+	label,
+	hint,
+	children,
+}: {
+	label: string;
+	hint?: ReactNode;
+	children: ReactNode;
+}) {
 	return (
 		// biome-ignore lint/a11y/noLabelWithoutControl: the input is passed in as children
 		<label className="flex flex-col gap-1 text-sm">
-			{label}
+			<span>
+				{label}
+				{hint && <HelpHint>{hint}</HelpHint>}
+			</span>
 			{children}
 		</label>
 	);
 }
 
+/** A question mark that shows the explanation on mouseover or keyboard focus. */
+function HelpHint({ children }: { children: ReactNode }) {
+	return (
+		<span className="group relative ml-1 inline-block align-middle">
+			<button
+				type="button"
+				aria-label="Hilfe"
+				className="rounded-full text-sky-700 hover:text-sky-900"
+			>
+				<MdHelpOutline className="size-4" />
+			</button>
+			<span
+				role="tooltip"
+				className="invisible absolute top-6 left-0 z-10 w-72 rounded border border-slate-200 bg-white p-3 text-sm font-normal text-neutral-700 shadow-lg group-focus-within:visible group-hover:visible"
+			>
+				{children}
+			</span>
+		</span>
+	);
+}
+
 function FormSection({
 	title,
+	hint,
 	children,
 }: {
 	title: string;
+	hint?: ReactNode;
 	children: ReactNode;
 }) {
 	return (
 		<fieldset className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-			<legend className="px-2 font-medium text-sky-900">{title}</legend>
+			<legend className="px-2 font-medium text-sky-900">
+				{title}
+				{hint && <HelpHint>{hint}</HelpHint>}
+			</legend>
 			{children}
 		</fieldset>
 	);
@@ -73,6 +112,7 @@ export function SettingsPage() {
 		address: settings?.address ?? "",
 		postalCode: settings?.postalCode ?? "",
 		city: settings?.city ?? "",
+		fromAddress: settings?.fromAddress ?? "",
 		iban: settings?.iban ?? "",
 		amount: settings ? formatChf(settings.openingBalance) : "",
 		startDate: settings?.startDate ?? "",
@@ -111,7 +151,7 @@ export function SettingsPage() {
 	});
 
 	function openTestDialog() {
-		setReceiver(smtp.fromAddress);
+		setReceiver(form.fromAddress);
 		testDialogRef.current?.showModal();
 	}
 
@@ -125,7 +165,11 @@ export function SettingsPage() {
 			return;
 		}
 		try {
-			await sendTestEmail(testReceiver.trim(), payload.value);
+			await sendTestEmail(
+				testReceiver.trim(),
+				form.fromAddress.trim(),
+				payload.value,
+			);
 			setTestResult({
 				ok: true,
 				message: `Test-E-Mail gesendet an ${testReceiver.trim()}.`,
@@ -161,6 +205,7 @@ export function SettingsPage() {
 				address: form.address.trim(),
 				postalCode: form.postalCode.trim(),
 				city: form.city.trim(),
+				fromAddress: form.fromAddress.trim(),
 				smtp: smtpParsed.value,
 				ePostApiKey: ePostApiKey.trim(),
 			});
@@ -172,6 +217,7 @@ export function SettingsPage() {
 				address: result.address,
 				postalCode: result.postalCode,
 				city: result.city,
+				fromAddress: result.fromAddress ?? "",
 				iban: result.iban,
 				amount: formatChf(result.openingBalance),
 			}));
@@ -209,6 +255,12 @@ export function SettingsPage() {
 								<input required maxLength={35} {...bind("city")} />
 							</Field>
 						</div>
+						<Field
+							label="Absenderadresse (E-Mail)"
+							hint="Mit SMTP ist das der Absender der E-Mails, mit ePost die Antwortadresse: ePost versendet von seiner eigenen Adresse, und Antworten gehen an diese Adresse."
+						>
+							<input type="email" {...bind("fromAddress")} />
+						</Field>
 					</FormSection>
 
 					<FormSection title="Bankverbindung">
@@ -227,8 +279,11 @@ export function SettingsPage() {
 					</FormSection>
 				</div>
 
-				<FormSection title="E-Mail">
-					<Field label="SMTP Server">
+				<FormSection
+					title="SMTP"
+					hint="Optional, erlaubt den Emailversand über einen SMTP Server. Ohne SMTP-Einstellungen versendet die App E-Mails über ePost. Railway blockiert ausgehenden SMTP Verkehr im Free-Tier."
+				>
+					<Field label="Server">
 						<input {...bindSmtp("host")} />
 					</Field>
 					<div className="grid grid-cols-[1fr_2fr] gap-3">
@@ -261,9 +316,6 @@ export function SettingsPage() {
 							{...bindSmtp("password")}
 						/>
 					</Field>
-					<Field label="Absenderadresse">
-						<input type="email" {...bindSmtp("fromAddress")} />
-					</Field>
 					<button
 						type="button"
 						onClick={openTestDialog}
@@ -279,7 +331,10 @@ export function SettingsPage() {
 				</FormSection>
 
 				<div className="flex flex-col gap-6">
-					<FormSection title="Post">
+					<FormSection
+						title="ePost"
+						hint={`Optional. Versendet Briefe (B-Post) und E-Mails (solange kein SMTP Server eingerichtet ist). Jeder Versand wird von ePost verrechnet.${settings?.emailBackend === "EPost" ? " Aktuell gehen E-Mails über ePost." : ""}`}
+					>
 						<Field
 							label={`ePost API-Key (${settings?.ePostConfigured ? "gesetzt" : "nicht gesetzt"})`}
 						>

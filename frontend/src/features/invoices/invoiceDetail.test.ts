@@ -29,7 +29,7 @@ describe("deliveryChannels", () => {
 
 	it("explains that email is not configured", () => {
 		expect(deliveryChannels(false, true, swiss)[0].blockedReason).toBe(
-			"E-Mail ist nicht eingerichtet.",
+			"E-Mail ist nicht eingerichtet: Es braucht eine Absenderadresse und entweder SMTP oder ePost.",
 		);
 	});
 

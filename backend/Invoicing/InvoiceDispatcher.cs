@@ -31,10 +31,12 @@ public class InvoiceDispatcher(IEnumerable<IInvoiceSender> senders, IInvoiceStor
         {
             return invalid;
         }
-        var sender = senders.FirstOrDefault(s => s.Channel == channel);
-        if (sender is null || !sender.IsConfigured(settings))
+        // A channel may have several backends (Email: SMTP or ePost); at most one is configured.
+        var ofChannel = senders.Where(s => s.Channel == channel).ToList();
+        var sender = ofChannel.FirstOrDefault(s => s.IsConfigured(settings));
+        if (sender is null)
         {
-            return sender?.NotConfiguredError ?? "Der Versandweg ist nicht eingerichtet.";
+            return ofChannel.FirstOrDefault()?.NotConfiguredError ?? "Der Versandweg ist nicht eingerichtet.";
         }
         if (!sender.CanDeliverTo(recipient))
         {

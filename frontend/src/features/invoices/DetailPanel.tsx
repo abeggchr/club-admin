@@ -198,6 +198,7 @@ export function DetailPanel({
 						invoiceId={invoice.id}
 						channels={channels}
 						recipientEmail={invoice.person.email ?? ""}
+						emailBackend={settings?.emailBackend ?? null}
 					/>
 				</>
 			)}

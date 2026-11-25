@@ -20,9 +20,10 @@ public static class BulkSendRules
         IEnumerable<IInvoiceSender> senders
     )
     {
-        var ordered = Preference
-            .Select(c => senders.FirstOrDefault(s => s.Channel == c))
-            .OfType<IInvoiceSender>()
+        // A channel may have several backends; at most one is configured, so Pick finds it.
+        var ordered = senders
+            .Where(s => Preference.Contains(s.Channel))
+            .OrderBy(s => Array.IndexOf(Preference, s.Channel))
             .ToList();
         return invoices
             .Where(i => InvoiceRules.LatestStatus(i.Invoice) == InvoiceStatus.Created)
