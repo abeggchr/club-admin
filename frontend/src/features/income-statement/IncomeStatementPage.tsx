@@ -63,7 +63,7 @@ export function IncomeStatementPage() {
 									</dl>
 								</div>
 							))}
-							<div className="mt-2 flex justify-between border-t border-sky-200 pt-1 text-sm font-semibold text-sky-900">
+							<div className="mt-2 flex justify-between border-t border-sky-200 pt-1 print:border-sky-900 text-sm font-semibold text-sky-900">
 								<span>Gesamt {section.label}</span>
 								<span className="tabular-nums">{formatChf(section.total)}</span>
 							</div>
@@ -71,16 +71,16 @@ export function IncomeStatementPage() {
 					</section>
 				))}
 			</dl>
-			<div className="mt-6 border-t-2 border-sky-300 pt-2 text-sm font-bold text-sky-900">
-				<div className="flex justify-between">
+			<div className="mt-6 border-t-2 border-sky-300 pt-2 text-sm font-bold text-sky-900 print:mt-3">
+				<div className="flex justify-between print:border-sky-900">
 					<span>Gesamt Ertrag</span>
 					<span className="tabular-nums">{formatChf(report.totalRevenue)}</span>
 				</div>
-				<div className="flex justify-between">
+				<div className="flex justify-between print:border-sky-900">
 					<span>Gesamt Aufwand</span>
 					<span className="tabular-nums">{formatChf(report.totalExpense)}</span>
 				</div>
-				<div className="mt-1 flex justify-between text-base">
+				<div className="mt-1 flex justify-between border-t border-sky-200 pt-1 text-base print:border-sky-900">
 					<span>Gesamtergebnis</span>
 					<span className="tabular-nums">
 						{formatChf(report.overallResult)}
@@ -129,7 +129,7 @@ function ViewToggle({
 		["all", "Alle"],
 	];
 	return (
-		<fieldset className="mt-4 flex gap-1" aria-label="Ansicht">
+		<fieldset className="mt-4 flex gap-1 print:hidden" aria-label="Ansicht">
 			{options.map(([value, label]) => (
 				<button
 					key={value}

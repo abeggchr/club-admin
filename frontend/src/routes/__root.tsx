@@ -33,7 +33,7 @@ function RootComponent() {
 
 	return (
 		<>
-			<header className="px-4 pt-4">
+			<header className="px-4 pt-4 print:hidden">
 				<div className="flex items-baseline justify-between">
 					<h1 className="text-2xl font-bold text-sky-900">
 						<Link to="/" aria-label="Übersicht">
