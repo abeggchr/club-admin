@@ -8,6 +8,9 @@ import type {
 	TransactionInput,
 } from "./types";
 
+/** Who delivers the club's emails: its own SMTP server, or ePost (ADR 0008). */
+export type EmailBackend = "Smtp" | "EPost";
+
 export type Settings = {
 	openingBalance: number;
 	startDate: string;
@@ -16,17 +19,26 @@ export type Settings = {
 	address: string;
 	postalCode: string;
 	city: string;
+	/** The club's email address: the From of SMTP mails, the Reply-To of ePost mails. */
+	fromAddress: string | null;
 	smtp: SmtpSettings;
-	/** Whether the SMTP group is complete, i.e. the email channel can send. */
+	/** Whether the email channel can send: the club address plus an SMTP group or an ePost key. */
 	emailConfigured: boolean;
+	/** SMTP when the SMTP group is set, else ePost when a key is stored, else null. ePost emails are billed. */
+	emailBackend: EmailBackend | null;
 	/** Whether an ePost API key is stored, i.e. the post channel can send. The key itself is never returned. */
 	ePostConfigured: boolean;
 };
 
 export type SettingsUpdate = Omit<
 	Settings,
-	"smtp" | "emailConfigured" | "ePostConfigured"
+	| "fromAddress"
+	| "smtp"
+	| "emailConfigured"
+	| "emailBackend"
+	| "ePostConfigured"
 > & {
+	fromAddress: string;
 	smtp: SmtpPayload;
 	/** Empty keeps the stored key. */
 	ePostApiKey: string;
@@ -231,16 +243,17 @@ export const expectedBalanceQueryOptions = (date: string) =>
 			),
 	});
 
-/** Sends the fixed test message with the SMTP values of the form; throws the SMTP error on failure. */
+/** Sends the fixed test message with the SMTP values and club address of the form (never through ePost); throws the SMTP error on failure. */
 export async function sendTestEmail(
 	receiver: string,
+	fromAddress: string,
 	smtp: SmtpPayload,
 ): Promise<void> {
 	await ensureOk(
 		await apiFetch("/api/settings/smtp/test", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ receiver, smtp }),
+			body: JSON.stringify({ receiver, fromAddress, smtp }),
 		}),
 	);
 }

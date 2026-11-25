@@ -50,6 +50,7 @@ public sealed class AppFactory(LocalPostgresFixture postgres) : WebApplicationFa
             services.AddSingleton<IInvoiceStorage>(InvoicePdfs);
             services.AddSingleton<IEmailSender>(Emails);
             services.AddHttpClient<EPostInvoiceSender>().ConfigurePrimaryHttpMessageHandler(() => EPost);
+            services.AddHttpClient<EPostEmailInvoiceSender>().ConfigurePrimaryHttpMessageHandler(() => EPost);
             services
                 .AddAuthentication(options =>
                 {

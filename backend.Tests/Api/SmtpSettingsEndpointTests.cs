@@ -41,10 +41,9 @@ public class SmtpSettingsEndpointTests : IClassFixture<LocalPostgresFixture>
             ["security"] = "StartTls",
             ["username"] = "kasse",
             ["password"] = password,
-            ["fromAddress"] = "kasse@example.ch",
         };
 
-    private static Dictionary<string, object?> SettingsBody(object? smtp) =>
+    private static Dictionary<string, object?> SettingsBody(object? smtp, string? fromAddress = "kasse@example.ch") =>
         new()
         {
             ["openingBalance"] = 0,
@@ -54,6 +53,7 @@ public class SmtpSettingsEndpointTests : IClassFixture<LocalPostgresFixture>
             ["address"] = "Sportweg 12",
             ["postalCode"] = "5430",
             ["city"] = "Wettingen",
+            ["fromAddress"] = fromAddress,
             ["smtp"] = smtp,
         };
 
@@ -104,7 +104,8 @@ public class SmtpSettingsEndpointTests : IClassFixture<LocalPostgresFixture>
         Assert.Equal("smtp.example.ch", smtp.GetProperty("host").GetString());
         Assert.Equal(587, smtp.GetProperty("port").GetInt32());
         Assert.Equal("StartTls", smtp.GetProperty("security").GetString());
-        Assert.Equal("kasse@example.ch", smtp.GetProperty("fromAddress").GetString());
+        Assert.Equal("kasse@example.ch", settings.GetProperty("fromAddress").GetString());
+        Assert.Equal("Smtp", settings.GetProperty("emailBackend").GetString());
     }
 
     [Fact]
@@ -139,7 +140,7 @@ public class SmtpSettingsEndpointTests : IClassFixture<LocalPostgresFixture>
         Assert.True(settings.GetProperty("smtp").GetProperty("passwordSet").GetBoolean());
         var testResponse = await client.PostAsJsonAsync(
             "/api/settings/smtp/test",
-            new { receiver = "x@example.ch", smtp = FullSmtp(password: "") }
+            new { receiver = "x@example.ch", fromAddress = "kasse@example.ch", smtp = FullSmtp(password: "") }
         );
         Assert.Equal(HttpStatusCode.OK, testResponse.StatusCode);
         Assert.Equal("geheim", Assert.Single(factory.Emails.Sent).Smtp.Password);
@@ -169,13 +170,14 @@ public class SmtpSettingsEndpointTests : IClassFixture<LocalPostgresFixture>
 
         var response = await client.PostAsJsonAsync(
             "/api/settings/smtp/test",
-            new { receiver = "empfaenger@example.ch", smtp = FullSmtp("neu") }
+            new { receiver = "empfaenger@example.ch", fromAddress = "kasse@example.ch", smtp = FullSmtp("neu") }
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var sent = Assert.Single(factory.Emails.Sent);
         Assert.Equal("empfaenger@example.ch", sent.Receiver);
         Assert.Equal("smtp.example.ch", sent.Smtp.Host);
+        Assert.Equal("kasse@example.ch", sent.Smtp.FromAddress);
         Assert.Equal("neu", sent.Smtp.Password);
     }
 
@@ -189,7 +191,7 @@ public class SmtpSettingsEndpointTests : IClassFixture<LocalPostgresFixture>
 
         var response = await client.PostAsJsonAsync(
             "/api/settings/smtp/test",
-            new { receiver = "empfaenger@example.ch", smtp = FullSmtp() }
+            new { receiver = "empfaenger@example.ch", fromAddress = "kasse@example.ch", smtp = FullSmtp() }
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -210,11 +212,92 @@ public class SmtpSettingsEndpointTests : IClassFixture<LocalPostgresFixture>
         );
         var badReceiver = await client.PostAsJsonAsync(
             "/api/settings/smtp/test",
-            new { receiver = "kein-email", smtp = FullSmtp() }
+            new { receiver = "kein-email", fromAddress = "kasse@example.ch", smtp = FullSmtp() }
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, incomplete.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, badReceiver.StatusCode);
+        Assert.Empty(factory.Emails.Sent);
+    }
+
+    [Fact]
+    public async Task An_SMTP_group_without_the_club_address_is_rejected()
+    {
+        await ClearSettings();
+        await using var factory = new AppFactory(_postgres);
+        using var client = SignedIn(factory);
+
+        var response = await client.PutAsJsonAsync("/api/settings", SettingsBody(FullSmtp(), fromAddress: ""));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Die Absenderadresse ist erforderlich.", body.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task An_ePost_key_with_the_club_address_makes_ePost_the_email_backend_and_the_key_is_not_returned()
+    {
+        await ClearSettings();
+        await using var factory = new AppFactory(_postgres);
+        using var client = SignedIn(factory);
+        var body = SettingsBody(null);
+        body["ePostApiKey"] = "key-123";
+
+        var put = await client.PutAsJsonAsync("/api/settings", body);
+
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        var text = await (await client.GetAsync("/api/settings")).Content.ReadAsStringAsync();
+        Assert.DoesNotContain("key-123", text);
+        var settings = JsonDocument.Parse(text).RootElement;
+        Assert.True(settings.GetProperty("emailConfigured").GetBoolean());
+        Assert.Equal("EPost", settings.GetProperty("emailBackend").GetString());
+    }
+
+    [Fact]
+    public async Task Without_the_club_address_an_ePost_key_does_not_configure_email()
+    {
+        await ClearSettings();
+        await using var factory = new AppFactory(_postgres);
+        using var client = SignedIn(factory);
+        var body = SettingsBody(null, fromAddress: null);
+        body["ePostApiKey"] = "key-123";
+
+        await client.PutAsJsonAsync("/api/settings", body);
+
+        var settings = await client.GetFromJsonAsync<JsonElement>("/api/settings");
+        Assert.False(settings.GetProperty("emailConfigured").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, settings.GetProperty("emailBackend").ValueKind);
+        Assert.True(settings.GetProperty("ePostConfigured").GetBoolean());
+    }
+
+    [Fact]
+    public async Task The_club_address_survives_emptying_the_SMTP_group()
+    {
+        await ClearSettings();
+        await using var factory = new AppFactory(_postgres);
+        using var client = SignedIn(factory);
+        await client.PutAsJsonAsync("/api/settings", SettingsBody(FullSmtp()));
+
+        await client.PutAsJsonAsync("/api/settings", SettingsBody(null));
+
+        var settings = await client.GetFromJsonAsync<JsonElement>("/api/settings");
+        Assert.Equal("kasse@example.ch", settings.GetProperty("fromAddress").GetString());
+    }
+
+    [Fact]
+    public async Task The_test_email_never_goes_through_ePost()
+    {
+        await ClearSettings();
+        await using var factory = new AppFactory(_postgres);
+        using var client = SignedIn(factory);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/settings/smtp/test",
+            new { receiver = "empfaenger@example.ch", fromAddress = "kasse@example.ch", smtp = (object?)null }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, factory.EPost.Calls);
         Assert.Empty(factory.Emails.Sent);
     }
 }

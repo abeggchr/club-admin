@@ -12,7 +12,6 @@ describe("smtpPayload", () => {
 				security: null,
 				username: "",
 				password: "",
-				fromAddress: "",
 			},
 		});
 	});
@@ -50,7 +49,6 @@ describe("smtpDraftFrom", () => {
 			security: "Ssl",
 			username: "kasse",
 			passwordSet: true,
-			fromAddress: "kasse@example.ch",
 		});
 		expect(draft).toEqual({
 			host: "smtp.example.ch",
@@ -58,7 +56,6 @@ describe("smtpDraftFrom", () => {
 			security: "Ssl",
 			username: "kasse",
 			password: "",
-			fromAddress: "kasse@example.ch",
 		});
 	});
 });

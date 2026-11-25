@@ -16,7 +16,7 @@ public class SmtpInvoiceSenderTests
             SmtpSecurity = SmtpSecurity.StartTls,
             SmtpUsername = "kasse",
             SmtpPassword = "geheim",
-            SmtpFromAddress = "kasse@example.ch",
+            FromAddress = "kasse@example.ch",
         };
 
     private static PersonEntity Person(string? email) =>

@@ -2,7 +2,7 @@ using System.Net.Mail;
 
 namespace backend.Settings;
 
-/// <summary>Pure validation for the optional SMTP group of the Settings: all empty, or every required field filled. Returns a German error message, or null when valid.</summary>
+/// <summary>Pure validation for the optional SMTP group of the Settings and the club's email address: the group is all empty, or every required field filled. Returns a German error message, or null when valid.</summary>
 public static class SmtpRules
 {
     public static bool IsEmpty(SmtpInput? smtp) =>
@@ -13,15 +13,19 @@ public static class SmtpRules
             && smtp.Security is null
             && string.IsNullOrWhiteSpace(smtp.Username)
             && string.IsNullOrWhiteSpace(smtp.Password)
-            && string.IsNullOrWhiteSpace(smtp.FromAddress)
         );
 
-    /// <summary>Username and Password are optional (some relays need no login); the rest is required once any field is filled.</summary>
-    public static string? Validate(SmtpInput? smtp)
+    /// <summary>
+    /// Username and Password are optional (some relays need no login); the rest is required once any field is filled.
+    /// The club's FromAddress is optional on its own, but required with an SMTP group and valid whenever given.
+    /// </summary>
+    public static string? Validate(SmtpInput? smtp, string? fromAddress)
     {
         if (IsEmpty(smtp))
         {
-            return null;
+            return string.IsNullOrWhiteSpace(fromAddress) || IsEmailAddress(fromAddress)
+                ? null
+                : "Die Absenderadresse ist keine gültige E-Mail-Adresse.";
         }
         if (string.IsNullOrWhiteSpace(smtp!.Host))
         {
@@ -35,11 +39,11 @@ public static class SmtpRules
         {
             return "Die Verschlüsselung ist erforderlich.";
         }
-        if (string.IsNullOrWhiteSpace(smtp.FromAddress))
+        if (string.IsNullOrWhiteSpace(fromAddress))
         {
             return "Die Absenderadresse ist erforderlich.";
         }
-        return IsEmailAddress(smtp.FromAddress)
+        return IsEmailAddress(fromAddress)
             ? null
             : "Die Absenderadresse ist keine gültige E-Mail-Adresse.";
     }

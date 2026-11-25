@@ -32,13 +32,20 @@ else
     builder.Services.AddSingleton<IEmailSender, MailKitEmailSender>();
 }
 builder.Services.AddSingleton<IInvoiceSender, SmtpInvoiceSender>();
-// ePost has no sandbox and bills every letter: Development answers from memory, never from api.epost.ch.
+// ePost has no sandbox and bills every letter and email: Development answers from memory, never from api.epost.ch.
 var epost = builder.Services.AddHttpClient<EPostInvoiceSender>();
 if (builder.Environment.IsDevelopment())
 {
     epost.ConfigurePrimaryHttpMessageHandler(() => new InMemoryEPostHandler());
 }
 builder.Services.AddTransient<IInvoiceSender>(sp => sp.GetRequiredService<EPostInvoiceSender>());
+// The same ePost account delivers email when no SMTP group is set (ADR 0008).
+var epostEmail = builder.Services.AddHttpClient<EPostEmailInvoiceSender>();
+if (builder.Environment.IsDevelopment())
+{
+    epostEmail.ConfigurePrimaryHttpMessageHandler(() => new InMemoryEPostHandler());
+}
+builder.Services.AddTransient<IInvoiceSender>(sp => sp.GetRequiredService<EPostEmailInvoiceSender>());
 builder.Services.AddScoped<InvoiceDispatcher>();
 InvoiceDocument.UseCommunityLicense();
 
