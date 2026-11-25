@@ -10,8 +10,13 @@ public class IncomeStatementController(AppDbContext db, IncomeStatementConfig co
     : ControllerBase
 {
     [HttpGet("income-statement")]
-    public async Task<IActionResult> GetIncomeStatement()
+    public async Task<IActionResult> GetIncomeStatement([FromQuery] string? view)
     {
+        if (IncomeStatementViewRules.Parse(view) is { } viewError)
+        {
+            return BadRequest(new { error = viewError });
+        }
+
         var settings = await db.Settings.FindAsync(backend.Settings.Settings.SingletonId);
         if (settings is null)
         {
@@ -26,7 +31,7 @@ public class IncomeStatementController(AppDbContext db, IncomeStatementConfig co
             .Where(e => e.Transaction.Date <= today)
             .ToListAsync();
 
-        var result = IncomeStatementCalculator.Compute(config, chart, entries);
+        var result = IncomeStatementCalculator.Compute(config, chart, entries, IncomeStatementViewRules.For(view));
         return Ok(
             new IncomeStatementDto(
                 new PeriodDto(settings.StartDate, today),

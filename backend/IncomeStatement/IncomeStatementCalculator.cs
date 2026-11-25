@@ -12,7 +12,8 @@ public static class IncomeStatementCalculator
     public static IncomeStatementResult Compute(
         IncomeStatementConfig config,
         ChartOfAccounts chart,
-        IEnumerable<Entry> entries
+        IEnumerable<Entry> entries,
+        IncomeStatementView view = IncomeStatementView.All
     )
     {
         // Credits/debits per account number, following the signed Entry amounts.
@@ -30,6 +31,15 @@ public static class IncomeStatementCalculator
             }
         }
 
+        // Simplified view: a line stays when any of its Accounts has at least one Entry in the period,
+        // even if it nets to 0.00; groups left without lines are hidden.
+        Func<Line, bool> keepLine = view == IncomeStatementView.Simplified
+            ? line =>
+                Enumerable.Range(line.From, line.Last - line.From + 1).Any(number =>
+                    credits.ContainsKey(number) || debits.ContainsKey(number)
+                )
+            : _ => true;
+
         decimal totalRevenue = 0m;
         decimal totalExpense = 0m;
         var sections = new List<SectionResult>();
@@ -41,7 +51,7 @@ public static class IncomeStatementCalculator
             {
                 decimal groupTotal = 0m;
                 var lines = new List<LineResult>();
-                foreach (var line in group.Lines)
+                foreach (var line in group.Lines.Where(keepLine))
                 {
                     decimal amount = 0m;
                     for (var number = line.From; number <= line.Last; number++)
@@ -59,6 +69,11 @@ public static class IncomeStatementCalculator
                     }
                     groupTotal += amount;
                     lines.Add(new LineResult(line.Label, amount));
+                }
+
+                if (lines.Count == 0)
+                {
+                    continue;
                 }
                 sectionTotal += groupTotal;
                 groups.Add(new GroupResult(group.Label, groupTotal, lines));
@@ -85,6 +100,30 @@ public record IncomeStatementResult(
     decimal TotalExpense,
     decimal OverallResult
 );
+
+/// <summary>The view of the report: simplified shows only lines with Entries in the period, all shows every configured line.</summary>
+public enum IncomeStatementView
+{
+    Simplified,
+    All,
+}
+
+/// <summary>Reads the view from the request: only "simplified" and "all" are accepted; the default is simplified.</summary>
+public static class IncomeStatementViewRules
+{
+    public static string? Parse(string? raw)
+    {
+        return raw switch
+        {
+            null or "" => null,
+            "simplified" => null,
+            "all" => null,
+            _ => $"Unbekannte Ansicht '{raw}'. Bitte 'simplified' oder 'all' verwenden.",
+        };
+    }
+
+    public static IncomeStatementView For(string? raw) => raw == "all" ? IncomeStatementView.All : IncomeStatementView.Simplified;
+}
 
 public record SectionResult(string Label, decimal Total, IReadOnlyList<GroupResult> Groups);
 

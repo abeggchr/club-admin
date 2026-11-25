@@ -1,16 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { formatChf } from "../accounting/amount";
 import { formatDe } from "../persons/format";
 import { incomeStatementQueryOptions } from "./api";
+import type { IncomeStatementView } from "./view";
+
+const route = getRouteApi("/income-statement");
 
 /**
  * The Income Statement (Erfolgsrechnung) page: the backend computes the whole tree,
- * the frontend only renders it. Title with the period subtitle; "all" view until
- * the simplified view lands.
+ * the frontend only renders it. Title with the period subtitle; a toggle between
+ * the simplified view (default) and the all view, stored in the URL `?view=` param.
  */
 export function IncomeStatementPage() {
-	const { data: report, isPending } = useQuery(incomeStatementQueryOptions);
+	const { view } = route.useSearch();
+	const navigate = useNavigate();
+	const { data: report, isPending } = useQuery(
+		incomeStatementQueryOptions(view),
+	);
 
 	if (isPending || !report) {
 		return <p className="p-8">Laden…</p>;
@@ -22,6 +29,15 @@ export function IncomeStatementPage() {
 		<div className="mx-auto mt-4 max-w-3xl px-4 pb-8">
 			<h2 className="text-xl font-bold text-sky-900">Erfolgsrechnung</h2>
 			<p className="text-sm text-sky-700">{period}</p>
+			<ViewToggle
+				view={view}
+				onChange={(next) =>
+					navigate({
+						to: "/income-statement",
+						search: { view: next },
+					})
+				}
+			/>
 			<dl className="mt-4 space-y-6">
 				{report.sections.map((section) => (
 					<section key={section.label}>
@@ -98,4 +114,37 @@ function IncomeStatementErrorPage({ error }: { error: unknown }) {
 
 export function IncomeStatementErrorComponent(props: { error: unknown }) {
 	return <IncomeStatementErrorPage error={props.error} />;
+}
+
+/** The view toggle: the choice lives in the URL `?view=` param, so links stay shareable. */
+function ViewToggle({
+	view,
+	onChange,
+}: {
+	view: IncomeStatementView;
+	onChange: (view: IncomeStatementView) => void;
+}) {
+	const options: [IncomeStatementView, string][] = [
+		["simplified", "Vereinfacht"],
+		["all", "Alle"],
+	];
+	return (
+		<fieldset className="mt-4 flex gap-1" aria-label="Ansicht">
+			{options.map(([value, label]) => (
+				<button
+					key={value}
+					type="button"
+					className={`rounded-lg px-3 py-1 text-sm ${
+						value === view
+							? "bg-sky-600 text-white"
+							: "bg-sky-100 text-sky-800 hover:bg-sky-200"
+					}`}
+					aria-pressed={value === view}
+					onClick={() => onChange(value)}
+				>
+					{label}
+				</button>
+			))}
+		</fieldset>
+	);
 }

@@ -124,6 +124,13 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
 
     private async Task<JsonElement> GetReport(Fixture fixture)
     {
+        var response = await fixture.Client.GetAsync("/api/income-statement?view=all");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    private async Task<JsonElement> GetSimplifiedReport(Fixture fixture)
+    {
         var response = await fixture.Client.GetAsync("/api/income-statement");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -220,11 +227,136 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
         {
             var client = factory.CreateClient();
             client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, "anna@example.ch");
-            var response = await client.GetAsync("/api/income-statement");
+            var response = await client.GetAsync("/api/income-statement?view=all");
 
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
             var body = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
             Assert.Contains("Startdatum", body.GetProperty("error").GetString());
         }
+    }
+
+    [Fact]
+    public async Task The_default_view_is_simplified()
+    {
+        await using var fixture = new Fixture(_postgres);
+        await fixture.InitializeAsync();
+
+        var report = await GetSimplifiedReport(fixture);
+
+        // Without a view param, lines without Entries in the period are hidden: the seeded data
+        // touches 12 of the 17 configured lines, so the simplified report has fewer lines.
+        var all = await GetReport(fixture);
+        var simplifiedLineCount = report.GetProperty("sections").EnumerateArray().Sum(
+            s => s.GetProperty("groups").EnumerateArray().Sum(g => g.GetProperty("lines").EnumerateArray().Count())
+        );
+        var allLineCount = all.GetProperty("sections").EnumerateArray().Sum(
+            s => s.GetProperty("groups").EnumerateArray().Sum(g => g.GetProperty("lines").EnumerateArray().Count())
+        );
+        Assert.True(simplifiedLineCount < allLineCount);
+        // Totals and the overall result are identical in both views.
+        Assert.Equal(all.GetProperty("totalRevenue").GetDecimal(), report.GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(all.GetProperty("totalExpense").GetDecimal(), report.GetProperty("totalExpense").GetDecimal());
+        Assert.Equal(all.GetProperty("overallResult").GetDecimal(), report.GetProperty("overallResult").GetDecimal());
+    }
+
+    [Fact]
+    public async Task The_simplified_view_hides_Accounts_without_Entries_and_empty_groups()
+    {
+        await using var fixture = new Fixture(_postgres);
+        await fixture.InitializeAsync();
+
+        var report = await GetSimplifiedReport(fixture);
+
+        var revenueGroups = report.GetProperty("sections")[0].GetProperty("groups").EnumerateArray().ToArray();
+        // 3400, 3500, 3510, 3600, 3610 and 6950 have Entries, so all three revenue groups stay.
+        Assert.Equal(3, revenueGroups.Length);
+        Assert.Equal(3, revenueGroups[2].GetProperty("lines").EnumerateArray().Count());
+
+        var expenseGroups = report.GetProperty("sections")[1].GetProperty("groups").EnumerateArray().ToArray();
+        // Only 4000 (Anlässe) and 4010 (Clubnews) have Entries in the Anlässe group; Geschenke
+        // (4020) and Diverses Clubbetrieb (4099) are hidden.
+        var anlaesse = expenseGroups[0].GetProperty("lines").EnumerateArray().ToArray();
+        Assert.Equal(2, anlaesse.Length);
+        Assert.Equal("Anlässe", anlaesse[0].GetProperty("label").GetString());
+        Assert.Equal("Clubnews", anlaesse[1].GetProperty("label").GetString());
+        // The Skihaus group keeps only Miete (6010) and Nebenkosten (6020).
+        var skihaus = expenseGroups[1].GetProperty("lines").EnumerateArray().ToArray();
+        Assert.Equal(2, skihaus.Length);
+        Assert.Equal("Miete", skihaus[0].GetProperty("label").GetString());
+        Assert.Equal("Nebenkosten", skihaus[1].GetProperty("label").GetString());
+    }
+
+    [Fact]
+    public async Task A_net_zero_Account_with_Entries_stays_in_the_simplified_view()
+    {
+        await using var db = NewDb();
+        await db.Transactions.ExecuteDeleteAsync();
+        await db.Settings.ExecuteDeleteAsync();
+
+        var factory = new IncomeStatementAppFactory(_postgres, Today);
+        await using (factory)
+        {
+            db.Settings.Add(
+                new backend.Settings.Settings
+                {
+                    StartDate = Start,
+                    Iban = "CH9300762011623852957",
+                    Name = "SC Wettingen",
+                    Address = "Sportweg 12",
+                    PostalCode = "5430",
+                    City = "Wettingen",
+                }
+            );
+            var transaction = new backend.Accounting.Transaction
+            {
+                Date = new DateOnly(2026, 2, 1),
+                Amount = 0m,
+                Text = "Gegeneinander",
+            };
+            transaction.Entries.Add(new backend.Accounting.Entry { Text = "Einnahme", AccountNumber = 4000, Amount = 100m });
+            transaction.Entries.Add(new backend.Accounting.Entry { Text = "Ausgabe", AccountNumber = 4000, Amount = -100m });
+            db.Transactions.Add(transaction);
+            await db.SaveChangesAsync();
+
+            var client = factory.CreateClient();
+            client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, "anna@example.ch");
+            var response = await client.GetAsync("/api/income-statement");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var report = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
+            // 4000 (Anlässe) nets to 0.00 but has two Entries, so the line stays.
+            var anlaesse = report.GetProperty("sections")[1].GetProperty("groups")[0].GetProperty("lines").EnumerateArray().ToArray();
+            Assert.Single(anlaesse);
+            Assert.Equal("Anlässe", anlaesse[0].GetProperty("label").GetString());
+            Assert.Equal(0m, anlaesse[0].GetProperty("amount").GetDecimal());
+        }
+    }
+
+    [Fact]
+    public async Task The_all_view_shows_every_configured_line()
+    {
+        await using var fixture = new Fixture(_postgres);
+        await fixture.InitializeAsync();
+
+        var report = await GetReport(fixture);
+
+        // The checked-in layout has 18 configured lines; the "all" view keeps all of them.
+        var lineCount = report.GetProperty("sections").EnumerateArray().Sum(
+            s => s.GetProperty("groups").EnumerateArray().Sum(g => g.GetProperty("lines").EnumerateArray().Count())
+        );
+        Assert.Equal(18, lineCount);
+    }
+
+    [Fact]
+    public async Task An_invalid_view_value_is_rejected()
+    {
+        await using var fixture = new Fixture(_postgres);
+        await fixture.InitializeAsync();
+
+        var response = await fixture.Client.GetAsync("/api/income-statement?view=none");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
+        Assert.Contains("'none'", body.GetProperty("error").GetString());
     }
 }
