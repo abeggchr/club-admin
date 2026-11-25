@@ -1,8 +1,8 @@
-using backend.Settings;
 using backend.Accounting;
 using backend.Auth;
 using backend.Invoicing;
 using backend.Person;
+using backend.Settings;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,7 +22,15 @@ builder.Services.AddEntraLogin(builder.Configuration);
 builder.Services.AddObjectStorage(builder.Configuration);
 builder.Services.AddScoped<InvoiceCreator>();
 builder.Services.AddScoped<BankImporter>();
-builder.Services.AddSingleton<IEmailSender, MailKitEmailSender>();
+// Development never sends real mail: emails are only recorded in memory.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSingleton<IEmailSender, InMemoryEmailSender>();
+}
+else
+{
+    builder.Services.AddSingleton<IEmailSender, MailKitEmailSender>();
+}
 builder.Services.AddSingleton<IInvoiceSender, SmtpInvoiceSender>();
 // ePost has no sandbox and bills every letter: Development answers from memory, never from api.epost.ch.
 var epost = builder.Services.AddHttpClient<EPostInvoiceSender>();

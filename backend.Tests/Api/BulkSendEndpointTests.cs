@@ -187,6 +187,23 @@ public class BulkSendEndpointTests : IClassFixture<LocalPostgresFixture>
     }
 
     [Fact]
+    public async Task A_timeout_fails_that_Invoice_and_the_bulk_send_carries_on()
+    {
+        var (ids, factory) = await Seed();
+        await using var _f = factory;
+        factory.Emails.ThrowWith = new TaskCanceledException("The request timed out.");
+        using var client = SignedIn(factory);
+
+        var response = await BulkSend(client);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var summary = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(2, summary.GetProperty("failed").GetArrayLength());
+        Assert.Equal(1, summary.GetProperty("sent").GetArrayLength());
+        Assert.Equal($"Sent per Post ({factory.EPost.DeliveryId})", await StatusRemark(client, ids.PostOnly));
+    }
+
+    [Fact]
     public async Task Subject_and_text_are_required_when_an_Invoice_goes_by_email()
     {
         var (_, factory) = await Seed();

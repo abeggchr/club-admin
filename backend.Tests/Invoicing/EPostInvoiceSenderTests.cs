@@ -203,6 +203,46 @@ public class EPostInvoiceSenderTests
     public void It_needs_Street_PostalCode_and_City(string? street, string? postalCode, string? city) =>
         Assert.False(Sender().CanDeliverTo(Recipient(street: street, postalCode: postalCode, city: city)));
 
+    private sealed class TimeoutHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
+            throw new TaskCanceledException("The request timed out.");
+    }
+
+    [Fact]
+    public async Task A_timeout_is_a_failed_send()
+    {
+        var result = await new EPostInvoiceSender(new HttpClient(new TimeoutHandler())).SendAsync(
+            Configured(),
+            Recipient(),
+            42,
+            new InvoiceMessage(null, null),
+            [1, 2, 3],
+            CancellationToken.None
+        );
+
+        Assert.Null(result.Remark);
+        Assert.StartsWith("Der Brief konnte nicht versendet werden", result.Error);
+    }
+
+    [Fact]
+    public async Task Cancelling_the_request_is_not_reported_as_a_failed_send()
+    {
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new EPostInvoiceSender(new HttpClient(new TimeoutHandler())).SendAsync(
+                Configured(),
+                Recipient(),
+                42,
+                new InvoiceMessage(null, null),
+                [1, 2, 3],
+                cts.Token
+            )
+        );
+    }
+
     [Fact]
     public void The_channel_is_configured_once_an_API_key_is_stored()
     {

@@ -187,6 +187,7 @@ public class SettingsController(AppDbContext db, IEmailSender emailSender) : Con
 
 public record TextTemplateInput(string? Subject, string? Text, string? Greetings);
 
+/// <summary>The Settings as the client submits them; an empty secret stays as stored.</summary>
 public record SettingsUpdate(
     decimal OpeningBalance,
     DateOnly StartDate,
@@ -199,8 +200,10 @@ public record SettingsUpdate(
     string? EPostApiKey = null
 );
 
+/// <summary>The receiver and the unsaved SMTP group to try out.</summary>
 public record TestEmailRequest(string? Receiver, SmtpInput? Smtp);
 
+/// <summary>The Settings as returned to the client: never a secret, only whether it is set.</summary>
 public record SettingsResponse(
     decimal OpeningBalance,
     DateOnly StartDate,

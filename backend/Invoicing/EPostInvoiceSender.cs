@@ -109,6 +109,11 @@ public class EPostInvoiceSender(HttpClient http) : IInvoiceSender
         {
             return Failure(e.Message);
         }
+        // HttpClient reports its own timeout as a cancellation; only the caller's token is a real cancel.
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return Failure("Zeitüberschreitung");
+        }
     }
 
     private static InvoiceSendResult Failure(string reason) =>
