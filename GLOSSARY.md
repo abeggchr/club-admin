@@ -106,7 +106,10 @@ The ID of an Invoice with at least four digits (0042, 12345). Gaps are possible 
 The date an Invoice was created: the date of its Created status change.
 
 **Invoice Status** (German: _Rechnungsstatus_; code: _InvoiceStatus_):
-A lifecycle step of an Invoice, recorded as an append-only status change with a timestamp. Created (German: Erstellt) and Paid (German: Bezahlt, terminal).
+A lifecycle step of an Invoice, recorded as an append-only status change with a timestamp. Created (German: Erstellt) and Paid (German: Bezahlt, terminal). The current Invoice Status is the Paid or Cancelled status change if there is one, whatever the timestamps (a Paid row is timestamped with the Transaction's date and can predate a later one); otherwise the newest status change by timestamp, then id. The history is listed in timestamp order.
+
+**Remark** (German: _Bemerkung_; code: _Remark_):
+An optional plain-text comment on one Invoice status change, shown after its timestamp in the status history (e.g. "Versendet – 25.11.2026 14:03 – per Email").
 
 **Paid** (German: _Bezahlt_; code: _Paid_ on _InvoiceStatus_):
 A terminal Invoice Status, recorded as a status change when the first Imported Transaction covers the Invoice's total (exactly or with an Overpayment), or when a Transaction is saved with the Invoice chosen in the Invoice picker of its form (the link is permanent). Its timestamp is the Transaction's date (shown in Europe/Zurich); once set, the Invoice never matches another payment.

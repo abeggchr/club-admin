@@ -47,17 +47,20 @@ public static class InvoiceRules
     public static decimal Total(IEnumerable<InvoiceLineDraft> lines) => lines.Sum(l => l.Amount);
 
     /// <summary>
-    /// The Invoice Status an Invoice currently has: the newest status change, or Created for a
-    /// Invoice without any status change yet.
+    /// The status change that is current: a Paid or Cancelled one wins whatever the timestamps (Paid is
+    /// timestamped with the booking date and can predate a later Sent); otherwise the newest by
+    /// timestamp, then id.
     /// </summary>
+    public static InvoiceStatusChange? CurrentChange(Invoice invoice)
+    {
+        var ordered = invoice.StatusChanges.OrderBy(s => s.Timestamp).ThenBy(s => s.Id).ToList();
+        return ordered.LastOrDefault(s => s.Status is InvoiceStatus.Paid or InvoiceStatus.Cancelled)
+            ?? ordered.LastOrDefault();
+    }
+
+    /// <summary>The current Invoice Status, or Created for an Invoice without any status change yet.</summary>
     public static InvoiceStatus LatestStatus(Invoice invoice) =>
-        invoice.StatusChanges.Count == 0
-            ? InvoiceStatus.Created
-            : invoice.StatusChanges
-                .OrderBy(s => s.Timestamp)
-                .ThenBy(s => s.Id)
-                .Last()
-                .Status;
+        CurrentChange(invoice)?.Status ?? InvoiceStatus.Created;
 
     /// <summary>Open: the latest Invoice Status is neither Paid nor Cancelled.</summary>
     public static bool IsOpen(Invoice invoice) =>
