@@ -142,6 +142,7 @@ public static class InvoiceDocument
                         });
                 })
             )
+            .WithSettings(new DocumentSettings { PDFA_Conformance = PDFA_Conformance.PDFA_2B })
             .GeneratePdf();
     }
 
