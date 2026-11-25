@@ -27,8 +27,8 @@ export function IncomeStatementPage() {
 
 	return (
 		<div className="mx-auto mt-4 max-w-3xl px-4 pb-8">
-			<h2 className="text-xl font-bold text-sky-900">Erfolgsrechnung</h2>
-			<p className="text-sm text-sky-700">{period}</p>
+			<h2 className="text-xl font-bold">Erfolgsrechnung</h2>
+			<p className="text-sm">{period}</p>
 			<ViewToggle
 				view={view}
 				onChange={(next) =>
@@ -41,18 +41,18 @@ export function IncomeStatementPage() {
 			<dl className="mt-4 space-y-6">
 				{report.sections.map((section) => (
 					<section key={section.label}>
-						<h3 className="font-semibold text-sky-900">{section.label}</h3>
+						<h3 className="font-semibold">{section.label}</h3>
 						<div className="mt-2 space-y-3">
 							{section.groups.map((group) => (
 								<div key={group.label}>
-									<h4 className="text-sm text-sky-800">
+									<h4 className="text-sm">
 										{group.label} … {formatChf(group.total)}
 									</h4>
 									<dl className="mt-1 space-y-0.5">
 										{group.lines.map((line) => (
 											<div
 												key={line.label}
-												className="flex justify-between text-sm text-sky-900"
+												className="flex justify-between text-sm"
 											>
 												<dt>{line.label}</dt>
 												<dd className="tabular-nums">
@@ -63,7 +63,7 @@ export function IncomeStatementPage() {
 									</dl>
 								</div>
 							))}
-							<div className="mt-2 flex justify-between border-t border-sky-200 pt-1 print:border-sky-900 text-sm font-semibold text-sky-900">
+							<div className="mt-2 flex justify-between border-t border-sky-200 pt-1 print:border-sky-900 text-sm font-semibold">
 								<span>Gesamt {section.label}</span>
 								<span className="tabular-nums">{formatChf(section.total)}</span>
 							</div>
@@ -71,7 +71,7 @@ export function IncomeStatementPage() {
 					</section>
 				))}
 			</dl>
-			<div className="mt-6 border-t-2 border-sky-300 pt-2 text-sm font-bold text-sky-900 print:mt-3">
+			<div className="mt-6 border-t-2 border-sky-300 pt-2 text-sm font-bold print:mt-3">
 				<div className="flex justify-between print:border-sky-900">
 					<span>Gesamt Ertrag</span>
 					<span className="tabular-nums">{formatChf(report.totalRevenue)}</span>
@@ -97,10 +97,10 @@ function IncomeStatementErrorPage({ error }: { error: unknown }) {
 	const missingStart = message.includes("Startdatum");
 	return (
 		<div className="mx-auto mt-4 max-w-3xl px-4">
-			<h2 className="text-xl font-bold text-sky-900">Erfolgsrechnung</h2>
+			<h2 className="text-xl font-bold">Erfolgsrechnung</h2>
 			<p className="mt-4 text-sm text-red-600">{message}</p>
 			{missingStart && (
-				<p className="mt-2 text-sm text-sky-800">
+				<p className="mt-2 text-sm">
 					Das Startdatum fehlt. Bitte legen Sie es in den{" "}
 					<Link to="/settings" className="underline">
 						Einstellungen
