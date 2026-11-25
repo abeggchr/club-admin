@@ -116,9 +116,9 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
             yield return (new DateOnly(2026, 4, 10), "Miete", 120m, 6010, "Miete");
             yield return (new DateOnly(2026, 4, 15), "Nebenkosten", -80m, 6020, "Nebenkosten");
             yield return (new DateOnly(2026, 5, 1), "Bankgebühren", -12m, 6940, "Bankgebühren");
-            // Out-of-window Entries on the Skihaus account 6000: before the Start Date and after today.
-            yield return (new DateOnly(2025, 12, 31), "Vor Startdatum", 1000m, 6000, "Vor Startdatum");
-            yield return (new DateOnly(2026, 7, 1), "In der Zukunft", -1000m, 6000, "In der Zukunft");
+            // Out-of-window Entries on 4000 (Anlässe): before the Start Date and after today.
+            yield return (new DateOnly(2025, 12, 31), "Vor Startdatum", 200m, 4000, "Vor Startdatum");
+            yield return (new DateOnly(2026, 7, 1), "In der Zukunft", 200m, 4000, "In der Zukunft");
         }
     }
 
@@ -139,22 +139,22 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
 
         Assert.Equal("2026-01-01", report.GetProperty("period").GetProperty("from").GetString());
         Assert.Equal("2026-06-30", report.GetProperty("period").GetProperty("to").GetString());
-        Assert.Equal(905m, report.GetProperty("totalRevenue").GetDecimal());
-        Assert.Equal(1012m, report.GetProperty("totalExpense").GetDecimal());
-        Assert.Equal(-107m, report.GetProperty("overallResult").GetDecimal());
+        Assert.Equal(1205m, report.GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(892m, report.GetProperty("totalExpense").GetDecimal());
+        Assert.Equal(313m, report.GetProperty("overallResult").GetDecimal());
 
         var sections = report.GetProperty("sections").EnumerateArray().ToArray();
         Assert.Equal(2, sections.Length);
         Assert.Equal("Ertrag", sections[0].GetProperty("label").GetString());
-        Assert.Equal(905m, sections[0].GetProperty("total").GetDecimal());
+        Assert.Equal(1205m, sections[0].GetProperty("total").GetDecimal());
         Assert.Equal("Aufwand", sections[1].GetProperty("label").GetString());
-        Assert.Equal(1012m, sections[1].GetProperty("total").GetDecimal());
+        Assert.Equal(892m, sections[1].GetProperty("total").GetDecimal());
 
         var revenueGroups = sections[0].GetProperty("groups").EnumerateArray().ToArray();
         Assert.Equal(3, revenueGroups.Length);
         Assert.Equal(500m, revenueGroups[0].GetProperty("total").GetDecimal());
         Assert.Equal(400m, revenueGroups[1].GetProperty("total").GetDecimal());
-        Assert.Equal(455m, revenueGroups[2].GetProperty("total").GetDecimal());
+        Assert.Equal(305m, revenueGroups[2].GetProperty("total").GetDecimal());
 
         var otherRevenue = revenueGroups[2].GetProperty("lines").EnumerateArray().ToArray();
         Assert.Equal(3, otherRevenue.Length);
@@ -201,11 +201,11 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
 
         var report = await GetReport(fixture);
 
-        // 6000 (Getränke): only the in-window Entry of 80 remains.
-        var skihaus = report.GetProperty("sections")[1].GetProperty("groups")[1].GetProperty("lines").EnumerateArray().ToArray();
-        Assert.Equal(80m, skihaus[0].GetProperty("amount").GetDecimal());
-        Assert.Equal(1012m, report.GetProperty("totalExpense").GetDecimal());
-        Assert.Equal(-107m, report.GetProperty("overallResult").GetDecimal());
+        // 4000 (Anlässe): only the in-window Entry of 300 remains.
+        var anlaesse = report.GetProperty("sections")[1].GetProperty("groups")[0].GetProperty("lines").EnumerateArray().ToArray();
+        Assert.Equal(300m, anlaesse[0].GetProperty("amount").GetDecimal());
+        Assert.Equal(892m, report.GetProperty("totalExpense").GetDecimal());
+        Assert.Equal(313m, report.GetProperty("overallResult").GetDecimal());
     }
 
     [Fact]
