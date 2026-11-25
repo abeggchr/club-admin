@@ -160,16 +160,16 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
 
         var revenueGroups = sections[0].GetProperty("groups").EnumerateArray().ToArray();
         Assert.Equal(3, revenueGroups.Length);
-        Assert.Equal(500m, revenueGroups[0].GetProperty("total").GetDecimal());
-        Assert.Equal(400m, revenueGroups[1].GetProperty("total").GetDecimal());
+        Assert.Equal(400m, revenueGroups[0].GetProperty("total").GetDecimal());
+        Assert.Equal(500m, revenueGroups[1].GetProperty("total").GetDecimal());
         Assert.Equal(305m, revenueGroups[2].GetProperty("total").GetDecimal());
 
         var otherRevenue = revenueGroups[2].GetProperty("lines").EnumerateArray().ToArray();
         Assert.Equal(3, otherRevenue.Length);
         Assert.Equal(200m, otherRevenue[0].GetProperty("amount").GetDecimal());
+        Assert.Equal(25m, otherRevenue[1].GetProperty("amount").GetDecimal());
         // 3610-3620: 3620 is not in the chart, the line shows the entry on 3610.
-        Assert.Equal(80m, otherRevenue[1].GetProperty("amount").GetDecimal());
-        Assert.Equal(25m, otherRevenue[2].GetProperty("amount").GetDecimal());
+        Assert.Equal(80m, otherRevenue[2].GetProperty("amount").GetDecimal());
     }
 
     [Fact]
@@ -195,8 +195,8 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
         var report = await GetReport(fixture);
 
         var revenueGroups = report.GetProperty("sections")[0].GetProperty("groups").EnumerateArray().ToArray();
-        Assert.Equal(500m, revenueGroups[0].GetProperty("total").GetDecimal());
-        Assert.Equal(25m, revenueGroups[2].GetProperty("lines")[2].GetProperty("amount").GetDecimal());
+        Assert.Equal(500m, revenueGroups[1].GetProperty("total").GetDecimal());
+        Assert.Equal(25m, revenueGroups[2].GetProperty("lines")[1].GetProperty("amount").GetDecimal());
     }
 
     [Fact]
@@ -274,12 +274,13 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
         Assert.Equal(3, revenueGroups[2].GetProperty("lines").EnumerateArray().Count());
 
         var expenseGroups = report.GetProperty("sections")[1].GetProperty("groups").EnumerateArray().ToArray();
-        // Only 4000 (Anlässe) and 4010 (Clubnews) have Entries in the Anlässe group; Geschenke
-        // (4020) and Diverses Clubbetrieb (4099) are hidden.
-        var anlaesse = expenseGroups[0].GetProperty("lines").EnumerateArray().ToArray();
-        Assert.Equal(2, anlaesse.Length);
-        Assert.Equal("Anlässe", anlaesse[0].GetProperty("label").GetString());
-        Assert.Equal("Clubnews", anlaesse[1].GetProperty("label").GetString());
+        // Only 4000 (Anlässe), 4010 (Clubnews) and 6940 (Bankgebühren) have Entries in the Clubbetrieb
+        // group; Geschenke (4020) and Diverses (4099) are hidden.
+        var clubbetrieb = expenseGroups[0].GetProperty("lines").EnumerateArray().ToArray();
+        Assert.Equal(3, clubbetrieb.Length);
+        Assert.Equal("Anlässe", clubbetrieb[0].GetProperty("label").GetString());
+        Assert.Equal("Clubnews", clubbetrieb[1].GetProperty("label").GetString());
+        Assert.Equal("Bankgebühren", clubbetrieb[2].GetProperty("label").GetString());
         // The Skihaus group keeps only Miete (6010) and Nebenkosten (6020).
         var skihaus = expenseGroups[1].GetProperty("lines").EnumerateArray().ToArray();
         Assert.Equal(2, skihaus.Length);

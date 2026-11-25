@@ -50,7 +50,7 @@ public class IncomeStatementConfigTests
 
         Assert.Equal(["Ertrag", "Aufwand"], config.Sections.Select(s => s.Label));
         Assert.Equal(3, config.Sections[0].Groups.Count);
-        Assert.Equal(3, config.Sections[1].Groups.Count);
+        Assert.Equal(2, config.Sections[1].Groups.Count);
         Assert.Equal(
             18,
             config.Sections[0].Groups.Sum(g => g.Lines.Count) + config.Sections[1].Groups.Sum(g => g.Lines.Count)
