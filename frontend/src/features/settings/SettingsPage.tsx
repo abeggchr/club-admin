@@ -1,5 +1,11 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import {
+	type FormEvent,
+	type ReactNode,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { formatChf, parseAmount } from "../accounting/amount";
 import {
 	invalidateJournalQueries,
@@ -76,6 +82,7 @@ export function SettingsPage() {
 	);
 	const [ePostApiKey, setEPostApiKey] = useState("");
 	const [receiver, setReceiver] = useState("");
+	const testDialogRef = useRef<HTMLDialogElement>(null);
 	const [testResult, setTestResult] = useState<{
 		ok: boolean;
 		message: string;
@@ -103,11 +110,15 @@ export function SettingsPage() {
 		className: inputClass,
 	});
 
-	// The receiver is pre-filled with the from address until the user types one.
-	const testReceiver = receiver || smtp.fromAddress;
+	function openTestDialog() {
+		setReceiver(smtp.fromAddress);
+		testDialogRef.current?.showModal();
+	}
 
 	async function onSendTest() {
+		testDialogRef.current?.close();
 		setTestResult(null);
+		const testReceiver = receiver;
 		const payload = smtpPayload(smtp);
 		if (!payload.ok) {
 			setTestResult({ ok: false, message: payload.error });
@@ -257,17 +268,9 @@ export function SettingsPage() {
 					<Field label="Absenderadresse">
 						<input type="email" {...bindSmtp("fromAddress")} />
 					</Field>
-					<Field label="Empfänger der Test-E-Mail">
-						<input
-							type="email"
-							className={inputClass}
-							value={testReceiver}
-							onChange={(e) => setReceiver(e.target.value)}
-						/>
-					</Field>
 					<button
 						type="button"
-						onClick={onSendTest}
+						onClick={openTestDialog}
 						className="self-start rounded border border-sky-600 px-4 py-2 text-sky-700 hover:bg-sky-50"
 					>
 						Test-E-Mail senden
@@ -314,6 +317,44 @@ export function SettingsPage() {
 				</div>
 			</form>
 			<TextTemplatesSection />
+			<dialog
+				ref={testDialogRef}
+				className="m-auto w-[28rem] rounded border border-neutral-300 p-6 backdrop:bg-black/40"
+			>
+				<form
+					onSubmit={(e) => {
+						e.preventDefault();
+						onSendTest();
+					}}
+					className="flex flex-col gap-4"
+				>
+					<h2 className="text-xl font-bold">Test-E-Mail senden</h2>
+					<Field label="Empfänger">
+						<input
+							type="email"
+							required
+							className={inputClass}
+							value={receiver}
+							onChange={(e) => setReceiver(e.target.value)}
+						/>
+					</Field>
+					<div className="flex gap-2">
+						<button
+							type="submit"
+							className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
+						>
+							Senden
+						</button>
+						<button
+							type="button"
+							onClick={() => testDialogRef.current?.close()}
+							className="rounded border border-slate-300 px-4 py-2"
+						>
+							Abbrechen
+						</button>
+					</div>
+				</form>
+			</dialog>
 		</div>
 	);
 }
