@@ -59,6 +59,28 @@ public class InvoiceMappingTests
     }
 
     [Fact]
+    public void List_and_detail_show_a_back_dated_Paid_status_over_a_later_change()
+    {
+        var invoice = Invoice("RF340042");
+        invoice.StatusChanges.Add(new InvoiceStatusChange { Id = 2, Status = InvoiceStatus.Paid, Timestamp = new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc) });
+        invoice.StatusChanges.Add(new InvoiceStatusChange { Id = 3, Status = InvoiceStatus.Created, Timestamp = new DateTime(2026, 11, 20, 0, 0, 0, DateTimeKind.Utc) });
+
+        Assert.Equal("Paid", InvoiceMapping.ToInvoiceListItem(invoice, Person).Status);
+        Assert.Equal("Paid", InvoiceMapping.ToInvoiceDetail(invoice, Person).Status);
+    }
+
+    [Fact]
+    public void The_detail_history_shows_the_Remark_of_a_status_change()
+    {
+        var invoice = Invoice("RF340042");
+        invoice.StatusChanges[0].Remark = "per Email";
+
+        var detail = InvoiceMapping.ToInvoiceDetail(invoice, Person);
+
+        Assert.Equal("per Email", detail.StatusHistory.Single().Remark);
+    }
+
+    [Fact]
     public void The_detail_shows_the_Paid_by_movement_id()
     {
         var invoice = Invoice("RF340042");

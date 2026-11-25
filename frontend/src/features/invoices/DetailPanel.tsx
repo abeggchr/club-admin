@@ -119,6 +119,7 @@ export function DetailPanel({
 							{invoice.statusHistory.map((s) => (
 								<li key={`${s.status}-${s.timestamp}`}>
 									{statusLabel(s.status)} – {formatDateTime(s.timestamp)}
+									{s.remark && ` – ${s.remark}`}
 								</li>
 							))}
 						</ul>

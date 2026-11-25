@@ -38,7 +38,7 @@ export type InvoiceDetail = {
 	reference: string;
 	/** The id of the Transaction that first covered the total, or null. */
 	paidBy: number | null;
-	statusHistory: { status: string; timestamp: string }[];
+	statusHistory: { status: string; timestamp: string; remark: string | null }[];
 };
 
 export const invoiceDetailQueryOptions = (id: number) =>

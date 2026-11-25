@@ -46,4 +46,6 @@ public class InvoiceStatusChange
     public InvoiceStatus Status { get; set; }
     /// <summary>UTC; shown in Europe/Zurich (see <see cref="InvoiceTime"/>).</summary>
     public DateTime Timestamp { get; set; }
+    /// <summary>Remark (German: Bemerkung): optional plain-text comment on the status change.</summary>
+    public string? Remark { get; set; }
 }

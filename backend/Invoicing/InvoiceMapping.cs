@@ -16,7 +16,7 @@ public record InvoiceListItemDto(
 
 public record InvoiceLineDto(string Text, decimal Amount, int AccountNumber);
 
-public record InvoiceStatusChangeDto(string Status, DateTime Timestamp);
+public record InvoiceStatusChangeDto(string Status, DateTime Timestamp, string? Remark);
 
 public record InvoicePersonDetailDto(
     int Id,
@@ -56,8 +56,6 @@ public static class InvoiceMapping
     private static IOrderedEnumerable<InvoiceStatusChange> InOrder(Invoice i) =>
         i.StatusChanges.OrderBy(s => s.Timestamp).ThenBy(s => s.Id);
 
-    private static InvoiceStatusChange CurrentStatus(Invoice i) => InOrder(i).Last();
-
     private static DateOnly InvoiceDate(Invoice i) =>
         InvoiceTime.ZurichDate(
             i.StatusChanges.First(s => s.Status == InvoiceStatus.Created).Timestamp
@@ -70,7 +68,7 @@ public static class InvoiceMapping
             InvoiceDate(i),
             new InvoicePersonDto(p.Id, DisplayName(p)),
             i.Lines.Sum(l => l.Amount),
-            CurrentStatus(i).Status.ToString()
+            InvoiceRules.LatestStatus(i).ToString()
         );
 
     public static InvoiceDetailDto ToInvoiceDetail(Invoice i, PersonEntity p) =>
@@ -91,13 +89,14 @@ public static class InvoiceMapping
                 .Select(l => new InvoiceLineDto(l.Text, l.Amount, l.AccountNumber))
                 .ToList(),
             i.Lines.Sum(l => l.Amount),
-            CurrentStatus(i).Status.ToString(),
+            InvoiceRules.LatestStatus(i).ToString(),
             i.Reference,
             i.PaidBy,
             InOrder(i)
                 .Select(s => new InvoiceStatusChangeDto(
                     s.Status.ToString(),
-                    InvoiceTime.ToZurich(s.Timestamp)
+                    InvoiceTime.ToZurich(s.Timestamp),
+                    s.Remark
                 ))
                 .ToList()
         );
