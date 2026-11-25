@@ -12,6 +12,12 @@
       CopyToOutputDirectory="PreserveNewest"
       CopyToPublishDirectory="PreserveNewest"
     />
+    <!-- .yaml is not in the default web Content glob, so it must be added explicitly to ship with the app. -->
+    <Content
+      Include="IncomeStatement\income-statement.yaml"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,6 +39,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
     <PackageReference Include="QuestPDF" Version="2025.12.0" />
     <!-- SkiaSharp ships natives for Windows and macOS only; Linux (CI, Docker) needs this one. -->
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" />

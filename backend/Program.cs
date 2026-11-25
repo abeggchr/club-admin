@@ -1,5 +1,6 @@
 using backend.Accounting;
 using backend.Auth;
+using backend.IncomeStatement;
 using backend.Invoicing;
 using backend.Person;
 using backend.Settings;
@@ -53,6 +54,12 @@ InvoiceDocument.UseCommunityLicense();
 builder.Services.AddSingleton(
     ChartOfAccounts.Load(
         Path.Combine(AppContext.BaseDirectory, "Accounting", "chart-of-accounts.json")
+    )
+);
+// A malformed Income Statement layout file fails startup (see ADR 0009).
+builder.Services.AddSingleton(
+    IncomeStatementConfig.Load(
+        Path.Combine(AppContext.BaseDirectory, "IncomeStatement", "income-statement.yaml")
     )
 );
 
