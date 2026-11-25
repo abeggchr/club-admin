@@ -396,8 +396,8 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
 
         // The checked-in YAML covers every account of the checked-in chart (3620 is in a range
         // but not in the chart), so the chart is extended with two unmapped Accounts (3700, 4005)
-        // and the YAML is re-parsed without them. Expected: revenue 500 (3400) + 90 (3700),
-        // expense 300 (4000) + 75 (4005).
+        // and the YAML is re-parsed without them. Expected: revenue 500 (3400), expense 300 (4000)
+        // + 75 (4005); 3700 nets to 0.00 and must not change any total or show a group.
         var chart = ChartOfAccounts.Parse(
             $$"""
             {
@@ -452,8 +452,17 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
         };
         expenseTransaction.Entries.Add(new backend.Accounting.Entry { Text = "Anlässe", AccountNumber = 4000, Amount = -300m });
         expenseTransaction.Entries.Add(new backend.Accounting.Entry { Text = "Unzugewiesene Ausgabe", AccountNumber = 4005, Amount = -75m });
+        // 3700 nets to 0.00 (90 in, 90 out): its "Nicht zugeordnet" line must not show.
+        var netZeroTransaction = new backend.Accounting.Transaction
+        {
+            Date = new DateOnly(2026, 3, 15),
+            Amount = 0m,
+            Text = "Gegeneinander",
+        };
+        netZeroTransaction.Entries.Add(new backend.Accounting.Entry { Text = "Rückerstattung", AccountNumber = 3700, Amount = -90m });
         db.Transactions.Add(incomeTransaction);
         db.Transactions.Add(expenseTransaction);
+        db.Transactions.Add(netZeroTransaction);
         await db.SaveChangesAsync();
 
         var factory = new UnmappedChartIncomeStatementAppFactory(_postgres, Today, chart, config);
@@ -467,16 +476,15 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             var report = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
 
-            Assert.Equal(590m, report.GetProperty("totalRevenue").GetDecimal());
+            Assert.Equal(500m, report.GetProperty("totalRevenue").GetDecimal());
             Assert.Equal(375m, report.GetProperty("totalExpense").GetDecimal());
-            Assert.Equal(215m, report.GetProperty("overallResult").GetDecimal());
+            Assert.Equal(125m, report.GetProperty("overallResult").GetDecimal());
 
             var sections = report.GetProperty("sections").EnumerateArray().ToArray();
             var revenueGroups = sections[0].GetProperty("groups").EnumerateArray().ToArray();
-            Assert.Equal(2, revenueGroups.Length);
-            Assert.Equal("Nicht zugeordnet", revenueGroups[1].GetProperty("label").GetString());
-            Assert.Equal(90m, revenueGroups[1].GetProperty("total").GetDecimal());
-            Assert.Equal(590m, sections[0].GetProperty("total").GetDecimal());
+            Assert.Single(revenueGroups);
+            Assert.Equal("I. Beiträge", revenueGroups[0].GetProperty("label").GetString());
+            Assert.Equal(500m, sections[0].GetProperty("total").GetDecimal());
 
             var expenseGroups = sections[1].GetProperty("groups").EnumerateArray().ToArray();
             Assert.Equal(2, expenseGroups.Length);
@@ -484,14 +492,14 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
             Assert.Equal(75m, expenseGroups[1].GetProperty("total").GetDecimal());
             Assert.Equal(375m, sections[1].GetProperty("total").GetDecimal());
 
-            // The simplified view shows the same group with the same totals.
+            // The simplified view shows the same expense group with the same totals.
             var simplifiedResponse = await client.GetAsync("/api/income-statement");
             Assert.Equal(HttpStatusCode.OK, simplifiedResponse.StatusCode);
             var simplified = (await simplifiedResponse.Content.ReadFromJsonAsync<JsonElement>())!;
-            var simplifiedGroups = simplified.GetProperty("sections")[0].GetProperty("groups").EnumerateArray().ToArray();
-            Assert.Equal("Nicht zugeordnet", simplifiedGroups[1].GetProperty("label").GetString());
-            Assert.Equal(90m, simplifiedGroups[1].GetProperty("total").GetDecimal());
-            Assert.Equal(215m, simplified.GetProperty("overallResult").GetDecimal());
+            var simplifiedExpenseGroups = simplified.GetProperty("sections")[1].GetProperty("groups").EnumerateArray().ToArray();
+            Assert.Equal("Nicht zugeordnet", simplifiedExpenseGroups[1].GetProperty("label").GetString());
+            Assert.Equal(75m, simplifiedExpenseGroups[1].GetProperty("total").GetDecimal());
+            Assert.Equal(125m, simplified.GetProperty("overallResult").GetDecimal());
         }
     }
 
