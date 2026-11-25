@@ -44,11 +44,11 @@ export function IncomeStatementPage() {
 						<h3 className="font-semibold">{section.label}</h3>
 						<div className="mt-2 space-y-3">
 							{section.groups.map((group) => (
-								<div key={group.label}>
+								<div key={group.label} className="pl-4">
 									<h4 className="text-sm">
 										{group.label} … {formatChf(group.total)}
 									</h4>
-									<dl className="mt-1 space-y-0.5">
+									<dl className="mt-1 space-y-0.5 pl-8">
 										{group.lines.map((line) => (
 											<div
 												key={line.label}
