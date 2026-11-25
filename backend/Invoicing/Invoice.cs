@@ -32,9 +32,11 @@ public class InvoiceLine
 public enum InvoiceStatus
 {
     Created,
+    /// <summary>Sent (German: Versendet): open and not terminal; added once per successful send, so an Invoice can be sent again.</summary>
+    Sent,
     /// <summary>Paid: terminal, recorded when a Transaction's signed amount covers the total; the paying Transaction's id is in <see cref="Invoice.PaidBy"/>.</summary>
     Paid,
-    /// <summary>Cancelled (German: storniert): terminal, set by hand on an Invoice that is not paid; the Invoice is kept.</summary>
+    /// <summary>Cancelled (German: storniert): terminal, set by hand on an Invoice that is Created or Sent; the Invoice is kept.</summary>
     Cancelled,
 }
 

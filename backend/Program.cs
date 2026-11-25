@@ -23,6 +23,8 @@ builder.Services.AddObjectStorage(builder.Configuration);
 builder.Services.AddScoped<InvoiceCreator>();
 builder.Services.AddScoped<BankImporter>();
 builder.Services.AddSingleton<IEmailSender, MailKitEmailSender>();
+builder.Services.AddSingleton<IInvoiceSender, SmtpInvoiceSender>();
+builder.Services.AddScoped<InvoiceDispatcher>();
 InvoiceDocument.UseCommunityLicense();
 
 // A malformed Chart of Accounts file fails startup (see ADR 0001).

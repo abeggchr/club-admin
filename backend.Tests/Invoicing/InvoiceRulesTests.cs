@@ -166,4 +166,59 @@ public class InvoiceRulesTests
     [Fact]
     public void An_empty_journal_summarises_to_zero() =>
         Assert.Equal(new InvoiceSummary(0, 0m), InvoiceRules.Summarize([]));
+
+    [Fact]
+    public void A_Sent_Rechnung_is_still_open()
+    {
+        var invoice = Invoice(InvoiceStatus.Sent);
+
+        Assert.Equal(InvoiceStatus.Sent, InvoiceRules.LatestStatus(invoice));
+        Assert.True(InvoiceRules.IsOpen(invoice));
+    }
+
+    [Fact]
+    public void A_Sent_Rechnung_can_still_be_paid_over_a_later_Sent_row()
+    {
+        var invoice = Invoice(InvoiceStatus.Paid);
+        invoice.StatusChanges.Add(
+            new InvoiceStatusChange { Status = InvoiceStatus.Sent, Timestamp = new DateTime(2026, 6, 20, 0, 0, 0, DateTimeKind.Utc) }
+        );
+
+        Assert.Equal(InvoiceStatus.Paid, InvoiceRules.LatestStatus(invoice));
+    }
+
+    [Theory]
+    [InlineData(InvoiceStatus.Created)]
+    [InlineData(InvoiceStatus.Sent)]
+    public void A_Created_or_Sent_Rechnung_can_be_cancelled(InvoiceStatus status) =>
+        Assert.Null(InvoiceRules.ValidateCancel(status));
+
+    [Theory]
+    [InlineData(InvoiceStatus.Paid)]
+    [InlineData(InvoiceStatus.Cancelled)]
+    public void A_Paid_or_Cancelled_Rechnung_cannot_be_cancelled(InvoiceStatus status) =>
+        Assert.Equal("Nur offene Rechnungen können storniert werden.", InvoiceRules.ValidateCancel(status));
+
+    [Theory]
+    [InlineData(InvoiceStatus.Created)]
+    [InlineData(InvoiceStatus.Sent)]
+    public void A_Created_or_Sent_Rechnung_can_be_sent(InvoiceStatus status) =>
+        Assert.Null(InvoiceRules.ValidateSend(status, "Rechnung", "Guten Tag"));
+
+    [Theory]
+    [InlineData(InvoiceStatus.Paid)]
+    [InlineData(InvoiceStatus.Cancelled)]
+    public void A_Paid_or_Cancelled_Rechnung_cannot_be_sent(InvoiceStatus status) =>
+        Assert.Equal(
+            "Nur offene Rechnungen können versendet werden.",
+            InvoiceRules.ValidateSend(status, "Rechnung", "Guten Tag")
+        );
+
+    [Theory]
+    [InlineData(null, "Text", "Der Betreff ist erforderlich.")]
+    [InlineData("  ", "Text", "Der Betreff ist erforderlich.")]
+    [InlineData("Betreff", null, "Der Text ist erforderlich.")]
+    [InlineData("Betreff", "", "Der Text ist erforderlich.")]
+    public void Sending_needs_a_subject_and_a_text(string? subject, string? text, string error) =>
+        Assert.Equal(error, InvoiceRules.ValidateSend(InvoiceStatus.Created, subject, text));
 }
