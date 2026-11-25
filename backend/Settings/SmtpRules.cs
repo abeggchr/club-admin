@@ -14,10 +14,9 @@ public static class SmtpRules
             && string.IsNullOrWhiteSpace(smtp.Username)
             && string.IsNullOrWhiteSpace(smtp.Password)
             && string.IsNullOrWhiteSpace(smtp.FromAddress)
-            && string.IsNullOrWhiteSpace(smtp.FromName)
         );
 
-    /// <summary>Username, Password and From Name are optional (some relays need no login); the rest is required once any field is filled.</summary>
+    /// <summary>Username and Password are optional (some relays need no login); the rest is required once any field is filled.</summary>
     public static string? Validate(SmtpInput? smtp)
     {
         if (IsEmpty(smtp))

@@ -42,7 +42,6 @@ public class SmtpSettingsEndpointTests : IClassFixture<LocalPostgresFixture>
             ["username"] = "kasse",
             ["password"] = password,
             ["fromAddress"] = "kasse@example.ch",
-            ["fromName"] = "SC Wettingen",
         };
 
     private static Dictionary<string, object?> SettingsBody(object? smtp) =>

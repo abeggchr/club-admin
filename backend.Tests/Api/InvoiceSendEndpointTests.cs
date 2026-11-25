@@ -51,7 +51,6 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
             settings.SmtpPort = 587;
             settings.SmtpSecurity = backend.Settings.SmtpSecurity.StartTls;
             settings.SmtpFromAddress = "kasse@example.ch";
-            settings.SmtpFromName = "SC Wettingen";
         }
         if (epost)
             settings.EPostApiKey = "key-123";

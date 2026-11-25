@@ -22,7 +22,7 @@ public class MailKitEmailSender : IEmailSender
         try
         {
             var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(smtp.FromName ?? "", smtp.FromAddress));
+            message.From.Add(new MailboxAddress(smtp.FromName, smtp.FromAddress));
             message.To.Add(MailboxAddress.Parse(email.To));
             message.Subject = email.Subject;
             var body = new BodyBuilder { TextBody = email.Text };

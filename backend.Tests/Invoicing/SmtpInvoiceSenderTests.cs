@@ -10,13 +10,13 @@ public class SmtpInvoiceSenderTests
     private static SettingsEntity Configured() =>
         new()
         {
+            Name = "SC Wettingen",
             SmtpHost = "smtp.example.ch",
             SmtpPort = 587,
             SmtpSecurity = SmtpSecurity.StartTls,
             SmtpUsername = "kasse",
             SmtpPassword = "geheim",
             SmtpFromAddress = "kasse@example.ch",
-            SmtpFromName = "SC Wettingen",
         };
 
     private static PersonEntity Person(string? email) =>

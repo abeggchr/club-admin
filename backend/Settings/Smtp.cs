@@ -17,8 +17,7 @@ public record SmtpInput(
     SmtpSecurity? Security,
     string? Username,
     string? Password,
-    string? FromAddress,
-    string? FromName
+    string? FromAddress
 );
 
 /// <summary>The SMTP group as returned to the client: never the password, only whether it is set.</summary>
@@ -28,11 +27,10 @@ public record SmtpResponse(
     SmtpSecurity? Security,
     string? Username,
     bool PasswordSet,
-    string? FromAddress,
-    string? FromName
+    string? FromAddress
 );
 
-/// <summary>A complete SMTP group with the password resolved, ready to connect.</summary>
+/// <summary>A complete SMTP group with the password resolved, ready to connect. The FromName is the club's name.</summary>
 public record SmtpConnection(
     string Host,
     int Port,
@@ -40,5 +38,5 @@ public record SmtpConnection(
     string? Username,
     string? Password,
     string FromAddress,
-    string? FromName
+    string FromName
 );

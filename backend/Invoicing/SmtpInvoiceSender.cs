@@ -34,7 +34,7 @@ public class SmtpInvoiceSender(IEmailSender email) : IInvoiceSender
             settings.SmtpUsername,
             settings.SmtpPassword,
             settings.SmtpFromAddress!,
-            settings.SmtpFromName
+            settings.Name
         );
         var mail = new EmailMessage(
             recipient.Email!.Trim(),

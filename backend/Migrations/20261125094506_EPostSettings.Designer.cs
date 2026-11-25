@@ -342,9 +342,6 @@ namespace backend.Migrations
                     b.Property<string>("SmtpFromAddress")
                         .HasColumnType("text");
 
-                    b.Property<string>("SmtpFromName")
-                        .HasColumnType("text");
-
                     b.Property<string>("SmtpHost")
                         .HasColumnType("text");
 

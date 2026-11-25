@@ -10,9 +10,8 @@ public class SmtpRulesTests
         SmtpSecurity? security = SmtpSecurity.StartTls,
         string? username = null,
         string? password = null,
-        string? fromAddress = "kasse@example.ch",
-        string? fromName = null
-    ) => new(host, port, security, username, password, fromAddress, fromName);
+        string? fromAddress = "kasse@example.ch"
+    ) => new(host, port, security, username, password, fromAddress);
 
     [Fact]
     public void No_SMTP_group_and_a_group_with_only_blank_fields_are_empty()

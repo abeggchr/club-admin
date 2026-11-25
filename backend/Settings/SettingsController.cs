@@ -91,7 +91,7 @@ public class SettingsController(AppDbContext db, IEmailSender emailSender) : Con
             NullIfBlank(smtp.Username),
             password,
             smtp.FromAddress!.Trim(),
-            NullIfBlank(smtp.FromName)
+            (await db.Settings.FindAsync(Settings.SingletonId))?.Name ?? ""
         );
 
         return await emailSender.SendTestAsync(connection, request.Receiver!.Trim(), ct) is { } failure
@@ -110,7 +110,6 @@ public class SettingsController(AppDbContext db, IEmailSender emailSender) : Con
             settings.SmtpUsername = null;
             settings.SmtpPassword = null;
             settings.SmtpFromAddress = null;
-            settings.SmtpFromName = null;
             return;
         }
         settings.SmtpHost = smtp!.Host!.Trim();
@@ -122,7 +121,6 @@ public class SettingsController(AppDbContext db, IEmailSender emailSender) : Con
             settings.SmtpPassword = smtp.Password;
         }
         settings.SmtpFromAddress = smtp.FromAddress!.Trim();
-        settings.SmtpFromName = NullIfBlank(smtp.FromName);
     }
 
     private static string? NullIfBlank(string? value) =>
@@ -232,8 +230,7 @@ public record SettingsResponse(
                 s.SmtpSecurity,
                 s.SmtpUsername,
                 !string.IsNullOrEmpty(s.SmtpPassword),
-                s.SmtpFromAddress,
-                s.SmtpFromName
+                s.SmtpFromAddress
             ),
             s.SmtpHost is not null,
             !string.IsNullOrEmpty(s.EPostApiKey)

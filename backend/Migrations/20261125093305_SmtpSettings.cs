@@ -17,12 +17,6 @@ namespace backend.Migrations
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
-                name: "SmtpFromName",
-                table: "Settings",
-                type: "text",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
                 name: "SmtpHost",
                 table: "Settings",
                 type: "text",
@@ -58,10 +52,6 @@ namespace backend.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "SmtpFromAddress",
-                table: "Settings");
-
-            migrationBuilder.DropColumn(
-                name: "SmtpFromName",
                 table: "Settings");
 
             migrationBuilder.DropColumn(

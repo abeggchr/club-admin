@@ -13,7 +13,6 @@ describe("smtpPayload", () => {
 				username: "",
 				password: "",
 				fromAddress: "",
-				fromName: "",
 			},
 		});
 	});
@@ -52,7 +51,6 @@ describe("smtpDraftFrom", () => {
 			username: "kasse",
 			passwordSet: true,
 			fromAddress: "kasse@example.ch",
-			fromName: null,
 		});
 		expect(draft).toEqual({
 			host: "smtp.example.ch",
@@ -61,7 +59,6 @@ describe("smtpDraftFrom", () => {
 			username: "kasse",
 			password: "",
 			fromAddress: "kasse@example.ch",
-			fromName: "",
 		});
 	});
 });

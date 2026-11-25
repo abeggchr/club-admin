@@ -257,9 +257,6 @@ export function SettingsPage() {
 					<Field label="Absenderadresse">
 						<input type="email" {...bindSmtp("fromAddress")} />
 					</Field>
-					<Field label="Absendername">
-						<input {...bindSmtp("fromName")} />
-					</Field>
 					<Field label="Empfänger der Test-E-Mail">
 						<input
 							type="email"

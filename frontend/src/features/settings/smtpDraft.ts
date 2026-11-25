@@ -8,7 +8,6 @@ export type SmtpSettings = {
 	username: string | null;
 	passwordSet: boolean;
 	fromAddress: string | null;
-	fromName: string | null;
 };
 
 /** The SMTP group as the backend accepts it. An empty password keeps the stored one. */
@@ -19,7 +18,6 @@ export type SmtpPayload = {
 	username: string;
 	password: string;
 	fromAddress: string;
-	fromName: string;
 };
 
 export type SmtpDraft = {
@@ -29,7 +27,6 @@ export type SmtpDraft = {
 	username: string;
 	password: string;
 	fromAddress: string;
-	fromName: string;
 };
 
 export const emptySmtpDraft: SmtpDraft = {
@@ -39,7 +36,6 @@ export const emptySmtpDraft: SmtpDraft = {
 	username: "",
 	password: "",
 	fromAddress: "",
-	fromName: "",
 };
 
 export function smtpDraftFrom(smtp: SmtpSettings): SmtpDraft {
@@ -50,7 +46,6 @@ export function smtpDraftFrom(smtp: SmtpSettings): SmtpDraft {
 		username: smtp.username ?? "",
 		password: "",
 		fromAddress: smtp.fromAddress ?? "",
-		fromName: smtp.fromName ?? "",
 	};
 }
 
@@ -71,7 +66,6 @@ export function smtpPayload(
 			username: draft.username.trim(),
 			password: draft.password,
 			fromAddress: draft.fromAddress.trim(),
-			fromName: draft.fromName.trim(),
 		},
 	};
 }
