@@ -4,32 +4,10 @@ import { MdAdd } from "react-icons/md";
 import { formatChf } from "../accounting/amount";
 import { textTemplatesQueryOptions } from "../settings/textTemplateApi";
 import { AnnualFeesDialog } from "./AnnualFeesDialog";
-import {
-	formatDate,
-	type InvoiceListItem,
-	invoicesQueryOptions,
-	statusLabel,
-} from "./api";
+import { formatDate, invoicesQueryOptions, statusLabel } from "./api";
 import { CreatePanel } from "./CreatePanel";
 import { DetailPanel } from "./DetailPanel";
-
-const filters = {
-	open: {
-		label: "Offene",
-		filter: (i: InvoiceListItem) => i.status === "Created",
-	},
-	paid: {
-		label: "Bezahlte",
-		filter: (i: InvoiceListItem) => i.status === "Paid",
-	},
-	cancelled: {
-		label: "Stornierte",
-		filter: (i: InvoiceListItem) => i.status === "Cancelled",
-	},
-	all: { label: "Alle", filter: () => true },
-};
-
-type FilterKey = keyof typeof filters;
+import { type InvoiceFilterKey, invoiceFilters } from "./invoiceFilter";
 
 /** The Invoices area: table (newest first) | create panel (only while open). */
 export function InvoicesView() {
@@ -38,10 +16,10 @@ export function InvoicesView() {
 	const annualFeesDialog = useRef<HTMLDialogElement>(null);
 	const [creating, setCreating] = useState(false);
 	const [selectedId, setSelectedId] = useState<number | null>(null);
-	const [filterKey, setFilterKey] = useState<FilterKey>("open");
+	const [filterKey, setFilterKey] = useState<InvoiceFilterKey>("open");
 	const noTemplates = templates.length === 0;
 	const rows = invoices
-		.filter(filters[filterKey].filter)
+		.filter(invoiceFilters[filterKey].filter)
 		.sort((a, b) => b.id - a.id);
 
 	return (
@@ -70,12 +48,12 @@ export function InvoicesView() {
 				</button>
 				<fieldset className="ml-4 inline-flex">
 					<legend className="sr-only">Ansicht</legend>
-					{Object.entries(filters).map(([key, f]) => (
+					{Object.entries(invoiceFilters).map(([key, f]) => (
 						<button
 							key={key}
 							type="button"
 							aria-pressed={key === filterKey}
-							onClick={() => setFilterKey(key as FilterKey)}
+							onClick={() => setFilterKey(key as InvoiceFilterKey)}
 							className={`-ml-px border border-neutral-300 px-3 py-2 text-sm first:ml-0 first:rounded-l last:rounded-r ${
 								key === filterKey
 									? "bg-neutral-800 text-white"

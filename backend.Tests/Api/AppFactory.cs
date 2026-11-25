@@ -1,4 +1,5 @@
 using backend.Accounting;
+using backend.Invoicing;
 using backend.Settings;
 using backend.Tests.Invoicing;
 using Microsoft.AspNetCore.Hosting;
@@ -20,6 +21,9 @@ public sealed class AppFactory(LocalPostgresFixture postgres) : WebApplicationFa
     /// <summary>Receipt PDFs of this app instance; the S3 endpoint is unreachable, so tests use memory.</summary>
     public InMemoryReceiptStorage Receipts { get; } = new();
 
+    /// <summary>Invoice PDFs of this app instance, for the same reason.</summary>
+    public InMemoryInvoiceStorage InvoicePdfs { get; } = new();
+
     /// <summary>Test emails of this app instance; no SMTP server is contacted.</summary>
     public InMemoryEmailSender Emails { get; } = new();
 
@@ -40,6 +44,7 @@ public sealed class AppFactory(LocalPostgresFixture postgres) : WebApplicationFa
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<IReceiptStorage>(Receipts);
+            services.AddSingleton<IInvoiceStorage>(InvoicePdfs);
             services.AddSingleton<IEmailSender>(Emails);
             services
                 .AddAuthentication(options =>

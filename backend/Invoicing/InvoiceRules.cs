@@ -66,6 +66,22 @@ public static class InvoiceRules
     public static bool IsOpen(Invoice invoice) =>
         LatestStatus(invoice) is not (InvoiceStatus.Paid or InvoiceStatus.Cancelled);
 
+    /// <summary>Cancelling is allowed while the Invoice is open (Created or Sent).</summary>
+    public static string? ValidateCancel(InvoiceStatus status) =>
+        status is InvoiceStatus.Created or InvoiceStatus.Sent
+            ? null
+            : "Nur offene Rechnungen können storniert werden.";
+
+    /// <summary>Sending needs an open Invoice (Created or Sent), a subject and a text.</summary>
+    public static string? ValidateSend(InvoiceStatus status, string? subject, string? text)
+    {
+        if (status is not (InvoiceStatus.Created or InvoiceStatus.Sent))
+            return "Nur offene Rechnungen können versendet werden.";
+        if (string.IsNullOrWhiteSpace(subject)) return "Der Betreff ist erforderlich.";
+        if (string.IsNullOrWhiteSpace(text)) return "Der Text ist erforderlich.";
+        return null;
+    }
+
     /// <summary>
     /// The dashboard's Invoices: how many are open and what their full totals sum to. Partial
     /// payments are not subtracted, since they are not tracked against an Invoice.

@@ -31,7 +31,43 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         return Ok(InvoiceMapping.ToInvoiceDetail(invoice, people[invoice.PersonId]));
     }
 
-    // Cancels (storniert) an Invoice that is still Created: records a Cancelled status change.
+    // Sends the Invoice PDF by email; records a Sent status change only when the SMTP server accepted it.
+    [HttpPost("{id:int}/send")]
+    public async Task<IActionResult> SendInvoice(
+        int id,
+        InvoiceMessage message,
+        [FromServices] InvoiceDispatcher dispatcher,
+        CancellationToken ct
+    )
+    {
+        var invoice = await db
+            .Invoices.Include(i => i.Lines)
+            .Include(i => i.StatusChanges)
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
+        if (invoice is null)
+        {
+            return NotFound();
+        }
+        var person = (await PeopleByIdAsync([invoice.PersonId]))[invoice.PersonId];
+        var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct) ?? new();
+        var error = await dispatcher.SendAsync(
+            invoice,
+            person,
+            settings,
+            DeliveryChannel.Email,
+            message,
+            DateTime.UtcNow,
+            ct
+        );
+        if (error is not null)
+        {
+            return BadRequest(new { error });
+        }
+        await db.SaveChangesAsync(ct);
+        return Ok(InvoiceMapping.ToInvoiceDetail(invoice, person));
+    }
+
+    // Cancels (storniert) an open Invoice (Created or Sent): records a Cancelled status change.
     [HttpPost("{id:int}/cancel")]
     public async Task<IActionResult> CancelInvoice(int id, CancellationToken ct)
     {
@@ -43,11 +79,9 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         {
             return NotFound();
         }
-        if (InvoiceRules.LatestStatus(invoice) != InvoiceStatus.Created)
+        if (InvoiceRules.ValidateCancel(InvoiceRules.LatestStatus(invoice)) is { } error)
         {
-            return BadRequest(
-                new { error = "Nur offene Rechnungen können storniert werden." }
-            );
+            return BadRequest(new { error });
         }
         invoice.StatusChanges.Add(
             new InvoiceStatusChange { Status = InvoiceStatus.Cancelled, Timestamp = DateTime.UtcNow }

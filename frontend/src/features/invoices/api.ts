@@ -30,6 +30,7 @@ export type InvoiceDetail = {
 		postalCode: string | null;
 		city: string | null;
 		country: string | null;
+		email: string | null;
 	};
 	lines: { text: string; amount: number; accountNumber: number }[];
 	total: number;
@@ -109,6 +110,14 @@ export async function deleteMembershipDiscount(
 	);
 }
 
+/** Sends the Invoice PDF by email; rejects with the backend's message. */
+export function sendInvoice(
+	id: number,
+	message: { subject: string; text: string },
+): Promise<InvoiceDetail> {
+	return requestJson(`/api/invoices/${id}/send`, "POST", message);
+}
+
 /** Cancels (storniert) an open Invoice; rejects with the backend's message. */
 export function cancelInvoice(id: number): Promise<InvoiceDetail> {
 	return requestJson(`/api/invoices/${id}/cancel`, "POST", {});
@@ -122,6 +131,7 @@ export function invalidateInvoices(queryClient: QueryClient) {
 
 const statusLabels: Record<string, string> = {
 	Created: "Erstellt",
+	Sent: "Versendet",
 	Paid: "Bezahlt",
 	Cancelled: "Storniert",
 };

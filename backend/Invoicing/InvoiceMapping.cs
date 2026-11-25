@@ -25,7 +25,8 @@ public record InvoicePersonDetailDto(
     string? Number,
     string? PostalCode,
     string? City,
-    string? Country
+    string? Country,
+    string? Email
 );
 
 public record InvoiceDetailDto(
@@ -83,7 +84,8 @@ public static class InvoiceMapping
                 p.Number,
                 p.PostalCode,
                 p.City,
-                p.Country
+                p.Country,
+                p.Email
             ),
             i.Lines.OrderBy(l => l.Position)
                 .Select(l => new InvoiceLineDto(l.Text, l.Amount, l.AccountNumber))
