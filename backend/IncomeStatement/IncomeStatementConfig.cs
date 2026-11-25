@@ -1,3 +1,4 @@
+using backend.Accounting;
 using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;
 
@@ -135,6 +136,96 @@ public class IncomeStatementConfig
         }
 
         return new IncomeStatementConfig(sections);
+    }
+
+    /// <summary>
+    /// Validates the parsed layout against the Chart of Accounts (ticket #113). Returns a German
+    /// message naming the offending entry, or null when the layout is valid. Inactive Accounts
+    /// remain mappable; a range may contain numbers that are not in the chart.
+    /// </summary>
+    public static string? Validate(IncomeStatementConfig config, ChartOfAccounts chart)
+    {
+        var expectedCategory = new Dictionary<string, Category>
+        {
+            ["Ertrag"] = Category.Income,
+            ["Aufwand"] = Category.Expense,
+        };
+
+        var claimed = new Dictionary<int, string>();
+        var problems = new List<string>();
+        foreach (var section in config.Sections)
+        {
+            var expected = expectedCategory.GetValueOrDefault(section.Label);
+            var isIncome = expected is Category.Income;
+            foreach (var group in section.Groups)
+            {
+                foreach (var line in group.Lines)
+                {
+                    var reference = line.IsRange ? $"{line.From}-{line.Last}" : line.From.ToString();
+                    if (line.IsRange && line.From > line.Last)
+                    {
+                        problems.Add(
+                            $"Der Bereich '{reference}' der Zeile '{line.Label}' ist umgekehrt (von > bis)."
+                        );
+                        continue;
+                    }
+
+                    var found = new List<int>();
+                    for (var number = line.From; number <= line.Last; number++)
+                    {
+                        var account = chart.Find(number);
+                        if (account is null)
+                        {
+                            continue;
+                        }
+                        found.Add(number);
+                        if (expected is { } expectedCategoryForLine && account.Category != expectedCategoryForLine)
+                        {
+                            var kind = isIncome ? "Aufwand-Konto" : "Einnahmen-Konto";
+                            problems.Add(
+                                $"Das Konto {account.Number} ('{account.Name}') ist ein {kind} und steht unter '{section.Label}'."
+                            );
+                        }
+                    }
+
+                    if (line.IsRange && found.Count == 0)
+                    {
+                        problems.Add(
+                            $"Der Bereich '{reference}' der Zeile '{line.Label}' enthält kein Konto des Kontoplans."
+                        );
+                        continue;
+                    }
+
+                    if (!line.IsRange && found.Count == 0)
+                    {
+                        problems.Add(
+                            $"Das Konto {line.From} der Zeile '{line.Label}' fehlt im Kontoplan."
+                        );
+                        continue;
+                    }
+
+                    foreach (var number in found)
+                    {
+                        if (claimed.TryGetValue(number, out var other))
+                        {
+                            problems.Add(
+                                $"Das Konto {number} ist doppelt zugeordnet: '{other}' und '{line.Label}'."
+                            );
+                        }
+                        else
+                        {
+                            claimed[number] = line.Label;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (problems.Count > 0)
+        {
+            return string.Join(" ", problems);
+        }
+        return null;
     }
 
     /// <summary>Parses a single account number or a "from-to" range.</summary>

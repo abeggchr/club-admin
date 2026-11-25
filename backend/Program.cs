@@ -82,6 +82,15 @@ using (var scope = app.Services.CreateScope())
             $"Kontoplan passt nicht zu den Buchungen. {inconsistency}"
         );
     }
+
+    // Refuse to start when the Income Statement layout disagrees with the Chart of Accounts (ADR 0009).
+    var incomeStatement = scope.ServiceProvider.GetRequiredService<IncomeStatementConfig>();
+    if (IncomeStatementConfig.Validate(incomeStatement, chart) is { } layoutError)
+    {
+        throw new IncomeStatementConfigException(
+            $"Erfolgsrechnung passt nicht zum Kontoplan. {layoutError}"
+        );
+    }
     db.SaveChanges();
 }
 

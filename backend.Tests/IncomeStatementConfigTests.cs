@@ -4,7 +4,6 @@ namespace backend.Tests;
 
 /// <summary>
 /// The Income Statement layout loader: order preservation, ranges, and structure errors.
-/// Validation against the Chart of Accounts belongs to ticket #113.
 /// </summary>
 public class IncomeStatementConfigTests
 {
@@ -72,8 +71,7 @@ public class IncomeStatementConfigTests
     [Fact]
     public void An_unknown_single_reference_is_rejected()
     {
-        // 'abc' does not parse to a number or a range, so it is rejected here (account existence
-        // is checked at startup by ticket #113).
+        // 'abc' does not parse to a number or a range, so it is rejected here.
         Assert.Throws<IncomeStatementConfigException>(
             () =>
                 IncomeStatementConfig.Parse(
