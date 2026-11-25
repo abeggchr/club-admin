@@ -67,6 +67,94 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         return Ok(InvoiceMapping.ToInvoiceDetail(invoice, person));
     }
 
+    // How many unsent Invoices a bulk send would deliver by email, by post, or skip.
+    [HttpGet("bulk-send/preview")]
+    public async Task<IActionResult> PreviewBulkSend(
+        [FromServices] IEnumerable<IInvoiceSender> senders,
+        CancellationToken ct
+    )
+    {
+        var plan = await PlanBulkSendAsync(senders, ct);
+        return Ok(BulkSendRules.Preview(plan));
+    }
+
+    // Sends every unsent Invoice by the channel BulkSendRules picks, one at a time; a failure never stops the rest.
+    [HttpPost("bulk-send")]
+    public async Task<IActionResult> BulkSend(
+        InvoiceSendRequest request,
+        [FromServices] IEnumerable<IInvoiceSender> senders,
+        [FromServices] InvoiceDispatcher dispatcher,
+        CancellationToken ct
+    )
+    {
+        var plan = await PlanBulkSendAsync(senders, ct);
+        if (BulkSendRules.Preview(plan).Email > 0 && InvoiceRules.ValidateSend(InvoiceStatus.Created, request.Subject, request.Text) is { } invalid)
+        {
+            return BadRequest(new { error = invalid });
+        }
+        var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct) ?? new();
+        var sent = new List<BulkSendOutcome>();
+        var failed = new List<BulkSendOutcome>();
+        var skipped = new List<BulkSendOutcome>();
+        foreach (var item in plan)
+        {
+            var outcome = (string? reason) =>
+                new BulkSendOutcome(
+                    InvoiceRules.FormatNumber(item.Invoice.Id),
+                    InvoiceMapping.DisplayName(item.Recipient),
+                    reason
+                );
+            if (item.Channel is not { } channel)
+            {
+                skipped.Add(outcome(item.SkipReason));
+                continue;
+            }
+            var error = await SendOneAsync(dispatcher, item, settings, channel, request.Message, ct);
+            (error is null ? sent : failed).Add(outcome(error));
+        }
+        return Ok(new BulkSendSummary(sent, failed, skipped));
+    }
+
+    // Saves each Invoice on its own so a letter already handed to ePost stays recorded when a later one fails.
+    private async Task<string?> SendOneAsync(
+        InvoiceDispatcher dispatcher,
+        BulkSendItem item,
+        Settings.Settings settings,
+        DeliveryChannel channel,
+        InvoiceMessage message,
+        CancellationToken ct
+    )
+    {
+        try
+        {
+            var error = await dispatcher.SendAsync(item.Invoice, item.Recipient, settings, channel, message, DateTime.UtcNow, ct);
+            if (error is null)
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            return error;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return "Die Rechnung konnte nicht versendet werden.";
+        }
+    }
+
+    private async Task<List<BulkSendItem>> PlanBulkSendAsync(
+        IEnumerable<IInvoiceSender> senders,
+        CancellationToken ct
+    )
+    {
+        var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct) ?? new();
+        var invoices = await db.Invoices.Include(i => i.StatusChanges).ToListAsync(ct);
+        var people = await PeopleByIdAsync(invoices.Select(i => i.PersonId));
+        return BulkSendRules.Plan(invoices.Select(i => (i, people[i.PersonId])), settings, senders);
+    }
+
     // Cancels (storniert) an open Invoice (Created or Sent): records a Cancelled status change.
     [HttpPost("{id:int}/cancel")]
     public async Task<IActionResult> CancelInvoice(int id, CancellationToken ct)
@@ -298,6 +386,15 @@ public class InvoicingController(AppDbContext db) : ControllerBase
             .ToDictionaryAsync(p => p.Id);
     }
 }
+
+/// <summary>One Invoice in the bulk send summary; the reason is null for a sent Invoice.</summary>
+public record BulkSendOutcome(string Number, string Person, string? Reason);
+
+public record BulkSendSummary(
+    IReadOnlyList<BulkSendOutcome> Sent,
+    IReadOnlyList<BulkSendOutcome> Failed,
+    IReadOnlyList<BulkSendOutcome> Skipped
+);
 
 public record MembershipDiscountInput(int? PersonId, int? Percent, string? Text);
 

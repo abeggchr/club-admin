@@ -1,6 +1,7 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "../../lib/apiFetch";
 import { ensureOk, getJson, requestJson } from "../accounting/api";
+import type { BulkSendPreview, BulkSendSummary } from "./bulkSend";
 import type { DeliveryChannel } from "./invoiceDetail";
 import type { InvoiceInput } from "./invoiceDraft";
 
@@ -117,6 +118,19 @@ export function sendInvoice(
 	message: { channel: DeliveryChannel | null; subject: string; text: string },
 ): Promise<InvoiceDetail> {
 	return requestJson(`/api/invoices/${id}/send`, "POST", message);
+}
+
+export const bulkSendPreviewQueryOptions = queryOptions({
+	queryKey: ["invoices", "bulk-send-preview"],
+	queryFn: () => getJson<BulkSendPreview>("/api/invoices/bulk-send/preview"),
+});
+
+/** Sends every unsent Invoice by the channel the backend picks; subject and text matter for email only. */
+export function bulkSendInvoices(message: {
+	subject: string;
+	text: string;
+}): Promise<BulkSendSummary> {
+	return requestJson("/api/invoices/bulk-send", "POST", message);
 }
 
 /** Cancels (storniert) an open Invoice; rejects with the backend's message. */
