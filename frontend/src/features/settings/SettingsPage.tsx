@@ -44,8 +44,8 @@ function FormSection({
 	children: ReactNode;
 }) {
 	return (
-		<fieldset className="flex flex-col gap-3">
-			<legend className="mb-3 font-medium text-sky-900">{title}</legend>
+		<fieldset className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+			<legend className="px-2 font-medium text-sky-900">{title}</legend>
 			{children}
 		</fieldset>
 	);
@@ -82,7 +82,7 @@ export function SettingsPage() {
 	} | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
-	
+
 	useEffect(() => {
 		if (!testResult?.ok) return;
 		const timer = setTimeout(() => setTestResult(null), 5_000);
@@ -180,39 +180,41 @@ export function SettingsPage() {
 			<form
 				onSubmit={onSubmit}
 				noValidate
-				className="mt-6 flex max-w-sm flex-col gap-6"
+				className="mt-6 grid grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-3"
 			>
-				<FormSection title="Klub">
-					<Field label="Name">
-						<input required maxLength={70} {...bind("name")} />
-					</Field>
-					<Field label="Adresse">
-						<input required maxLength={70} {...bind("address")} />
-					</Field>
-					<div className="grid grid-cols-[1fr_2fr] gap-3">
-						<Field label="PLZ">
-							<input required maxLength={16} {...bind("postalCode")} />
+				<div className="flex flex-col gap-6">
+					<FormSection title="Klub">
+						<Field label="Name">
+							<input required maxLength={70} {...bind("name")} />
 						</Field>
-						<Field label="Ort">
-							<input required maxLength={35} {...bind("city")} />
+						<Field label="Adresse">
+							<input required maxLength={70} {...bind("address")} />
 						</Field>
-					</div>
-				</FormSection>
+						<div className="grid grid-cols-[1fr_2fr] gap-3">
+							<Field label="PLZ">
+								<input required maxLength={16} {...bind("postalCode")} />
+							</Field>
+							<Field label="Ort">
+								<input required maxLength={35} {...bind("city")} />
+							</Field>
+						</div>
+					</FormSection>
 
-				<FormSection title="Bankverbindung">
-					<Field label="IBAN">
-						<input required {...bind("iban")} />
-					</Field>
-				</FormSection>
+					<FormSection title="Bankverbindung">
+						<Field label="IBAN">
+							<input required {...bind("iban")} />
+						</Field>
+					</FormSection>
 
-				<FormSection title="Anfangssaldo">
-					<Field label="Betrag">
-						<input inputMode="decimal" {...bind("amount")} />
-					</Field>
-					<Field label="Startdatum">
-						<input type="date" required {...bind("startDate")} />
-					</Field>
-				</FormSection>
+					<FormSection title="Anfangssaldo">
+						<Field label="Betrag">
+							<input inputMode="decimal" {...bind("amount")} />
+						</Field>
+						<Field label="Startdatum">
+							<input type="date" required {...bind("startDate")} />
+						</Field>
+					</FormSection>
+				</div>
 
 				<FormSection title="E-Mail (SMTP)">
 					<p className="text-sm text-slate-600">
@@ -280,36 +282,38 @@ export function SettingsPage() {
 					)}
 				</FormSection>
 
-				<FormSection title="Post (ePost)">
-					<p className="text-sm text-slate-600">
-						Optional: erlaubt den Versand von Rechnungen als Brief. Jeder
-						Versand wird verrechnet, einen Test gibt es nicht.
-					</p>
-					<Field
-						label={`API-Key (${settings?.ePostConfigured ? "gesetzt" : "nicht gesetzt"})`}
-					>
-						<input
-							type="password"
-							autoComplete="new-password"
-							placeholder={
-								settings?.ePostConfigured ? "leer lassen = unverändert" : ""
-							}
-							className={inputClass}
-							value={ePostApiKey}
-							onChange={(e) => setEPostApiKey(e.target.value)}
-						/>
-					</Field>
-				</FormSection>
+				<div className="flex flex-col gap-6">
+					<FormSection title="Post (ePost)">
+						<p className="text-sm text-slate-600">
+							Optional: erlaubt den Versand von Rechnungen als Brief. Jeder
+							Versand wird verrechnet, einen Test gibt es nicht.
+						</p>
+						<Field
+							label={`API-Key (${settings?.ePostConfigured ? "gesetzt" : "nicht gesetzt"})`}
+						>
+							<input
+								type="password"
+								autoComplete="new-password"
+								placeholder={
+									settings?.ePostConfigured ? "leer lassen = unverändert" : ""
+								}
+								className={inputClass}
+								value={ePostApiKey}
+								onChange={(e) => setEPostApiKey(e.target.value)}
+							/>
+						</Field>
+					</FormSection>
 
-				<div className="flex flex-col gap-3">
-					<button
-						type="submit"
-						className="self-start rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
-					>
-						Speichern
-					</button>
-					{saved && <p className="text-green-700">Gespeichert.</p>}
-					{error && <p className="text-red-600">{error}</p>}
+					<div className="flex flex-col gap-3">
+						<button
+							type="submit"
+							className="self-start rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
+						>
+							Speichern
+						</button>
+						{saved && <p className="text-green-700">Gespeichert.</p>}
+						{error && <p className="text-red-600">{error}</p>}
+					</div>
 				</div>
 			</form>
 			<TextTemplatesSection />
