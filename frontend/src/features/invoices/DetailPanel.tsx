@@ -155,9 +155,9 @@ export function DetailPanel({
 							href={invoicePdfUrl(invoice.id)}
 							target="_blank"
 							rel="noreferrer"
-							className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
+							className="rounded border border-sky-600 px-4 py-2 text-sky-700 hover:bg-sky-50"
 						>
-							PDF öffnen
+							Anzeigen
 						</a>
 
 						{isOpen && (
@@ -184,7 +184,7 @@ export function DetailPanel({
 									)
 										cancel.mutate();
 								}}
-								className="rounded border border-red-600 px-4 py-2 text-red-700 enabled:hover:bg-red-50 disabled:opacity-40"
+								className="rounded border border-sky-600 px-4 py-2 text-sky-700 enabled:hover:bg-sky-50 disabled:opacity-40"
 							>
 								Stornieren
 							</button>
