@@ -2,10 +2,35 @@ import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "../../lib/apiFetch";
 import type { Person } from "./types";
 
-async function fetchPersons(): Promise<Person[]> {
-	const res = await apiFetch("/api/person");
-	if (!res.ok) throw new Error(`Backend returned ${res.status}`);
+/** Throws the backend's German error message, or a generic one, for a non-OK response. */
+export async function ensureOk(res: Response): Promise<void> {
+	if (res.ok) return;
+	const data = await res.json().catch(() => null);
+	throw new Error(data?.error ?? `Backend returned ${res.status}`);
+}
+
+export async function getJson<T>(url: string): Promise<T> {
+	const res = await apiFetch(url);
+	await ensureOk(res);
 	return res.json();
+}
+
+export async function requestJson<T>(
+	url: string,
+	method: "POST" | "PUT",
+	body: unknown,
+): Promise<T> {
+	const res = await apiFetch(url, {
+		method,
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+	});
+	await ensureOk(res);
+	return res.json();
+}
+
+async function fetchPersons(): Promise<Person[]> {
+	return getJson<Person[]>("/api/person");
 }
 
 export const personsQueryOptions = queryOptions({
@@ -17,24 +42,17 @@ export async function importPersons(file: File): Promise<number> {
 	const body = new FormData();
 	body.append("file", file);
 	const res = await apiFetch("/api/person/import", { method: "POST", body });
-	if (!res.ok) {
-		const data = await res.json().catch(() => null);
-		throw new Error(data?.error ?? `Backend returned ${res.status}`);
-	}
+	await ensureOk(res);
 	return (await res.json()).imported;
 }
 
 export async function updatePerson(person: Person): Promise<Person> {
-	const res = await apiFetch(`/api/person/${person.id}`, {
-		method: "PUT",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(person),
-	});
-	if (!res.ok) {
-		const data = await res.json().catch(() => null);
-		throw new Error(data?.error ?? `Backend returned ${res.status}`);
-	}
-	return res.json();
+	return requestJson<Person>(`/api/person/${person.id}`, "PUT", person);
+}
+
+/** Deletes a Person; the backend rejects with a German error when the Person is someone's Zahler. */
+export async function deletePerson(id: number): Promise<void> {
+	await ensureOk(await apiFetch(`/api/person/${id}`, { method: "DELETE" }));
 }
 
 export async function downloadMailingList() {

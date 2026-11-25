@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { FiX } from "react-icons/fi";
-import { personsQueryOptions, updatePerson } from "./api";
+import { deletePerson, personsQueryOptions, updatePerson } from "./api";
 import { membershipLabels, membershipTypes } from "./membership";
 import { PersonPicker } from "./PersonPicker";
 import {
@@ -97,6 +97,27 @@ export function EditPanel({
 		onError: (err) => setError(err.message),
 	});
 	const busy = update.isPending;
+	const del = useMutation({
+		mutationFn: () => deletePerson(person.id),
+		onSuccess: () => {
+			return queryClient
+				.invalidateQueries({ queryKey: personsQueryOptions.queryKey })
+				.then(onClose);
+		},
+		onError: (err) => setError(err.message),
+	});
+	const deleting = del.isPending;
+
+	function onDelete() {
+		if (
+			!window.confirm(
+				`Person "${personLabel(person)}" löschen? Das kann nicht rückgängig gemacht werden.`,
+			)
+		)
+			return;
+		setError(null);
+		del.mutate();
+	}
 
 	function submit(e: React.FormEvent) {
 		e.preventDefault();
@@ -256,6 +277,15 @@ export function EditPanel({
 				{error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 				{saved && <p className="mt-3 text-sm text-green-700">Gespeichert.</p>}
 				<div className="mt-4 flex justify-end gap-2">
+					<button
+						type="button"
+						onClick={onDelete}
+						disabled={deleting}
+						title="Person löschen"
+						className="mr-auto rounded border border-red-300 px-4 py-2 text-red-700 enabled:hover:bg-red-50 disabled:opacity-40"
+					>
+						Löschen
+					</button>
 					<button
 						type="button"
 						onClick={onClose}
