@@ -227,12 +227,8 @@ export function SettingsPage() {
 					</FormSection>
 				</div>
 
-				<FormSection title="E-Mail (SMTP)">
-					<p className="text-sm text-slate-600">
-						Optional: entweder alle Pflichtfelder ausfüllen oder alle leer
-						lassen.
-					</p>
-					<Field label="Server">
+				<FormSection title="E-Mail">
+					<Field label="SMTP Server">
 						<input {...bindSmtp("host")} />
 					</Field>
 					<div className="grid grid-cols-[1fr_2fr] gap-3">
@@ -283,13 +279,9 @@ export function SettingsPage() {
 				</FormSection>
 
 				<div className="flex flex-col gap-6">
-					<FormSection title="Post (ePost)">
-						<p className="text-sm text-slate-600">
-							Optional: erlaubt den Versand von Rechnungen als Brief. Jeder
-							Versand wird verrechnet, einen Test gibt es nicht.
-						</p>
+					<FormSection title="Post">
 						<Field
-							label={`API-Key (${settings?.ePostConfigured ? "gesetzt" : "nicht gesetzt"})`}
+							label={`ePost API-Key (${settings?.ePostConfigured ? "gesetzt" : "nicht gesetzt"})`}
 						>
 							<input
 								type="password"
