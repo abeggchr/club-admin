@@ -1,5 +1,5 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { formatChf, parseAmount } from "../accounting/amount";
 import {
 	invalidateJournalQueries,
@@ -82,6 +82,12 @@ export function SettingsPage() {
 	} | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
+	
+	useEffect(() => {
+		if (!testResult?.ok) return;
+		const timer = setTimeout(() => setTestResult(null), 5_000);
+		return () => clearTimeout(timer);
+	}, [testResult]);
 
 	const bind = (key: keyof FormState) => ({
 		value: form[key],
@@ -109,7 +115,10 @@ export function SettingsPage() {
 		}
 		try {
 			await sendTestEmail(testReceiver.trim(), payload.value);
-			setTestResult({ ok: true, message: "Test-E-Mail gesendet." });
+			setTestResult({
+				ok: true,
+				message: `Test-E-Mail gesendet an ${testReceiver.trim()}.`,
+			});
 		} catch (err) {
 			setTestResult({
 				ok: false,
