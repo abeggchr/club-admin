@@ -95,7 +95,7 @@ public class IncomeStatementConfig
         var sections = new List<Section>();
         foreach (var entry in file.Children)
         {
-            if (entry.Key is not YamlScalarNode label || entry.Value is not YamlMappingNode groups)
+            if (entry.Key is not YamlScalarNode { Value: { } label } || entry.Value is not YamlMappingNode groups)
             {
                 throw new IncomeStatementConfigException(
                     "Jeder Abschnitt unter 'Erfolgsrechnung' muss eine Taste und Gruppen enthalten."
@@ -104,35 +104,35 @@ public class IncomeStatementConfig
             var groupList = new List<Group>();
             foreach (var groupEntry in groups.Children)
             {
-                if (groupEntry.Key is not YamlScalarNode groupLabel || groupEntry.Value is not YamlMappingNode lines)
+                if (groupEntry.Key is not YamlScalarNode { Value: { } groupLabel } || groupEntry.Value is not YamlMappingNode lines)
                 {
                     throw new IncomeStatementConfigException(
-                        $"Jede Gruppe des Abschnitts '{label.Value}' muss eine Taste und Konten enthalten."
+                        $"Jede Gruppe des Abschnitts '{label}' muss eine Taste und Konten enthalten."
                     );
                 }
                 var lineList = new List<Line>();
                 foreach (var lineEntry in lines.Children)
                 {
-                    if (lineEntry.Key is not YamlScalarNode lineLabel)
+                    if (lineEntry.Key is not YamlScalarNode { Value: { } lineLabel })
                     {
                         throw new IncomeStatementConfigException(
-                            $"Jede Zeile der Gruppe '{groupLabel.Value}' muss eine Taste sein."
+                            $"Jede Zeile der Gruppe '{groupLabel}' muss eine Taste sein."
                         );
                     }
-                    if (lineEntry.Value is YamlScalarNode reference)
+                    if (lineEntry.Value is YamlScalarNode { Value: { } reference })
                     {
-                        lineList.Add(ToLine(lineLabel.Value, reference.Value));
+                        lineList.Add(ToLine(lineLabel, reference));
                     }
                     else
                     {
                         throw new IncomeStatementConfigException(
-                            $"Die Zeile '{lineLabel.Value}' braucht eine Kontonummer oder einen Bereich 'von-bis'."
+                            $"Die Zeile '{lineLabel}' braucht eine Kontonummer oder einen Bereich 'von-bis'."
                         );
                     }
                 }
-                groupList.Add(new Group(groupLabel.Value, lineList));
+                groupList.Add(new Group(groupLabel, lineList));
             }
-            sections.Add(new Section(label.Value, groupList));
+            sections.Add(new Section(label, groupList));
         }
 
         return new IncomeStatementConfig(sections);
@@ -231,7 +231,7 @@ public class IncomeStatementConfig
 
         if (TryParseRange(reference, out var range))
         {
-            return new Line(label, range.Value.from, range.Value.to);
+            return new Line(label, range.from, range.to);
         }
 
         throw InvalidReference(label, reference);
@@ -241,9 +241,9 @@ public class IncomeStatementConfig
         new($"Die Kontonummer '{reference}' von '{label}' ist ungültig.");
 
     /// <summary>Parses a "from-to" range; both numbers must be positive, and the text unquoted.</summary>
-    private static bool TryParseRange(string reference, out (int from, int to)? range)
+    private static bool TryParseRange(string reference, out (int from, int to) range)
     {
-        range = null;
+        range = default;
         var dash = reference.IndexOf('-');
         if (dash <= 0 || reference.IndexOf('-', dash + 1) >= 0)
         {
