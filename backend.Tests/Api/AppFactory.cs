@@ -27,6 +27,9 @@ public sealed class AppFactory(LocalPostgresFixture postgres) : WebApplicationFa
     /// <summary>Test emails of this app instance; no SMTP server is contacted.</summary>
     public InMemoryEmailSender Emails { get; } = new();
 
+    /// <summary>The stand-in for api.epost.ch of this app instance; the real API bills every letter and is never called.</summary>
+    public InMemoryEPostHandler EPost { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -46,6 +49,7 @@ public sealed class AppFactory(LocalPostgresFixture postgres) : WebApplicationFa
             services.AddSingleton<IReceiptStorage>(Receipts);
             services.AddSingleton<IInvoiceStorage>(InvoicePdfs);
             services.AddSingleton<IEmailSender>(Emails);
+            services.AddHttpClient<EPostInvoiceSender>().ConfigurePrimaryHttpMessageHandler(() => EPost);
             services
                 .AddAuthentication(options =>
                 {

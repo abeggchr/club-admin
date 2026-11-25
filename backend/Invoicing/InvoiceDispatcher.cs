@@ -24,7 +24,8 @@ public class InvoiceDispatcher(IEnumerable<IInvoiceSender> senders, IInvoiceStor
             InvoiceRules.ValidateSend(
                 InvoiceRules.LatestStatus(invoice),
                 message.Subject,
-                message.Text
+                message.Text,
+                channel == DeliveryChannel.Email
             ) is { } invalid
         )
         {
@@ -33,11 +34,11 @@ public class InvoiceDispatcher(IEnumerable<IInvoiceSender> senders, IInvoiceStor
         var sender = senders.FirstOrDefault(s => s.Channel == channel);
         if (sender is null || !sender.IsConfigured(settings))
         {
-            return "E-Mail ist nicht eingerichtet.";
+            return sender?.NotConfiguredError ?? "Der Versandweg ist nicht eingerichtet.";
         }
         if (!sender.CanDeliverTo(recipient))
         {
-            return "Die Person hat keine E-Mail-Adresse.";
+            return sender.CannotDeliverError;
         }
         var pdf = await storage.GetAsync(invoice.Id, ct);
         if (pdf is null)

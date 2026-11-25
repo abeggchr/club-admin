@@ -13,7 +13,11 @@ import {
 	invoicePdfUrl,
 	statusLabel,
 } from "./api";
-import { formatDateTime, sendBlockedReason } from "./invoiceDetail";
+import {
+	deliveryChannels,
+	formatDateTime,
+	preselectedChannel,
+} from "./invoiceDetail";
 import { SendDialog } from "./SendDialog";
 
 /** Detail of an Invoice. Nothing is editable or deletable; an open Invoice can be sent by email or cancelled (storniert). */
@@ -39,12 +43,17 @@ export function DetailPanel({
 	const { data: settings } = useQuery(settingsQueryOptions);
 	const sendDialog = useRef<HTMLDialogElement>(null);
 	const isOpen = invoice?.status === "Created" || invoice?.status === "Sent";
-	const sendBlocked = invoice
-		? sendBlockedReason(
+	const channels = invoice
+		? deliveryChannels(
 				settings?.emailConfigured ?? false,
-				invoice.person.email,
+				settings?.ePostConfigured ?? false,
+				invoice.person,
 			)
-		: null;
+		: [];
+	const sendBlocked =
+		channels.length > 0 && preselectedChannel(channels) === null
+			? channels.map((c) => c.blockedReason).join(" ")
+			: null;
 
 	const accountOf = (accountNumber: number) => {
 		const account = accounts.find((a) => a.number === accountNumber);
@@ -187,6 +196,7 @@ export function DetailPanel({
 					<SendDialog
 						dialogRef={sendDialog}
 						invoiceId={invoice.id}
+						channels={channels}
 						recipientEmail={invoice.person.email ?? ""}
 					/>
 				</>

@@ -19,10 +19,17 @@ export type Settings = {
 	smtp: SmtpSettings;
 	/** Whether the SMTP group is complete, i.e. the email channel can send. */
 	emailConfigured: boolean;
+	/** Whether an ePost API key is stored, i.e. the post channel can send. The key itself is never returned. */
+	ePostConfigured: boolean;
 };
 
-export type SettingsUpdate = Omit<Settings, "smtp" | "emailConfigured"> & {
+export type SettingsUpdate = Omit<
+	Settings,
+	"smtp" | "emailConfigured" | "ePostConfigured"
+> & {
 	smtp: SmtpPayload;
+	/** Empty keeps the stored key. */
+	ePostApiKey: string;
 };
 
 /** Throws the backend's German error message, or a generic one, for a non-OK response. */

@@ -1,6 +1,7 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "../../lib/apiFetch";
 import { ensureOk, getJson, requestJson } from "../accounting/api";
+import type { DeliveryChannel } from "./invoiceDetail";
 import type { InvoiceInput } from "./invoiceDraft";
 
 export type InvoiceListItem = {
@@ -110,10 +111,10 @@ export async function deleteMembershipDiscount(
 	);
 }
 
-/** Sends the Invoice PDF by email; rejects with the backend's message. */
+/** Sends the Invoice PDF by the chosen channel (subject and text matter for email only); rejects with the backend's message. */
 export function sendInvoice(
 	id: number,
-	message: { subject: string; text: string },
+	message: { channel: DeliveryChannel | null; subject: string; text: string },
 ): Promise<InvoiceDetail> {
 	return requestJson(`/api/invoices/${id}/send`, "POST", message);
 }

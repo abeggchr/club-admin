@@ -53,6 +53,11 @@ public class SettingsController(AppDbContext db, IEmailSender emailSender) : Con
         settings.PostalCode = update.PostalCode!.Trim();
         settings.City = update.City!.Trim();
         ApplySmtp(settings, update.Smtp);
+        // Write-only like the SMTP password: an empty field keeps the stored key.
+        if (!string.IsNullOrWhiteSpace(update.EPostApiKey))
+        {
+            settings.EPostApiKey = update.EPostApiKey.Trim();
+        }
 
         await db.SaveChangesAsync();
         return Ok(SettingsResponse.From(settings));
@@ -190,7 +195,8 @@ public record SettingsUpdate(
     string? Address,
     string? PostalCode,
     string? City,
-    SmtpInput? Smtp = null
+    SmtpInput? Smtp = null,
+    string? EPostApiKey = null
 );
 
 public record TestEmailRequest(string? Receiver, SmtpInput? Smtp);
@@ -204,7 +210,8 @@ public record SettingsResponse(
     string PostalCode,
     string City,
     SmtpResponse Smtp,
-    bool EmailConfigured
+    bool EmailConfigured,
+    bool EPostConfigured
 )
 {
     public static SettingsResponse From(Settings s) =>
@@ -225,6 +232,7 @@ public record SettingsResponse(
                 s.SmtpFromAddress,
                 s.SmtpFromName
             ),
-            s.SmtpHost is not null
+            s.SmtpHost is not null,
+            !string.IsNullOrEmpty(s.EPostApiKey)
         );
 }

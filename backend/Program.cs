@@ -24,6 +24,13 @@ builder.Services.AddScoped<InvoiceCreator>();
 builder.Services.AddScoped<BankImporter>();
 builder.Services.AddSingleton<IEmailSender, MailKitEmailSender>();
 builder.Services.AddSingleton<IInvoiceSender, SmtpInvoiceSender>();
+// ePost has no sandbox and bills every letter: Development answers from memory, never from api.epost.ch.
+var epost = builder.Services.AddHttpClient<EPostInvoiceSender>();
+if (builder.Environment.IsDevelopment())
+{
+    epost.ConfigurePrimaryHttpMessageHandler(() => new InMemoryEPostHandler());
+}
+builder.Services.AddTransient<IInvoiceSender>(sp => sp.GetRequiredService<EPostInvoiceSender>());
 builder.Services.AddScoped<InvoiceDispatcher>();
 InvoiceDocument.UseCommunityLicense();
 
