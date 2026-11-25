@@ -31,6 +31,10 @@ public static class IncomeStatementCalculator
             }
         }
 
+        // The trailing "Nicht zugeordnet" group collects Accounts with Entries that no configured line
+        // covers; its amounts count toward the section totals so the report reconciles with the Journal.
+        const string unmappedLabel = "Nicht zugeordnet";
+
         // Simplified view: a line stays when any of its Accounts has at least one Entry in the period,
         // even if it nets to 0.00; groups left without lines are hidden.
         Func<Line, bool> keepLine = view == IncomeStatementView.Simplified
@@ -40,11 +44,51 @@ public static class IncomeStatementCalculator
                 )
             : _ => true;
 
+        // Chart Accounts that carry Entries but appear on no configured line, per Category. A positive
+        // value means the Account contributes to the section total (credits for Ertrag, debits for
+        // Aufwand), the signed Entry amounts are summed directly.
+        var unmappedByCategory = new Dictionary<Category, Dictionary<int, decimal>>
+        {
+            [Category.Income] = new Dictionary<int, decimal>(),
+            [Category.Expense] = new Dictionary<int, decimal>(),
+        };
+        var mappedNumbers = new HashSet<int>();
+        foreach (var section in config.Sections)
+        {
+            foreach (var group in section.Groups)
+            {
+                foreach (var line in group.Lines)
+                {
+                    for (var number = line.From; number <= line.Last; number++)
+                    {
+                        mappedNumbers.Add(number);
+                    }
+                }
+            }
+        }
+        foreach (var entry in entries)
+        {
+            if (mappedNumbers.Contains(entry.AccountNumber))
+            {
+                continue;
+            }
+            var account = chart.Find(entry.AccountNumber);
+            if (account is null)
+            {
+                continue;
+            }
+            var unmapped = unmappedByCategory[account.Category];
+            // Ertrag counts credits minus debits, Aufwand counts debits minus credits.
+            var contribution = account.Category == Category.Income ? entry.Amount : -entry.Amount;
+            unmapped[entry.AccountNumber] = (unmapped.TryGetValue(entry.AccountNumber, out var amount) ? amount : 0m) + contribution;
+        }
+
         decimal totalRevenue = 0m;
         decimal totalExpense = 0m;
         var sections = new List<SectionResult>();
         foreach (var section in config.Sections)
         {
+            var sectionCategory = section.Label == "Ertrag" ? Category.Income : Category.Expense;
             decimal sectionTotal = 0m;
             var groups = new List<GroupResult>();
             foreach (var group in section.Groups)
@@ -78,6 +122,23 @@ public static class IncomeStatementCalculator
                 sectionTotal += groupTotal;
                 groups.Add(new GroupResult(group.Label, groupTotal, lines));
             }
+
+            // The trailing group for this section's Category; hidden when none of its Accounts
+            // has an Entry in the period.
+            var unmapped = unmappedByCategory[sectionCategory];
+            if (unmapped.Count > 0)
+            {
+                decimal unmappedTotal = 0m;
+                var unmappedLines = new List<LineResult>();
+                foreach (var (number, amount) in unmapped.OrderBy(kv => kv.Key))
+                {
+                    unmappedTotal += amount;
+                    unmappedLines.Add(new LineResult(chart.Find(number)!.Name, amount));
+                }
+                sectionTotal += unmappedTotal;
+                groups.Add(new GroupResult(unmappedLabel, unmappedTotal, unmappedLines));
+            }
+
             if (section.Label == "Ertrag")
             {
                 totalRevenue = sectionTotal;

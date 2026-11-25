@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using backend.Accounting;
 using backend.IncomeStatement;
 using backend.Tests.Invoicing;
 using Microsoft.AspNetCore.Hosting;
@@ -358,5 +359,156 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
         Assert.Contains("'none'", body.GetProperty("error").GetString());
+    }
+
+    /// <summary>
+    /// An <see cref="AppFactory"/> whose chart and Income Statement layout are registered through
+    /// <see cref="ConfigureWebHost"/> (before the app startup runs), so endpoint tests can exercise
+    /// a layout that does not cover every chart Account (ticket #115).
+    /// </summary>
+    public sealed class UnmappedChartIncomeStatementAppFactory(
+        LocalPostgresFixture postgres,
+        DateOnly today,
+        ChartOfAccounts chart,
+        IncomeStatementConfig config
+    ) : AppFactory(postgres)
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddSingleton<backend.IncomeStatement.ISystemClock>(new backend.IncomeStatement.FixedClock(today));
+                services.Remove(services.First(d => d.ServiceType == typeof(ChartOfAccounts)));
+                services.AddSingleton(chart);
+                services.Remove(services.First(d => d.ServiceType == typeof(IncomeStatementConfig)));
+                services.AddSingleton(config);
+            });
+        }
+    }
+
+    [Fact]
+    public async Task Unmapped_Accounts_with_Entries_show_under_Nicht_zugeordnet_and_reconcile()
+    {
+        await using var db = NewDb();
+        await db.Transactions.ExecuteDeleteAsync();
+        await db.Settings.ExecuteDeleteAsync();
+
+        // The checked-in YAML covers every account of the checked-in chart (3620 is in a range
+        // but not in the chart), so the chart is extended with two unmapped Accounts (3700, 4005)
+        // and the YAML is re-parsed without them. Expected: revenue 500 (3400) + 90 (3700),
+        // expense 300 (4000) + 75 (4005).
+        var chart = ChartOfAccounts.Parse(
+            $$"""
+            {
+              "income": [
+                { "number": 3400, "name": "Jahresbeiträge" },
+                { "number": 3700, "name": "Unzugewiesene Einnahmen" }
+              ],
+              "expense": [
+                { "number": 4000, "name": "Anlässe" },
+                { "number": 4005, "name": "Unzugewiesene Ausgaben" }
+              ]
+            }
+            """
+        );
+        var config = IncomeStatementConfig.Parse(
+            """
+            Erfolgsrechnung:
+              Ertrag:
+                I. Beiträge:
+                  Jahresbeiträge: 3400
+              Aufwand:
+                I. Anlässe:
+                  Anlässe: 4000
+            """
+        );
+        Assert.Null(IncomeStatementConfig.Validate(config, chart));
+
+        db.Settings.Add(
+            new backend.Settings.Settings
+            {
+                StartDate = Start,
+                Iban = "CH9300762011623852957",
+                Name = "SC Wettingen",
+                Address = "Sportweg 12",
+                PostalCode = "5430",
+                City = "Wettingen",
+            }
+        );
+        var incomeTransaction = new backend.Accounting.Transaction
+        {
+            Date = new DateOnly(2026, 2, 1),
+            Amount = 590m,
+            Text = "Einnahmen",
+        };
+        incomeTransaction.Entries.Add(new backend.Accounting.Entry { Text = "Jahresbeiträge", AccountNumber = 3400, Amount = 500m });
+        incomeTransaction.Entries.Add(new backend.Accounting.Entry { Text = "Unzugewiesene Einnahme", AccountNumber = 3700, Amount = 90m });
+        var expenseTransaction = new backend.Accounting.Transaction
+        {
+            Date = new DateOnly(2026, 3, 1),
+            Amount = -375m,
+            Text = "Ausgaben",
+        };
+        expenseTransaction.Entries.Add(new backend.Accounting.Entry { Text = "Anlässe", AccountNumber = 4000, Amount = -300m });
+        expenseTransaction.Entries.Add(new backend.Accounting.Entry { Text = "Unzugewiesene Ausgabe", AccountNumber = 4005, Amount = -75m });
+        db.Transactions.Add(incomeTransaction);
+        db.Transactions.Add(expenseTransaction);
+        await db.SaveChangesAsync();
+
+        var factory = new UnmappedChartIncomeStatementAppFactory(_postgres, Today, chart, config);
+        await using (factory)
+        {
+            var client = factory.CreateClient();
+            client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, "anna@example.ch");
+
+            var response = await client.GetAsync("/api/income-statement?view=all");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var report = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
+
+            Assert.Equal(590m, report.GetProperty("totalRevenue").GetDecimal());
+            Assert.Equal(375m, report.GetProperty("totalExpense").GetDecimal());
+            Assert.Equal(215m, report.GetProperty("overallResult").GetDecimal());
+
+            var sections = report.GetProperty("sections").EnumerateArray().ToArray();
+            var revenueGroups = sections[0].GetProperty("groups").EnumerateArray().ToArray();
+            Assert.Equal(2, revenueGroups.Length);
+            Assert.Equal("Nicht zugeordnet", revenueGroups[1].GetProperty("label").GetString());
+            Assert.Equal(90m, revenueGroups[1].GetProperty("total").GetDecimal());
+            Assert.Equal(590m, sections[0].GetProperty("total").GetDecimal());
+
+            var expenseGroups = sections[1].GetProperty("groups").EnumerateArray().ToArray();
+            Assert.Equal(2, expenseGroups.Length);
+            Assert.Equal("Nicht zugeordnet", expenseGroups[1].GetProperty("label").GetString());
+            Assert.Equal(75m, expenseGroups[1].GetProperty("total").GetDecimal());
+            Assert.Equal(375m, sections[1].GetProperty("total").GetDecimal());
+
+            // The simplified view shows the same group with the same totals.
+            var simplifiedResponse = await client.GetAsync("/api/income-statement");
+            Assert.Equal(HttpStatusCode.OK, simplifiedResponse.StatusCode);
+            var simplified = (await simplifiedResponse.Content.ReadFromJsonAsync<JsonElement>())!;
+            var simplifiedGroups = simplified.GetProperty("sections")[0].GetProperty("groups").EnumerateArray().ToArray();
+            Assert.Equal("Nicht zugeordnet", simplifiedGroups[1].GetProperty("label").GetString());
+            Assert.Equal(90m, simplifiedGroups[1].GetProperty("total").GetDecimal());
+            Assert.Equal(215m, simplified.GetProperty("overallResult").GetDecimal());
+        }
+    }
+
+    [Fact]
+    public async Task The_Nicht_zugeordnet_group_is_absent_when_all_Accounts_are_mapped()
+    {
+        await using var fixture = new Fixture(_postgres);
+        await fixture.InitializeAsync();
+
+        var report = await GetReport(fixture);
+
+        // Every Account with an Entry in the fixture is mapped in the checked-in YAML, so neither
+        // section carries a "Nicht zugeordnet" group.
+        var labels = report.GetProperty("sections")
+            .EnumerateArray()
+            .SelectMany(s => s.GetProperty("groups").EnumerateArray())
+            .Select(g => g.GetProperty("label").GetString());
+        Assert.DoesNotContain(labels, label => label == "Nicht zugeordnet");
     }
 }
