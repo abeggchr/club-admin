@@ -145,18 +145,10 @@ public class IncomeStatementConfig
     /// </summary>
     public static string? Validate(IncomeStatementConfig config, ChartOfAccounts chart)
     {
-        var expectedCategory = new Dictionary<string, Category>
-        {
-            ["Ertrag"] = Category.Income,
-            ["Aufwand"] = Category.Expense,
-        };
-
         var claimed = new Dictionary<int, string>();
         var problems = new List<string>();
         foreach (var section in config.Sections)
         {
-            var expected = expectedCategory.GetValueOrDefault(section.Label);
-            var isIncome = expected is Category.Income;
             foreach (var group in section.Groups)
             {
                 foreach (var line in group.Lines)
@@ -179,9 +171,9 @@ public class IncomeStatementConfig
                             continue;
                         }
                         found.Add(number);
-                        if (expected is { } expectedCategoryForLine && account.Category != expectedCategoryForLine)
+                        if (account.Category != section.Category)
                         {
-                            var kind = isIncome ? "Aufwand-Konto" : "Einnahmen-Konto";
+                            var kind = section.Category == Category.Income ? "Aufwand-Konto" : "Einnahmen-Konto";
                             problems.Add(
                                 $"Das Konto {account.Number} ('{account.Name}') ist ein {kind} und steht unter '{section.Label}'."
                             );
@@ -286,8 +278,14 @@ public class IncomeStatementConfig
 public class IncomeStatementConfigException(string message, Exception? inner = null)
     : Exception(message, inner);
 
-/// <summary>A report section ("A. Ertrag" or "B. Aufwand"), in file order.</summary>
-public record Section(string Label, IReadOnlyList<Group> Groups);
+/// <summary>
+/// A report section ("A. Ertrag" or "B. Aufwand"), in file order. The Category is derived from the
+/// label: "Ertrag" is revenue, everything else expense; validator and calculator read it here.
+/// </summary>
+public record Section(string Label, IReadOnlyList<Group> Groups)
+{
+    public Category Category => Label == "Ertrag" ? Category.Income : Category.Expense;
+}
 
 /// <summary>A numbered group ("I.", "II.", …) with its lines, in file order.</summary>
 public record Group(string Label, IReadOnlyList<Line> Lines);

@@ -12,7 +12,8 @@ public class IncomeStatementController(AppDbContext db, IncomeStatementConfig co
     [HttpGet("income-statement")]
     public async Task<IActionResult> GetIncomeStatement([FromQuery] string? view)
     {
-        if (IncomeStatementViewRules.Parse(view) is { } viewError)
+        var viewError = IncomeStatementViewRules.Validate(view);
+        if (viewError is not null)
         {
             return BadRequest(new { error = viewError });
         }
@@ -31,49 +32,14 @@ public class IncomeStatementController(AppDbContext db, IncomeStatementConfig co
             .Where(e => e.Transaction.Date <= today)
             .ToListAsync();
 
-        var result = IncomeStatementCalculator.Compute(config, chart, entries, IncomeStatementViewRules.For(view));
-        return Ok(
-            new IncomeStatementDto(
-                new PeriodDto(settings.StartDate, today),
-                result.Sections
-                    .Select(
-                        s =>
-                            new SectionDto(
-                                s.Label,
-                                s.Total,
-                                s.Groups
-                                    .Select(
-                                        g =>
-                                            new GroupDto(
-                                                g.Label,
-                                                g.Total,
-                                                g.Lines.Select(l => new LineDto(l.Label, l.Amount)).ToList()
-                                            )
-                                    )
-                                    .ToList()
-                            )
-                    )
-                    .ToList(),
-                result.TotalRevenue,
-                result.TotalExpense,
-                result.OverallResult
-            )
+        var result = IncomeStatementCalculator.Compute(
+            config,
+            chart,
+            entries,
+            settings.StartDate,
+            today,
+            IncomeStatementViewRules.For(view)
         );
+        return Ok(result);
     }
 }
-
-public record IncomeStatementDto(
-    PeriodDto Period,
-    IReadOnlyList<SectionDto> Sections,
-    decimal TotalRevenue,
-    decimal TotalExpense,
-    decimal OverallResult
-);
-
-public record PeriodDto(DateOnly From, DateOnly To);
-
-public record SectionDto(string Label, decimal Total, IReadOnlyList<GroupDto> Groups);
-
-public record GroupDto(string Label, decimal Total, IReadOnlyList<LineDto> Lines);
-
-public record LineDto(string Label, decimal Amount);
