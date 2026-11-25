@@ -17,22 +17,16 @@ describe("deletePerson", () => {
 	});
 
 	it("throws the backend's German error when the Person is someone's Zahler", async () => {
+		const error =
+			"Die Person ist Zahler für andere Personen und kann nicht gelöscht werden.";
 		const fetchMock = vi.fn().mockResolvedValue(
-			new Response(
-				JSON.stringify({
-					error:
-						"Die Person ist Zahler für andere Personen und kann nicht gelöscht werden.",
-				}),
-				{
-					status: 400,
-				},
-			),
+			new Response(JSON.stringify({ error }), {
+				status: 400,
+			}),
 		);
 		vi.stubGlobal("fetch", fetchMock);
 
-		await expect(deletePerson(1)).rejects.toThrow(
-			"Die Person ist Zahler für andere Personen und kann nicht gelöscht werden.",
-		);
+		await expect(deletePerson(1)).rejects.toThrow(error);
 	});
 
 	it("throws a generic message when the Person does not exist", async () => {

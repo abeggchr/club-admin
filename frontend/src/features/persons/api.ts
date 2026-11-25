@@ -5,7 +5,9 @@ import type { Person } from "./types";
 /** Throws the backend's German error message, or a generic one, for a non-OK response. */
 export async function ensureOk(res: Response): Promise<void> {
 	if (res.ok) return;
-	const data = await res.json().catch(() => null);
+	const data = (await res.json().catch(() => null)) as {
+		error?: string;
+	} | null;
 	throw new Error(data?.error ?? `Backend returned ${res.status}`);
 }
 

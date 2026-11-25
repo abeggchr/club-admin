@@ -109,12 +109,8 @@ export function EditPanel({
 	const deleting = del.isPending;
 
 	function onDelete() {
-		if (
-			!window.confirm(
-				`Person "${personLabel(person)}" löschen? Das kann nicht rückgängig gemacht werden.`,
-			)
-		)
-			return;
+		const msg = `Person "${personLabel(person)}" löschen? Das kann nicht rückgängig gemacht werden.`;
+		if (!window.confirm(msg)) return;
 		setError(null);
 		del.mutate();
 	}
