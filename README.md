@@ -15,11 +15,14 @@
 - Accounting
   - Cash basis accounting (Einnahmen-Ausgaben-Rechnung)
   - Financial reporting (planned)
+- Reporting
+  - Income-Statement (Erfolgsrechnung)
+  - Additional financial reporting (planned)
 - German user interface.
 
 > [!WARNING] 
 > This might not be for you, if...
-> - your club has more than 1000 addresses
+> - your club has more than 500 addresses
 > - you need customisation and don't know how to code
 > - you need support operating a webapp
 
@@ -33,14 +36,13 @@
 
 ## Getting started
 
-The easiest way to get started is to [deploy](./docs/manual/deployment.md) to Railway
-with switched off authentication. Ask your agent how to switch off authentication.
-For local deployment option, see [deployment.md](./docs/manual/deployment.md).
+The easiest way to get started is to deploy to Railway
+with switched off authentication. Ask your agent how to switch off authentication. See [deployment.md](./docs/manual/deployment.md) for productive and local deployment.
 
 ## Stack
 
-- Frontend: React
-- Backend: C#
+- Frontend: React, Tanstack Query, Tailwind
+- Backend: C#, ASP.NET Core
 - DB: Postgres
 - Object Storage: S3
 - IAM: Azure Entra
@@ -49,4 +51,4 @@ For local deployment option, see [deployment.md](./docs/manual/deployment.md).
 
 Use the GitHub issues for collaboration.
 
-This repository works best with the [Matt Pocock skills](https://www.aihero.dev/skills) for coding agents. Conventions for review are in [CODING_STANDARDS.md](./CODING_STANDARDS.md), the domain language in [GLOSSARY.md](./GLOSSARY.md).
+This repository uses the [Matt Pocock skills](https://www.aihero.dev/skills) for coding agents. Conventions for review are in [CODING_STANDARDS.md](./CODING_STANDARDS.md), the domain language in [GLOSSARY.md](./GLOSSARY.md).
