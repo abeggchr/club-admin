@@ -1,3 +1,4 @@
+using backend.Settings;
 using backend.Accounting;
 using backend.Auth;
 using backend.Invoicing;
@@ -21,6 +22,7 @@ builder.Services.AddEntraLogin(builder.Configuration);
 builder.Services.AddObjectStorage(builder.Configuration);
 builder.Services.AddScoped<InvoiceCreator>();
 builder.Services.AddScoped<BankImporter>();
+builder.Services.AddSingleton<IEmailSender, MailKitEmailSender>();
 InvoiceDocument.UseCommunityLicense();
 
 // A malformed Chart of Accounts file fails startup (see ADR 0001).

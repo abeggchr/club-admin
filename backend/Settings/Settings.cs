@@ -15,4 +15,13 @@ public class Settings
     public string Address { get; set; } = "";
     public string PostalCode { get; set; } = "";
     public string City { get; set; } = "";
+
+    /// <summary>The optional SMTP group (email channel): all null, or Host, Port, Security and FromAddress set. The password is stored in plain text and never returned (ADR 0007).</summary>
+    public string? SmtpHost { get; set; }
+    public int? SmtpPort { get; set; }
+    public SmtpSecurity? SmtpSecurity { get; set; }
+    public string? SmtpUsername { get; set; }
+    public string? SmtpPassword { get; set; }
+    public string? SmtpFromAddress { get; set; }
+    public string? SmtpFromName { get; set; }
 }
