@@ -51,7 +51,7 @@ export function PersonsToolbar({
 				<button
 					type="button"
 					onClick={onExport}
-					className="flex items-center gap-2 rounded border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
+					className="flex items-center gap-2 rounded border border-sky-600 px-3 py-2 text-sm text-sky-700 hover:bg-sky-50"
 				>
 					<FiDownload />
 					Export
@@ -59,7 +59,7 @@ export function PersonsToolbar({
 				<button
 					type="button"
 					onClick={onMailingList}
-					className="flex items-center gap-2 rounded border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
+					className="flex items-center gap-2 rounded border border-sky-600 px-3 py-2 text-sm text-sky-700 hover:bg-sky-50"
 				>
 					<FiDownload />
 					Versandliste
@@ -67,7 +67,7 @@ export function PersonsToolbar({
 				<button
 					type="button"
 					onClick={onImport}
-					className="flex items-center gap-2 rounded border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
+					className="flex items-center gap-2 rounded border border-sky-600 px-3 py-2 text-sm text-sky-700 hover:bg-sky-50"
 				>
 					<FiUpload />
 					Import
