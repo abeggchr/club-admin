@@ -39,7 +39,8 @@ public record ImportSnapshot(
     IReadOnlyCollection<Person> Persons,
     IReadOnlyCollection<ImportInvoice> Invoices,
     ChartOfAccounts? Chart
-) { }
+)
+{ }
 
 /// <summary>One imported Transaction to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId. A matched Transaction additionally carries the Invoice it covers, the Entries the import proposes for it, — when this Transaction overpays, the excess booked to Account 3600 (Spenden) — and, when this Transaction is the first to cover the total, the UTC timestamp of the Paid status change (the movement's booking date in Zurich time).</summary>
 public record ImportedTransaction(

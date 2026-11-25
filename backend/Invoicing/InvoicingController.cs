@@ -7,7 +7,7 @@ namespace backend.Invoicing;
 
 [ApiController]
 [Route("api/invoices")]
-public class InvoicingController(AppDbContext db) : ControllerBase
+public class InvoicingController(AppDbContext db, ILogger<InvoicingController> logger) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetInvoices()
@@ -88,7 +88,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
     )
     {
         var plan = await PlanBulkSendAsync(senders, ct);
-        if (BulkSendRules.Preview(plan).Email > 0 && InvoiceRules.ValidateSend(InvoiceStatus.Created, request.Subject, request.Text) is { } invalid)
+        if (BulkSendRules.ValidateMessage(plan, request.Subject, request.Text) is { } invalid)
         {
             return BadRequest(new { error = invalid });
         }
@@ -134,12 +134,13 @@ public class InvoicingController(AppDbContext db) : ControllerBase
             }
             return error;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
         }
-        catch (Exception)
+        catch (Exception e)
         {
+            logger.LogError(e, "Sending Invoice {InvoiceId} failed", item.Invoice.Id);
             return "Die Rechnung konnte nicht versendet werden.";
         }
     }
@@ -390,6 +391,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
 /// <summary>One Invoice in the bulk send summary; the reason is null for a sent Invoice.</summary>
 public record BulkSendOutcome(string Number, string Person, string? Reason);
 
+/// <summary>The result of a bulk send: which Invoices were sent, failed or skipped.</summary>
 public record BulkSendSummary(
     IReadOnlyList<BulkSendOutcome> Sent,
     IReadOnlyList<BulkSendOutcome> Failed,

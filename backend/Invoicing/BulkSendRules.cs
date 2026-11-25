@@ -6,6 +6,7 @@ namespace backend.Invoicing;
 /// <summary>An Invoice with its Recipient and the Delivery Channel the bulk send picked, or why it is skipped.</summary>
 public record BulkSendItem(Invoice Invoice, PersonEntity Recipient, DeliveryChannel? Channel, string? SkipReason);
 
+/// <summary>How many unsent Invoices a bulk send would deliver by email, by post, or cannot send.</summary>
 public record BulkSendPreview(int Email, int Post, int NotSendable);
 
 /// <summary>Picks the Delivery Channel per unsent Invoice for the bulk send: Email first, then Post, else skipped.</summary>
@@ -35,6 +36,12 @@ public static class BulkSendRules
             plan.Count(i => i.Channel == DeliveryChannel.Post),
             plan.Count(i => i.Channel is null)
         );
+
+    /// <summary>Subject and text are required only when at least one Invoice goes by email; a letter needs neither.</summary>
+    public static string? ValidateMessage(IReadOnlyCollection<BulkSendItem> plan, string? subject, string? text) =>
+        plan.Any(i => i.Channel == DeliveryChannel.Email)
+            ? InvoiceRules.ValidateSend(InvoiceStatus.Created, subject, text)
+            : null;
 
     private static BulkSendItem Pick(
         Invoice invoice,

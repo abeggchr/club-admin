@@ -76,10 +76,21 @@ public static class InvoiceRules
     public static string? ValidateSend(InvoiceStatus status, string? subject, string? text, bool requiresMessage = true)
     {
         if (status is not (InvoiceStatus.Created or InvoiceStatus.Sent))
+        {
             return "Nur offene Rechnungen können versendet werden.";
-        if (!requiresMessage) return null;
-        if (string.IsNullOrWhiteSpace(subject)) return "Der Betreff ist erforderlich.";
-        if (string.IsNullOrWhiteSpace(text)) return "Der Text ist erforderlich.";
+        }
+        if (!requiresMessage)
+        {
+            return null;
+        }
+        if (string.IsNullOrWhiteSpace(subject))
+        {
+            return "Der Betreff ist erforderlich.";
+        }
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "Der Text ist erforderlich.";
+        }
         return null;
     }
 
