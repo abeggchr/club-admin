@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useRef } from "react";
 import { MdClose } from "react-icons/md";
 import { accountLabel } from "../accounting/AccountPicker";
 import { formatChf } from "../accounting/amount";
-import { accountsQueryOptions } from "../accounting/api";
+import { accountsQueryOptions, settingsQueryOptions } from "../accounting/api";
 import {
 	cancelInvoice,
 	formatDate,
@@ -12,9 +13,14 @@ import {
 	invoicePdfUrl,
 	statusLabel,
 } from "./api";
-import { formatDateTime } from "./invoiceDetail";
+import {
+	deliveryChannels,
+	formatDateTime,
+	preselectedChannel,
+} from "./invoiceDetail";
+import { SendDialog } from "./SendDialog";
 
-/** Detail of an Invoice. Nothing is editable or deletable; an open Invoice can be cancelled (storniert). */
+/** Detail of an Invoice. Nothing is editable or deletable; an open Invoice can be sent by email or cancelled (storniert). */
 export function DetailPanel({
 	id,
 	onClose,
@@ -33,6 +39,21 @@ export function DetailPanel({
 		mutationFn: () => cancelInvoice(id),
 		onSettled: () => invalidateInvoices(queryClient),
 	});
+
+	const { data: settings } = useQuery(settingsQueryOptions);
+	const sendDialog = useRef<HTMLDialogElement>(null);
+	const isOpen = invoice?.status === "Created" || invoice?.status === "Sent";
+	const channels = invoice
+		? deliveryChannels(
+				settings?.emailConfigured ?? false,
+				settings?.ePostConfigured ?? false,
+				invoice.person,
+			)
+		: [];
+	const sendBlocked =
+		channels.length > 0 && preselectedChannel(channels) === null
+			? channels.map((c) => c.blockedReason).join(" ")
+			: null;
 
 	const accountOf = (accountNumber: number) => {
 		const account = accounts.find((a) => a.number === accountNumber);
@@ -119,6 +140,7 @@ export function DetailPanel({
 							{invoice.statusHistory.map((s) => (
 								<li key={`${s.status}-${s.timestamp}`}>
 									{statusLabel(s.status)} – {formatDateTime(s.timestamp)}
+									{s.remark && ` – ${s.remark}`}
 								</li>
 							))}
 						</ul>
@@ -133,12 +155,24 @@ export function DetailPanel({
 							href={invoicePdfUrl(invoice.id)}
 							target="_blank"
 							rel="noreferrer"
-							className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
+							className="rounded border border-sky-600 px-4 py-2 text-sky-700 hover:bg-sky-50"
 						>
-							PDF öffnen
+							Anzeigen
 						</a>
 
-						{invoice.status === "Created" && (
+						{isOpen && (
+							<button
+								type="button"
+								disabled={sendBlocked !== null}
+								title={sendBlocked ?? undefined}
+								onClick={() => sendDialog.current?.showModal()}
+								className="rounded border border-sky-600 px-4 py-2 text-sky-700 enabled:hover:bg-sky-50 disabled:opacity-40"
+							>
+								Versenden
+							</button>
+						)}
+
+						{isOpen && (
 							<button
 								type="button"
 								disabled={cancel.isPending}
@@ -150,7 +184,7 @@ export function DetailPanel({
 									)
 										cancel.mutate();
 								}}
-								className="rounded border border-red-600 px-4 py-2 text-red-700 enabled:hover:bg-red-50 disabled:opacity-40"
+								className="rounded border border-sky-600 px-4 py-2 text-sky-700 enabled:hover:bg-sky-50 disabled:opacity-40"
 							>
 								Stornieren
 							</button>
@@ -159,6 +193,12 @@ export function DetailPanel({
 					{cancel.isError && (
 						<p className="text-sm text-red-600">{cancel.error.message}</p>
 					)}
+					<SendDialog
+						dialogRef={sendDialog}
+						invoiceId={invoice.id}
+						channels={channels}
+						recipientEmail={invoice.person.email ?? ""}
+					/>
 				</>
 			)}
 		</div>

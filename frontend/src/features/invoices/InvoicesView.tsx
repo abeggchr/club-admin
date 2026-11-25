@@ -2,46 +2,29 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { MdAdd } from "react-icons/md";
 import { formatChf } from "../accounting/amount";
+import { settingsQueryOptions } from "../accounting/api";
 import { textTemplatesQueryOptions } from "../settings/textTemplateApi";
 import { AnnualFeesDialog } from "./AnnualFeesDialog";
-import {
-	formatDate,
-	type InvoiceListItem,
-	invoicesQueryOptions,
-	statusLabel,
-} from "./api";
+import { formatDate, invoicesQueryOptions, statusLabel } from "./api";
+import { BulkSendDialog } from "./BulkSendDialog";
 import { CreatePanel } from "./CreatePanel";
 import { DetailPanel } from "./DetailPanel";
-
-const filters = {
-	open: {
-		label: "Offene",
-		filter: (i: InvoiceListItem) => i.status === "Created",
-	},
-	paid: {
-		label: "Bezahlte",
-		filter: (i: InvoiceListItem) => i.status === "Paid",
-	},
-	cancelled: {
-		label: "Stornierte",
-		filter: (i: InvoiceListItem) => i.status === "Cancelled",
-	},
-	all: { label: "Alle", filter: () => true },
-};
-
-type FilterKey = keyof typeof filters;
+import { type InvoiceFilterKey, invoiceFilters } from "./invoiceFilter";
 
 /** The Invoices area: table (newest first) | create panel (only while open). */
 export function InvoicesView() {
 	const { data: invoices } = useSuspenseQuery(invoicesQueryOptions);
 	const { data: templates } = useSuspenseQuery(textTemplatesQueryOptions);
+	const { data: settings } = useSuspenseQuery(settingsQueryOptions);
 	const annualFeesDialog = useRef<HTMLDialogElement>(null);
+	const bulkSendDialog = useRef<HTMLDialogElement>(null);
 	const [creating, setCreating] = useState(false);
 	const [selectedId, setSelectedId] = useState<number | null>(null);
-	const [filterKey, setFilterKey] = useState<FilterKey>("open");
+	const [filterKey, setFilterKey] = useState<InvoiceFilterKey>("open");
 	const noTemplates = templates.length === 0;
+	const noChannel = !settings?.emailConfigured && !settings?.ePostConfigured;
 	const rows = invoices
-		.filter(filters[filterKey].filter)
+		.filter(invoiceFilters[filterKey].filter)
 		.sort((a, b) => b.id - a.id);
 
 	return (
@@ -64,18 +47,32 @@ export function InvoicesView() {
 					type="button"
 					onClick={() => annualFeesDialog.current?.showModal()}
 					disabled={noTemplates}
+					title="Jahresrechnungen erstellen"
 					className="rounded border border-sky-600 px-3 py-2 text-sm text-sky-700 enabled:hover:bg-sky-50 disabled:opacity-40"
 				>
 					Jahresbeiträge
 				</button>
+				<button
+					type="button"
+					onClick={() => bulkSendDialog.current?.showModal()}
+					disabled={noChannel}
+					title={
+						noChannel
+							? "Weder E-Mail noch ePost ist eingerichtet."
+							: "Alle nicht versendeten Rechnungen versenden"
+					}
+					className="rounded border border-sky-600 px-3 py-2 text-sm text-sky-700 enabled:hover:bg-sky-50 disabled:opacity-40"
+				>
+					Versenden
+				</button>
 				<fieldset className="ml-4 inline-flex">
 					<legend className="sr-only">Ansicht</legend>
-					{Object.entries(filters).map(([key, f]) => (
+					{Object.entries(invoiceFilters).map(([key, f]) => (
 						<button
 							key={key}
 							type="button"
 							aria-pressed={key === filterKey}
-							onClick={() => setFilterKey(key as FilterKey)}
+							onClick={() => setFilterKey(key as InvoiceFilterKey)}
 							className={`-ml-px border border-neutral-300 px-3 py-2 text-sm first:ml-0 first:rounded-l last:rounded-r ${
 								key === filterKey
 									? "bg-neutral-800 text-white"
@@ -149,6 +146,7 @@ export function InvoicesView() {
 				)}
 			</div>
 			<AnnualFeesDialog dialogRef={annualFeesDialog} />
+			<BulkSendDialog dialogRef={bulkSendDialog} />
 		</>
 	);
 }

@@ -1,11 +1,25 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { type FormEvent, type ReactNode, useState } from "react";
+import {
+	type FormEvent,
+	type ReactNode,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { formatChf, parseAmount } from "../accounting/amount";
 import {
 	invalidateJournalQueries,
 	saveSettings,
+	sendTestEmail,
 	settingsQueryOptions,
 } from "../accounting/api";
+import {
+	emptySmtpDraft,
+	type SmtpDraft,
+	type SmtpSecurity,
+	smtpDraftFrom,
+	smtpPayload,
+} from "./smtpDraft";
 import { TextTemplatesSection } from "./TextTemplatesSection";
 
 type FormState = {
@@ -36,12 +50,18 @@ function FormSection({
 	children: ReactNode;
 }) {
 	return (
-		<fieldset className="flex flex-col gap-3">
-			<legend className="mb-3 font-medium text-sky-900">{title}</legend>
+		<fieldset className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+			<legend className="px-2 font-medium text-sky-900">{title}</legend>
 			{children}
 		</fieldset>
 	);
 }
+
+const securityOptions: [SmtpSecurity, string][] = [
+	["StartTls", "StartTLS"],
+	["Ssl", "SSL"],
+	["None", "Keine"],
+];
 
 const inputClass = "rounded border border-slate-300 p-2";
 
@@ -57,8 +77,24 @@ export function SettingsPage() {
 		amount: settings ? formatChf(settings.openingBalance) : "",
 		startDate: settings?.startDate ?? "",
 	});
+	const [smtp, setSmtp] = useState<SmtpDraft>(
+		settings ? smtpDraftFrom(settings.smtp) : emptySmtpDraft,
+	);
+	const [ePostApiKey, setEPostApiKey] = useState("");
+	const [receiver, setReceiver] = useState("");
+	const testDialogRef = useRef<HTMLDialogElement>(null);
+	const [testResult, setTestResult] = useState<{
+		ok: boolean;
+		message: string;
+	} | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
+
+	useEffect(() => {
+		if (!testResult?.ok) return;
+		const timer = setTimeout(() => setTestResult(null), 5_000);
+		return () => clearTimeout(timer);
+	}, [testResult]);
 
 	const bind = (key: keyof FormState) => ({
 		value: form[key],
@@ -67,6 +103,41 @@ export function SettingsPage() {
 		className: inputClass,
 	});
 
+	const bindSmtp = (key: keyof SmtpDraft) => ({
+		value: smtp[key],
+		onChange: (e: { target: { value: string } }) =>
+			setSmtp((prev) => ({ ...prev, [key]: e.target.value })),
+		className: inputClass,
+	});
+
+	function openTestDialog() {
+		setReceiver(smtp.fromAddress);
+		testDialogRef.current?.showModal();
+	}
+
+	async function onSendTest() {
+		testDialogRef.current?.close();
+		setTestResult(null);
+		const testReceiver = receiver;
+		const payload = smtpPayload(smtp);
+		if (!payload.ok) {
+			setTestResult({ ok: false, message: payload.error });
+			return;
+		}
+		try {
+			await sendTestEmail(testReceiver.trim(), payload.value);
+			setTestResult({
+				ok: true,
+				message: `Test-E-Mail gesendet an ${testReceiver.trim()}.`,
+			});
+		} catch (err) {
+			setTestResult({
+				ok: false,
+				message: err instanceof Error ? err.message : "Senden fehlgeschlagen.",
+			});
+		}
+	}
+
 	async function onSubmit(e: FormEvent) {
 		e.preventDefault();
 		setError(null);
@@ -74,6 +145,11 @@ export function SettingsPage() {
 		const parsed = parseAmount(form.amount, { allowZero: true });
 		if (!parsed.ok) {
 			setError(parsed.error);
+			return;
+		}
+		const smtpParsed = smtpPayload(smtp);
+		if (!smtpParsed.ok) {
+			setError(smtpParsed.error);
 			return;
 		}
 		try {
@@ -85,6 +161,8 @@ export function SettingsPage() {
 				address: form.address.trim(),
 				postalCode: form.postalCode.trim(),
 				city: form.city.trim(),
+				smtp: smtpParsed.value,
+				ePostApiKey: ePostApiKey.trim(),
 			});
 			queryClient.setQueryData(settingsQueryOptions.queryKey, result);
 			await invalidateJournalQueries(queryClient);
@@ -97,6 +175,8 @@ export function SettingsPage() {
 				iban: result.iban,
 				amount: formatChf(result.openingBalance),
 			}));
+			setSmtp(smtpDraftFrom(result.smtp));
+			setEPostApiKey("");
 			setSaved(true);
 		} catch (err) {
 			setError(
@@ -111,52 +191,162 @@ export function SettingsPage() {
 			<form
 				onSubmit={onSubmit}
 				noValidate
-				className="mt-6 flex max-w-sm flex-col gap-6"
+				className="mt-6 grid grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-3"
 			>
-				<FormSection title="Klub">
-					<Field label="Name">
-						<input required maxLength={70} {...bind("name")} />
-					</Field>
-					<Field label="Adresse">
-						<input required maxLength={70} {...bind("address")} />
+				<div className="flex flex-col gap-6">
+					<FormSection title="Klub">
+						<Field label="Name">
+							<input required maxLength={70} {...bind("name")} />
+						</Field>
+						<Field label="Adresse">
+							<input required maxLength={70} {...bind("address")} />
+						</Field>
+						<div className="grid grid-cols-[1fr_2fr] gap-3">
+							<Field label="PLZ">
+								<input required maxLength={16} {...bind("postalCode")} />
+							</Field>
+							<Field label="Ort">
+								<input required maxLength={35} {...bind("city")} />
+							</Field>
+						</div>
+					</FormSection>
+
+					<FormSection title="Bankverbindung">
+						<Field label="IBAN">
+							<input required {...bind("iban")} />
+						</Field>
+					</FormSection>
+
+					<FormSection title="Anfangssaldo">
+						<Field label="Betrag">
+							<input inputMode="decimal" {...bind("amount")} />
+						</Field>
+						<Field label="Startdatum">
+							<input type="date" required {...bind("startDate")} />
+						</Field>
+					</FormSection>
+				</div>
+
+				<FormSection title="E-Mail">
+					<Field label="SMTP Server">
+						<input {...bindSmtp("host")} />
 					</Field>
 					<div className="grid grid-cols-[1fr_2fr] gap-3">
-						<Field label="PLZ">
-							<input required maxLength={16} {...bind("postalCode")} />
+						<Field label="Port">
+							<input inputMode="numeric" {...bindSmtp("port")} />
 						</Field>
-						<Field label="Ort">
-							<input required maxLength={35} {...bind("city")} />
+						<Field label="Verschlüsselung">
+							<select {...bindSmtp("security")}>
+								<option value="" />
+								{securityOptions.map(([value, label]) => (
+									<option key={value} value={value}>
+										{label}
+									</option>
+								))}
+							</select>
 						</Field>
 					</div>
-				</FormSection>
-
-				<FormSection title="Bankverbindung">
-					<Field label="IBAN">
-						<input required {...bind("iban")} />
+					<Field label="Benutzername">
+						<input autoComplete="off" {...bindSmtp("username")} />
 					</Field>
-				</FormSection>
-
-				<FormSection title="Anfangssaldo">
-					<Field label="Betrag">
-						<input inputMode="decimal" {...bind("amount")} />
-					</Field>
-					<Field label="Startdatum">
-						<input type="date" required {...bind("startDate")} />
-					</Field>
-				</FormSection>
-
-				<div className="flex flex-col gap-3">
-					<button
-						type="submit"
-						className="self-start rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
+					<Field
+						label={`Passwort (${settings?.smtp.passwordSet ? "gesetzt" : "nicht gesetzt"})`}
 					>
-						Speichern
+						<input
+							type="password"
+							autoComplete="new-password"
+							placeholder={
+								settings?.smtp.passwordSet ? "leer lassen = unverändert" : ""
+							}
+							{...bindSmtp("password")}
+						/>
+					</Field>
+					<Field label="Absenderadresse">
+						<input type="email" {...bindSmtp("fromAddress")} />
+					</Field>
+					<button
+						type="button"
+						onClick={openTestDialog}
+						className="self-start rounded border border-sky-600 px-4 py-2 text-sky-700 hover:bg-sky-50"
+					>
+						Test-E-Mail senden
 					</button>
-					{saved && <p className="text-green-700">Gespeichert.</p>}
-					{error && <p className="text-red-600">{error}</p>}
+					{testResult && (
+						<p className={testResult.ok ? "text-green-700" : "text-red-600"}>
+							{testResult.message}
+						</p>
+					)}
+				</FormSection>
+
+				<div className="flex flex-col gap-6">
+					<FormSection title="Post">
+						<Field
+							label={`ePost API-Key (${settings?.ePostConfigured ? "gesetzt" : "nicht gesetzt"})`}
+						>
+							<input
+								type="password"
+								autoComplete="new-password"
+								placeholder={
+									settings?.ePostConfigured ? "leer lassen = unverändert" : ""
+								}
+								className={inputClass}
+								value={ePostApiKey}
+								onChange={(e) => setEPostApiKey(e.target.value)}
+							/>
+						</Field>
+					</FormSection>
+
+					<div className="flex flex-col gap-3">
+						<button
+							type="submit"
+							className="self-start rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
+						>
+							Speichern
+						</button>
+						{saved && <p className="text-green-700">Gespeichert.</p>}
+						{error && <p className="text-red-600">{error}</p>}
+					</div>
 				</div>
 			</form>
 			<TextTemplatesSection />
+			<dialog
+				ref={testDialogRef}
+				className="m-auto w-[28rem] rounded border border-neutral-300 p-6 backdrop:bg-black/40"
+			>
+				<form
+					onSubmit={(e) => {
+						e.preventDefault();
+						onSendTest();
+					}}
+					className="flex flex-col gap-4"
+				>
+					<h2 className="text-xl font-bold">Test-E-Mail senden</h2>
+					<Field label="Empfänger">
+						<input
+							type="email"
+							required
+							className={inputClass}
+							value={receiver}
+							onChange={(e) => setReceiver(e.target.value)}
+						/>
+					</Field>
+					<div className="flex gap-2">
+						<button
+							type="submit"
+							className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700"
+						>
+							Senden
+						</button>
+						<button
+							type="button"
+							onClick={() => testDialogRef.current?.close()}
+							className="rounded border border-slate-300 px-4 py-2"
+						>
+							Abbrechen
+						</button>
+					</div>
+				</form>
+			</dialog>
 		</div>
 	);
 }

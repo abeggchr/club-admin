@@ -8,12 +8,12 @@ namespace backend.Settings;
 
 [ApiController]
 [Route("api/settings")]
-public class SettingsController(AppDbContext db) : ControllerBase
+public class SettingsController(AppDbContext db, IEmailSender emailSender) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetSettings() =>
         await db.Settings.FindAsync(Settings.SingletonId) is { } settings
-            ? Ok(settings)
+            ? Ok(SettingsResponse.From(settings))
             : NotFound();
 
     [HttpPut]
@@ -22,7 +22,7 @@ public class SettingsController(AppDbContext db) : ControllerBase
         var earliest = await db.Transactions.AnyAsync()
             ? await db.Transactions.MinAsync(t => t.Date)
             : (DateOnly?)null;
-        if (
+        var error =
             SettingsRules.Validate(
                 update.OpeningBalance,
                 update.StartDate,
@@ -32,9 +32,8 @@ public class SettingsController(AppDbContext db) : ControllerBase
                 update.PostalCode,
                 update.City,
                 earliest
-            ) is
-            { } error
-        )
+            ) ?? SmtpRules.Validate(update.Smtp);
+        if (error is not null)
         {
             return BadRequest(new { error });
         }
@@ -53,10 +52,79 @@ public class SettingsController(AppDbContext db) : ControllerBase
         settings.Address = update.Address!.Trim();
         settings.PostalCode = update.PostalCode!.Trim();
         settings.City = update.City!.Trim();
+        ApplySmtp(settings, update.Smtp);
+        // Write-only like the SMTP password: an empty field keeps the stored key.
+        if (!string.IsNullOrWhiteSpace(update.EPostApiKey))
+        {
+            settings.EPostApiKey = update.EPostApiKey.Trim();
+        }
 
         await db.SaveChangesAsync();
-        return Ok(settings);
+        return Ok(SettingsResponse.From(settings));
     }
+
+    [HttpPost("smtp/test")]
+    public async Task<IActionResult> SendTestEmail(TestEmailRequest request, CancellationToken ct)
+    {
+        if (SmtpRules.IsEmpty(request.Smtp))
+        {
+            return BadRequest(new { error = "Die SMTP-Einstellungen sind unvollständig." });
+        }
+        if (SmtpRules.Validate(request.Smtp) is { } error)
+        {
+            return BadRequest(new { error });
+        }
+        if (!SmtpRules.IsEmailAddress(request.Receiver))
+        {
+            return BadRequest(new { error = "Der Empfänger ist keine gültige E-Mail-Adresse." });
+        }
+
+        var smtp = request.Smtp!;
+        // An empty password means "use the stored one", as on save.
+        var password = string.IsNullOrEmpty(smtp.Password)
+            ? (await db.Settings.FindAsync(Settings.SingletonId))?.SmtpPassword
+            : smtp.Password;
+        var connection = new SmtpConnection(
+            smtp.Host!.Trim(),
+            smtp.Port!.Value,
+            smtp.Security!.Value,
+            NullIfBlank(smtp.Username),
+            password,
+            smtp.FromAddress!.Trim(),
+            (await db.Settings.FindAsync(Settings.SingletonId))?.Name ?? ""
+        );
+
+        return await emailSender.SendTestAsync(connection, request.Receiver!.Trim(), ct) is { } failure
+            ? BadRequest(new { error = $"Die Test-E-Mail konnte nicht gesendet werden: {failure}" })
+            : Ok();
+    }
+
+    // An empty SMTP group clears everything including the password; an empty password otherwise keeps the stored one.
+    private static void ApplySmtp(Settings settings, SmtpInput? smtp)
+    {
+        if (SmtpRules.IsEmpty(smtp))
+        {
+            settings.SmtpHost = null;
+            settings.SmtpPort = null;
+            settings.SmtpSecurity = null;
+            settings.SmtpUsername = null;
+            settings.SmtpPassword = null;
+            settings.SmtpFromAddress = null;
+            return;
+        }
+        settings.SmtpHost = smtp!.Host!.Trim();
+        settings.SmtpPort = smtp.Port;
+        settings.SmtpSecurity = smtp.Security;
+        settings.SmtpUsername = NullIfBlank(smtp.Username);
+        if (!string.IsNullOrEmpty(smtp.Password))
+        {
+            settings.SmtpPassword = smtp.Password;
+        }
+        settings.SmtpFromAddress = smtp.FromAddress!.Trim();
+    }
+
+    private static string? NullIfBlank(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     [HttpGet("text-templates")]
     public async Task<IActionResult> GetTextTemplates() =>
@@ -117,6 +185,7 @@ public class SettingsController(AppDbContext db) : ControllerBase
 
 public record TextTemplateInput(string? Subject, string? Text, string? Greetings);
 
+/// <summary>The Settings as the client submits them; an empty secret stays as stored.</summary>
 public record SettingsUpdate(
     decimal OpeningBalance,
     DateOnly StartDate,
@@ -124,5 +193,46 @@ public record SettingsUpdate(
     string? Name,
     string? Address,
     string? PostalCode,
-    string? City
+    string? City,
+    SmtpInput? Smtp = null,
+    string? EPostApiKey = null
 );
+
+/// <summary>The receiver and the unsaved SMTP group to try out.</summary>
+public record TestEmailRequest(string? Receiver, SmtpInput? Smtp);
+
+/// <summary>The Settings as returned to the client: never a secret, only whether it is set.</summary>
+public record SettingsResponse(
+    decimal OpeningBalance,
+    DateOnly StartDate,
+    string Iban,
+    string Name,
+    string Address,
+    string PostalCode,
+    string City,
+    SmtpResponse Smtp,
+    bool EmailConfigured,
+    bool EPostConfigured
+)
+{
+    public static SettingsResponse From(Settings s) =>
+        new(
+            s.OpeningBalance,
+            s.StartDate,
+            s.Iban,
+            s.Name,
+            s.Address,
+            s.PostalCode,
+            s.City,
+            new SmtpResponse(
+                s.SmtpHost,
+                s.SmtpPort,
+                s.SmtpSecurity,
+                s.SmtpUsername,
+                !string.IsNullOrEmpty(s.SmtpPassword),
+                s.SmtpFromAddress
+            ),
+            s.SmtpHost is not null,
+            !string.IsNullOrEmpty(s.EPostApiKey)
+        );
+}

@@ -66,6 +66,14 @@ public class InvoiceDocumentTests
     }
 
     [Fact]
+    public void PDF_declares_PDF_A_conformance_because_ePost_only_accepts_PDF_A()
+    {
+        var pdf = InvoiceDocument.Render(Data());
+
+        Assert.Contains("pdfaid:part", Encoding.Latin1.GetString(pdf));
+    }
+
+    [Fact]
     public void PDF_shows_number_date_and_formatted_total()
     {
         var text = Text(InvoiceDocument.Render(Data()));

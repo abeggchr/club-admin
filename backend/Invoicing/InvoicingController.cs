@@ -7,7 +7,7 @@ namespace backend.Invoicing;
 
 [ApiController]
 [Route("api/invoices")]
-public class InvoicingController(AppDbContext db) : ControllerBase
+public class InvoicingController(AppDbContext db, ILogger<InvoicingController> logger) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetInvoices()
@@ -31,7 +31,132 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         return Ok(InvoiceMapping.ToInvoiceDetail(invoice, people[invoice.PersonId]));
     }
 
-    // Cancels (storniert) an Invoice that is still Created: records a Cancelled status change.
+    // Sends the Invoice PDF by the chosen Delivery Channel; records a Sent status change only when the channel accepted it.
+    [HttpPost("{id:int}/send")]
+    public async Task<IActionResult> SendInvoice(
+        int id,
+        InvoiceSendRequest request,
+        [FromServices] InvoiceDispatcher dispatcher,
+        CancellationToken ct
+    )
+    {
+        var invoice = await db
+            .Invoices.Include(i => i.Lines)
+            .Include(i => i.StatusChanges)
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
+        if (invoice is null)
+        {
+            return NotFound();
+        }
+        var person = (await PeopleByIdAsync([invoice.PersonId]))[invoice.PersonId];
+        var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct) ?? new();
+        var error = await dispatcher.SendAsync(
+            invoice,
+            person,
+            settings,
+            request.Channel,
+            request.Message,
+            DateTime.UtcNow,
+            ct
+        );
+        if (error is not null)
+        {
+            return BadRequest(new { error });
+        }
+        await db.SaveChangesAsync(ct);
+        return Ok(InvoiceMapping.ToInvoiceDetail(invoice, person));
+    }
+
+    // How many unsent Invoices a bulk send would deliver by email, by post, or skip.
+    [HttpGet("bulk-send/preview")]
+    public async Task<IActionResult> PreviewBulkSend(
+        [FromServices] IEnumerable<IInvoiceSender> senders,
+        CancellationToken ct
+    )
+    {
+        var plan = await PlanBulkSendAsync(senders, ct);
+        return Ok(BulkSendRules.Preview(plan));
+    }
+
+    // Sends every unsent Invoice by the channel BulkSendRules picks, one at a time; a failure never stops the rest.
+    [HttpPost("bulk-send")]
+    public async Task<IActionResult> BulkSend(
+        InvoiceSendRequest request,
+        [FromServices] IEnumerable<IInvoiceSender> senders,
+        [FromServices] InvoiceDispatcher dispatcher,
+        CancellationToken ct
+    )
+    {
+        var plan = await PlanBulkSendAsync(senders, ct);
+        if (BulkSendRules.ValidateMessage(plan, request.Subject, request.Text) is { } invalid)
+        {
+            return BadRequest(new { error = invalid });
+        }
+        var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct) ?? new();
+        var sent = new List<BulkSendOutcome>();
+        var failed = new List<BulkSendOutcome>();
+        var skipped = new List<BulkSendOutcome>();
+        foreach (var item in plan)
+        {
+            var outcome = (string? reason) =>
+                new BulkSendOutcome(
+                    InvoiceRules.FormatNumber(item.Invoice.Id),
+                    InvoiceMapping.DisplayName(item.Recipient),
+                    reason
+                );
+            if (item.Channel is not { } channel)
+            {
+                skipped.Add(outcome(item.SkipReason));
+                continue;
+            }
+            var error = await SendOneAsync(dispatcher, item, settings, channel, request.Message, ct);
+            (error is null ? sent : failed).Add(outcome(error));
+        }
+        return Ok(new BulkSendSummary(sent, failed, skipped));
+    }
+
+    // Saves each Invoice on its own so a letter already handed to ePost stays recorded when a later one fails.
+    private async Task<string?> SendOneAsync(
+        InvoiceDispatcher dispatcher,
+        BulkSendItem item,
+        Settings.Settings settings,
+        DeliveryChannel channel,
+        InvoiceMessage message,
+        CancellationToken ct
+    )
+    {
+        try
+        {
+            var error = await dispatcher.SendAsync(item.Invoice, item.Recipient, settings, channel, message, DateTime.UtcNow, ct);
+            if (error is null)
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            return error;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Sending Invoice {InvoiceId} failed", item.Invoice.Id);
+            return "Die Rechnung konnte nicht versendet werden.";
+        }
+    }
+
+    private async Task<List<BulkSendItem>> PlanBulkSendAsync(
+        IEnumerable<IInvoiceSender> senders,
+        CancellationToken ct
+    )
+    {
+        var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct) ?? new();
+        var invoices = await db.Invoices.Include(i => i.StatusChanges).ToListAsync(ct);
+        var people = await PeopleByIdAsync(invoices.Select(i => i.PersonId));
+        return BulkSendRules.Plan(invoices.Select(i => (i, people[i.PersonId])), settings, senders);
+    }
+
+    // Cancels (storniert) an open Invoice (Created or Sent): records a Cancelled status change.
     [HttpPost("{id:int}/cancel")]
     public async Task<IActionResult> CancelInvoice(int id, CancellationToken ct)
     {
@@ -43,11 +168,9 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         {
             return NotFound();
         }
-        if (InvoiceRules.LatestStatus(invoice) != InvoiceStatus.Created)
+        if (InvoiceRules.ValidateCancel(InvoiceRules.LatestStatus(invoice)) is { } error)
         {
-            return BadRequest(
-                new { error = "Nur offene Rechnungen können storniert werden." }
-            );
+            return BadRequest(new { error });
         }
         invoice.StatusChanges.Add(
             new InvoiceStatusChange { Status = InvoiceStatus.Cancelled, Timestamp = DateTime.UtcNow }
@@ -264,6 +387,16 @@ public class InvoicingController(AppDbContext db) : ControllerBase
             .ToDictionaryAsync(p => p.Id);
     }
 }
+
+/// <summary>One Invoice in the bulk send summary; the reason is null for a sent Invoice.</summary>
+public record BulkSendOutcome(string Number, string Person, string? Reason);
+
+/// <summary>The result of a bulk send: which Invoices were sent, failed or skipped.</summary>
+public record BulkSendSummary(
+    IReadOnlyList<BulkSendOutcome> Sent,
+    IReadOnlyList<BulkSendOutcome> Failed,
+    IReadOnlyList<BulkSendOutcome> Skipped
+);
 
 public record MembershipDiscountInput(int? PersonId, int? Percent, string? Text);
 

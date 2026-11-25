@@ -83,7 +83,7 @@ export function TextTemplatesSection() {
 	}
 
 	return (
-		<section className="mt-10 flex max-w-xl flex-col gap-3">
+		<section className="mt-10 flex max-w-xl flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
 			<div className="flex items-center gap-3">
 				<h3 className="font-medium">Textvorlagen</h3>
 				<button

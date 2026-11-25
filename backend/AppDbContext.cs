@@ -27,6 +27,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(o => o.Address).IsRequired().HasMaxLength(70);
             e.Property(o => o.PostalCode).IsRequired().HasMaxLength(16);
             e.Property(o => o.City).IsRequired().HasMaxLength(35);
+            e.Property(o => o.SmtpSecurity).HasConversion<string>();
         });
         modelBuilder.Entity<AccountUsage>(e =>
         {

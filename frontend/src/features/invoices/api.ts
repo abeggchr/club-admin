@@ -1,6 +1,8 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "../../lib/apiFetch";
 import { ensureOk, getJson, requestJson } from "../accounting/api";
+import type { BulkSendPreview, BulkSendSummary } from "./bulkSend";
+import type { DeliveryChannel } from "./invoiceDetail";
 import type { InvoiceInput } from "./invoiceDraft";
 
 export type InvoiceListItem = {
@@ -30,6 +32,7 @@ export type InvoiceDetail = {
 		postalCode: string | null;
 		city: string | null;
 		country: string | null;
+		email: string | null;
 	};
 	lines: { text: string; amount: number; accountNumber: number }[];
 	total: number;
@@ -38,7 +41,7 @@ export type InvoiceDetail = {
 	reference: string;
 	/** The id of the Transaction that first covered the total, or null. */
 	paidBy: number | null;
-	statusHistory: { status: string; timestamp: string }[];
+	statusHistory: { status: string; timestamp: string; remark: string | null }[];
 };
 
 export const invoiceDetailQueryOptions = (id: number) =>
@@ -109,6 +112,27 @@ export async function deleteMembershipDiscount(
 	);
 }
 
+/** Sends the Invoice PDF by the chosen channel (subject and text matter for email only); rejects with the backend's message. */
+export function sendInvoice(
+	id: number,
+	message: { channel: DeliveryChannel | null; subject: string; text: string },
+): Promise<InvoiceDetail> {
+	return requestJson(`/api/invoices/${id}/send`, "POST", message);
+}
+
+export const bulkSendPreviewQueryOptions = queryOptions({
+	queryKey: ["invoices", "bulk-send-preview"],
+	queryFn: () => getJson<BulkSendPreview>("/api/invoices/bulk-send/preview"),
+});
+
+/** Sends every unsent Invoice by the channel the backend picks; subject and text matter for email only. */
+export function bulkSendInvoices(message: {
+	subject: string;
+	text: string;
+}): Promise<BulkSendSummary> {
+	return requestJson("/api/invoices/bulk-send", "POST", message);
+}
+
 /** Cancels (storniert) an open Invoice; rejects with the backend's message. */
 export function cancelInvoice(id: number): Promise<InvoiceDetail> {
 	return requestJson(`/api/invoices/${id}/cancel`, "POST", {});
@@ -122,6 +146,7 @@ export function invalidateInvoices(queryClient: QueryClient) {
 
 const statusLabels: Record<string, string> = {
 	Created: "Erstellt",
+	Sent: "Versendet",
 	Paid: "Bezahlt",
 	Cancelled: "Storniert",
 };

@@ -85,7 +85,7 @@ export function TransactionsView() {
 						title={
 							dirty
 								? "Zuerst die ungespeicherten Änderungen speichern oder verwerfen"
-								: "Bewegungen aus der eBanking-ZIP importieren"
+								: "Bewegungen aus CAMT-Dateien importieren"
 						}
 						className="flex items-center gap-2 rounded border border-sky-600 px-3 py-2 text-sm text-sky-700 enabled:hover:bg-sky-50 disabled:opacity-40"
 					>

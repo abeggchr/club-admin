@@ -1,4 +1,6 @@
 using backend.Accounting;
+using backend.Invoicing;
+using backend.Settings;
 using backend.Tests.Invoicing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -19,6 +21,15 @@ public sealed class AppFactory(LocalPostgresFixture postgres) : WebApplicationFa
     /// <summary>Receipt PDFs of this app instance; the S3 endpoint is unreachable, so tests use memory.</summary>
     public InMemoryReceiptStorage Receipts { get; } = new();
 
+    /// <summary>Invoice PDFs of this app instance, for the same reason.</summary>
+    public InMemoryInvoiceStorage InvoicePdfs { get; } = new();
+
+    /// <summary>Test emails of this app instance; no SMTP server is contacted.</summary>
+    public InMemoryEmailSender Emails { get; } = new();
+
+    /// <summary>The stand-in for api.epost.ch of this app instance; the real API bills every letter and is never called.</summary>
+    public InMemoryEPostHandler EPost { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -36,6 +47,9 @@ public sealed class AppFactory(LocalPostgresFixture postgres) : WebApplicationFa
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<IReceiptStorage>(Receipts);
+            services.AddSingleton<IInvoiceStorage>(InvoicePdfs);
+            services.AddSingleton<IEmailSender>(Emails);
+            services.AddHttpClient<EPostInvoiceSender>().ConfigurePrimaryHttpMessageHandler(() => EPost);
             services
                 .AddAuthentication(options =>
                 {

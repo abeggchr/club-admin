@@ -194,6 +194,9 @@ namespace backend.Migrations
                     b.Property<int>("InvoiceId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Remark")
+                        .HasColumnType("text");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
@@ -311,6 +314,9 @@ namespace backend.Migrations
                         .HasMaxLength(35)
                         .HasColumnType("character varying(35)");
 
+                    b.Property<string>("EPostApiKey")
+                        .HasColumnType("text");
+
                     b.Property<string>("Iban")
                         .IsRequired()
                         .HasMaxLength(21)
@@ -329,6 +335,24 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<string>("SmtpFromAddress")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SmtpHost")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SmtpPassword")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SmtpPort")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SmtpSecurity")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SmtpUsername")
+                        .HasColumnType("text");
 
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
