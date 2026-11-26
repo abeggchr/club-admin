@@ -34,6 +34,8 @@
 
 ![accounting](./docs/manual/images/accounting.png)
 
+![reporting](./docs/manual/images/reporting.png)
+
 ## Getting started
 
 The easiest way to get started is to deploy to Railway
