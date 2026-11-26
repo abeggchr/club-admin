@@ -11,10 +11,9 @@
 - Invoices
   - Create single invoices
   - Create batch invoices for yearly fee (grouped by address, other payer functionality)
-  - Sending invoices (planned)
+  - Sending invoices (SMTP, ePost)
 - Accounting
   - Cash basis accounting (Einnahmen-Ausgaben-Rechnung)
-  - Financial reporting (planned)
 - Reporting
   - Income-Statement (Erfolgsrechnung)
   - Additional financial reporting (planned)
