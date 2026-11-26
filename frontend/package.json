@@ -15,6 +15,7 @@
     "format": "biome format",
     "format:write": "biome format --write",
     "lint": "biome lint",
+    "lint:write": "biome lint --write",
     "check": "biome check",
     "check:write": "biome check --write"
   },
