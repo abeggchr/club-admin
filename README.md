@@ -1,6 +1,6 @@
 # Club Admin
 
-> simple club administration, open-source, free
+> simple club administration, open-source, free, ready for self-hosting
 
 ## Features
 
