@@ -22,6 +22,7 @@
 > [!WARNING] 
 > This might not be for you, if...
 > - your club has more than 500 addresses
+> - your club needs groups
 > - you need customisation and don't know how to code
 > - you need support operating a webapp
 
