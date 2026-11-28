@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using backend.Settings;
 using PersonEntity = backend.Person.Person;
 using SettingsEntity = backend.Settings.Settings;
 
@@ -12,15 +11,7 @@ namespace backend.Invoicing;
 /// </summary>
 public class EPostEmailInvoiceSender(HttpClient http) : IInvoiceSender
 {
-    public DeliveryChannel Channel => DeliveryChannel.Email;
-
-    public string NotConfiguredError => SmtpInvoiceSender.EmailNotConfiguredError;
-
-    public string CannotDeliverError => "Die Person hat keine E-Mail-Adresse.";
-
-    public bool IsConfigured(SettingsEntity settings) => EmailBackends.Resolve(settings) == EmailBackend.EPost;
-
-    public bool CanDeliverTo(PersonEntity recipient) => !string.IsNullOrWhiteSpace(recipient.Email);
+    public DeliveryBackend Backend => DeliveryBackend.EPostEmail;
 
     public async Task<InvoiceSendResult> SendAsync(
         SettingsEntity settings,

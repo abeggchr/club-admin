@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PersonEntity = backend.Person.Person;
+using SettingsEntity = backend.Settings.Settings;
 
 namespace backend.Invoicing;
 
@@ -29,6 +30,9 @@ public record InvoicePersonDetailDto(
     string? Email
 );
 
+/// <summary>A Delivery Channel of the Recipient, with the German reason it is blocked or null when it can be used.</summary>
+public record ChannelOptionDto(DeliveryChannel Channel, string? BlockedReason);
+
 public record InvoiceDetailDto(
     int Id,
     string Number,
@@ -39,7 +43,8 @@ public record InvoiceDetailDto(
     string Status,
     string Reference,
     int? PaidBy,
-    List<InvoiceStatusChangeDto> StatusHistory
+    List<InvoiceStatusChangeDto> StatusHistory,
+    List<ChannelOptionDto> ChannelOptions
 );
 
 public static class InvoiceQueries
@@ -72,7 +77,7 @@ public static class InvoiceMapping
             InvoiceStatusRules.Current(i).ToString()
         );
 
-    public static InvoiceDetailDto ToInvoiceDetail(Invoice i, PersonEntity p) =>
+    public static InvoiceDetailDto ToInvoiceDetail(Invoice i, PersonEntity p, SettingsEntity settings) =>
         new(
             i.Id,
             InvoiceRules.FormatNumber(i.Id),
@@ -100,6 +105,9 @@ public static class InvoiceMapping
                     InvoiceTime.ToZurich(s.Timestamp),
                     s.Remark
                 ))
+                .ToList(),
+            DeliveryChannelRules.Options(settings, p)
+                .Select(o => new ChannelOptionDto(o.Channel, o.BlockedReason))
                 .ToList()
         );
 }

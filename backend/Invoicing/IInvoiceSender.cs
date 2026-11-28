@@ -24,20 +24,14 @@ public record InvoiceSendRequest(string? Subject, string? Text, DeliveryChannel 
 /// <summary>Outcome of one send: the Remark for the Sent status change, or a German error and nothing recorded.</summary>
 public record InvoiceSendResult(string? Remark, string? Error);
 
-/// <summary>Strategy for one Delivery Channel. Real: <see cref="SmtpInvoiceSender"/>; development and tests register fakes.</summary>
+/// <summary>
+/// Hands an Invoice PDF to one <see cref="DeliveryBackend"/>. Whether it may be used is decided beforehand by
+/// <see cref="DeliveryChannelRules"/>. Real: <see cref="SmtpInvoiceSender"/>, <see cref="EPostEmailInvoiceSender"/>,
+/// <see cref="EPostInvoiceSender"/>.
+/// </summary>
 public interface IInvoiceSender
 {
-    DeliveryChannel Channel { get; }
-
-    /// <summary>German error when <see cref="IsConfigured"/> is false.</summary>
-    string NotConfiguredError { get; }
-
-    /// <summary>German error when <see cref="CanDeliverTo"/> is false.</summary>
-    string CannotDeliverError { get; }
-
-    bool IsConfigured(SettingsEntity settings);
-
-    bool CanDeliverTo(PersonEntity recipient);
+    DeliveryBackend Backend { get; }
 
     /// <summary>Sends the Invoice PDF to the Recipient and returns the Remark text.</summary>
     Task<InvoiceSendResult> SendAsync(

@@ -2,7 +2,7 @@ import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "../../lib/apiFetch";
 import { ensureOk, getJson, requestJson } from "../accounting/api";
 import type { BulkSendPreview, BulkSendSummary } from "./bulkSend";
-import type { DeliveryChannel } from "./invoiceDetail";
+import type { ChannelOption, DeliveryChannel } from "./invoiceDetail";
 import type { InvoiceInput } from "./invoiceDraft";
 
 export type InvoiceListItem = {
@@ -42,6 +42,8 @@ export type InvoiceDetail = {
 	/** The id of the Transaction that first covered the total, or null. */
 	paidBy: number | null;
 	statusHistory: { status: string; timestamp: string; remark: string | null }[];
+	/** Email, then Post, each with the backend's reason it is blocked for this Recipient. */
+	channelOptions: ChannelOption[];
 };
 
 export const invoiceDetailQueryOptions = (id: number) =>

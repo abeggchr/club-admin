@@ -4,8 +4,9 @@ using SettingsEntity = backend.Settings.Settings;
 namespace backend.Invoicing;
 
 /// <summary>
-/// The single entry point for sending an Invoice: checks the status, picks the Delivery Channel's
-/// strategy, loads the PDF and appends the Sent status change when the sender succeeded.
+/// The single entry point for sending an Invoice: checks the status, asks <see cref="DeliveryChannelRules"/> who
+/// delivers the chosen Delivery Channel, loads the PDF, hands it to that backend's sender and appends the Sent
+/// status change when the sender succeeded.
 /// </summary>
 public class InvoiceDispatcher(IEnumerable<IInvoiceSender> senders, IInvoiceStorage storage)
 {
@@ -27,16 +28,10 @@ public class InvoiceDispatcher(IEnumerable<IInvoiceSender> senders, IInvoiceStor
         {
             return invalid;
         }
-        // A channel may have several backends (Email: SMTP or ePost); at most one is configured.
-        var ofChannel = senders.Where(s => s.Channel == channel).ToList();
-        var sender = ofChannel.FirstOrDefault(s => s.IsConfigured(settings));
-        if (sender is null)
+        var option = DeliveryChannelRules.Option(settings, recipient, channel);
+        if (option.BlockedReason is { } blocked)
         {
-            return ofChannel.FirstOrDefault()?.NotConfiguredError ?? "Der Versandweg ist nicht eingerichtet.";
-        }
-        if (!sender.CanDeliverTo(recipient))
-        {
-            return sender.CannotDeliverError;
+            return blocked;
         }
         var pdf = await storage.GetAsync(invoice.Id, ct);
         if (pdf is null)
@@ -44,6 +39,7 @@ public class InvoiceDispatcher(IEnumerable<IInvoiceSender> senders, IInvoiceStor
             return "Das PDF der Rechnung wurde nicht gefunden.";
         }
 
+        var sender = senders.Single(s => s.Backend == option.Backend);
         var result = await sender.SendAsync(settings, recipient, invoice.Id, message, pdf, ct);
         if (result.Error is not null)
         {

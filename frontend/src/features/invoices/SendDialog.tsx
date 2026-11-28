@@ -4,6 +4,7 @@ import type { EmailBackend } from "../accounting/api";
 import { invalidateInvoices, sendInvoice } from "./api";
 import {
 	type ChannelOption,
+	channelLabel,
 	type DeliveryChannel,
 	preselectedChannel,
 } from "./invoiceDetail";
@@ -78,7 +79,7 @@ export function SendDialog({
 									onChange={() => setChosen(option.channel)}
 									className="mr-2"
 								/>
-								{option.label}
+								{channelLabel(option.channel)}
 							</label>
 							{option.blockedReason && (
 								<span className="ml-2 text-neutral-500">

@@ -28,7 +28,8 @@ public class InvoicingController(AppDbContext db, ILogger<InvoicingController> l
             return NotFound();
         }
         var people = await PeopleByIdAsync([invoice.PersonId]);
-        return Ok(InvoiceMapping.ToInvoiceDetail(invoice, people[invoice.PersonId]));
+        var settings = await db.Settings.FindAsync(Settings.Settings.SingletonId) ?? new();
+        return Ok(InvoiceMapping.ToInvoiceDetail(invoice, people[invoice.PersonId], settings));
     }
 
     // Sends the Invoice PDF by the chosen Delivery Channel; records a Sent status change only when the channel accepted it.
@@ -64,17 +65,14 @@ public class InvoicingController(AppDbContext db, ILogger<InvoicingController> l
             return BadRequest(new { error });
         }
         await db.SaveChangesAsync(ct);
-        return Ok(InvoiceMapping.ToInvoiceDetail(invoice, person));
+        return Ok(InvoiceMapping.ToInvoiceDetail(invoice, person, settings));
     }
 
     // How many unsent Invoices a bulk send would deliver by email, by post, or skip.
     [HttpGet("bulk-send/preview")]
-    public async Task<IActionResult> PreviewBulkSend(
-        [FromServices] IEnumerable<IInvoiceSender> senders,
-        CancellationToken ct
-    )
+    public async Task<IActionResult> PreviewBulkSend(CancellationToken ct)
     {
-        var plan = await PlanBulkSendAsync(senders, ct);
+        var plan = await PlanBulkSendAsync(ct);
         return Ok(BulkSendRules.Preview(plan));
     }
 
@@ -82,12 +80,11 @@ public class InvoicingController(AppDbContext db, ILogger<InvoicingController> l
     [HttpPost("bulk-send")]
     public async Task<IActionResult> BulkSend(
         InvoiceSendRequest request,
-        [FromServices] IEnumerable<IInvoiceSender> senders,
         [FromServices] InvoiceDispatcher dispatcher,
         CancellationToken ct
     )
     {
-        var plan = await PlanBulkSendAsync(senders, ct);
+        var plan = await PlanBulkSendAsync(ct);
         if (BulkSendRules.ValidateMessage(plan, request.Subject, request.Text) is { } invalid)
         {
             return BadRequest(new { error = invalid });
@@ -145,15 +142,12 @@ public class InvoicingController(AppDbContext db, ILogger<InvoicingController> l
         }
     }
 
-    private async Task<List<BulkSendItem>> PlanBulkSendAsync(
-        IEnumerable<IInvoiceSender> senders,
-        CancellationToken ct
-    )
+    private async Task<List<BulkSendItem>> PlanBulkSendAsync(CancellationToken ct)
     {
         var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct) ?? new();
         var invoices = await db.Invoices.Include(i => i.StatusChanges).ToListAsync(ct);
         var people = await PeopleByIdAsync(invoices.Select(i => i.PersonId));
-        return BulkSendRules.Plan(invoices.Select(i => (i, people[i.PersonId])), settings, senders);
+        return BulkSendRules.Plan(invoices.Select(i => (i, people[i.PersonId])), settings);
     }
 
     // Cancels (storniert) an open Invoice (Created or Sent): records a Cancelled status change.
@@ -174,7 +168,8 @@ public class InvoicingController(AppDbContext db, ILogger<InvoicingController> l
         }
         await db.SaveChangesAsync(ct);
         var person = (await PeopleByIdAsync([invoice.PersonId]))[invoice.PersonId];
-        return Ok(InvoiceMapping.ToInvoiceDetail(invoice, person));
+        var settings = await db.Settings.FindAsync([Settings.Settings.SingletonId], ct) ?? new();
+        return Ok(InvoiceMapping.ToInvoiceDetail(invoice, person, settings));
     }
 
     [HttpPost]
@@ -227,7 +222,7 @@ public class InvoicingController(AppDbContext db, ILogger<InvoicingController> l
         }
         return Created(
             $"/api/invoices/{invoice.Id}",
-            InvoiceMapping.ToInvoiceDetail(invoice, person)
+            InvoiceMapping.ToInvoiceDetail(invoice, person, settings!)
         );
     }
 

@@ -12,24 +12,14 @@ public record BulkSendPreview(int Email, int Post, int NotSendable);
 /// <summary>Picks the Delivery Channel per unsent Invoice for the bulk send: Email first, then Post, else skipped.</summary>
 public static class BulkSendRules
 {
-    private static readonly DeliveryChannel[] Preference = [DeliveryChannel.Email, DeliveryChannel.Post];
-
     public static List<BulkSendItem> Plan(
         IEnumerable<(Invoice Invoice, PersonEntity Recipient)> invoices,
-        SettingsEntity settings,
-        IEnumerable<IInvoiceSender> senders
-    )
-    {
-        // A channel may have several backends; at most one is configured, so Pick finds it.
-        var ordered = senders
-            .Where(s => Preference.Contains(s.Channel))
-            .OrderBy(s => Array.IndexOf(Preference, s.Channel))
-            .ToList();
-        return invoices
+        SettingsEntity settings
+    ) =>
+        invoices
             .Where(i => InvoiceStatusRules.Current(i.Invoice) == InvoiceStatus.Created)
-            .Select(i => Pick(i.Invoice, i.Recipient, settings, ordered))
+            .Select(i => Pick(i.Invoice, i.Recipient, settings))
             .ToList();
-    }
 
     public static BulkSendPreview Preview(IReadOnlyCollection<BulkSendItem> plan) =>
         new(
@@ -44,21 +34,18 @@ public static class BulkSendRules
             ? InvoiceRules.ValidateMessage(subject, text)
             : null;
 
-    private static BulkSendItem Pick(
-        Invoice invoice,
-        PersonEntity recipient,
-        SettingsEntity settings,
-        List<IInvoiceSender> senders
-    )
+    private static BulkSendItem Pick(Invoice invoice, PersonEntity recipient, SettingsEntity settings)
     {
-        var configured = senders.Where(s => s.IsConfigured(settings)).ToList();
-        if (configured.FirstOrDefault(s => s.CanDeliverTo(recipient)) is { } sender)
+        var options = DeliveryChannelRules.Options(settings, recipient);
+        if (options.FirstOrDefault(o => o.BlockedReason is null) is { } usable)
         {
-            return new(invoice, recipient, sender.Channel, null);
+            return new(invoice, recipient, usable.Channel, null);
         }
+        // A channel nobody set up is named only when none is set up, so the reason points at what this Recipient lacks.
+        var configured = options.Where(o => o.Backend is not null).ToList();
         var reason = configured.Count == 0
             ? "Kein Versandweg ist eingerichtet."
-            : string.Join(" ", configured.Select(s => s.CannotDeliverError));
+            : string.Join(" ", configured.Select(o => o.BlockedReason));
         return new(invoice, recipient, null, reason);
     }
 }

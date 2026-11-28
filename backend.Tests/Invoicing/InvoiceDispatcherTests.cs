@@ -8,21 +8,13 @@ public class InvoiceDispatcherTests
 {
     private static readonly DateTime Now = new(2026, 11, 25, 13, 3, 0, DateTimeKind.Utc);
 
-    private sealed class RecordingSender : IInvoiceSender
+    private sealed class RecordingSender(DeliveryBackend backend = DeliveryBackend.SmtpEmail) : IInvoiceSender
     {
         public record Call(PersonEntity Person, InvoiceMessage Message, int Number, byte[] Pdf);
 
-        public DeliveryChannel Channel { get; init; } = DeliveryChannel.Email;
-        public string NotConfiguredError => "E-Mail ist nicht eingerichtet.";
-        public string CannotDeliverError => "Die Person hat keine E-Mail-Adresse.";
-        public bool Configured { get; set; } = true;
-        public bool CanDeliver { get; set; } = true;
+        public DeliveryBackend Backend => backend;
         public string? FailWith { get; set; }
         public List<Call> Calls { get; } = [];
-
-        public bool IsConfigured(SettingsEntity settings) => Configured;
-
-        public bool CanDeliverTo(PersonEntity person) => CanDeliver;
 
         public Task<InvoiceSendResult> SendAsync(
             SettingsEntity settings,
@@ -39,6 +31,25 @@ public class InvoiceDispatcherTests
             return Task.FromResult(new InvoiceSendResult("per Email", null));
         }
     }
+
+    private static SettingsEntity Club(bool smtp = true, bool epost = false) =>
+        new()
+        {
+            FromAddress = "kasse@example.ch",
+            SmtpHost = smtp ? "smtp.example.ch" : null,
+            EPostApiKey = epost ? "key-123" : null,
+        };
+
+    private static PersonEntity Anna(string? email = "anna@example.ch") =>
+        new()
+        {
+            FirstName = "Anna",
+            LastName = "Muster",
+            Email = email,
+            Street = "Bahnhofstrasse",
+            PostalCode = "5400",
+            City = "Baden",
+        };
 
     private static readonly byte[] Pdf = [1, 2, 3];
     private static readonly InvoiceMessage Message = new("Rechnung 0042", "Guten Tag");
@@ -67,11 +78,17 @@ public class InvoiceDispatcherTests
         return (new InvoiceDispatcher([sender], storage), sender, invoice);
     }
 
-    private static Task<string?> Send(InvoiceDispatcher dispatcher, Invoice invoice, InvoiceMessage? message = null) =>
+    private static Task<string?> Send(
+        InvoiceDispatcher dispatcher,
+        Invoice invoice,
+        InvoiceMessage? message = null,
+        SettingsEntity? settings = null,
+        PersonEntity? recipient = null
+    ) =>
         dispatcher.SendAsync(
             invoice,
-            new PersonEntity { FirstName = "Anna", LastName = "Muster", Email = "anna@example.ch" },
-            new SettingsEntity(),
+            recipient ?? Anna(),
+            settings ?? Club(),
             DeliveryChannel.Email,
             message ?? Message,
             Now,
@@ -134,9 +151,11 @@ public class InvoiceDispatcherTests
     public async Task An_unconfigured_channel_is_refused()
     {
         var (dispatcher, sender, invoice) = await Setup();
-        sender.Configured = false;
 
-        Assert.Equal("E-Mail ist nicht eingerichtet.", await Send(dispatcher, invoice));
+        Assert.Equal(
+            "E-Mail ist nicht eingerichtet: Es braucht eine Absenderadresse und entweder SMTP oder ePost.",
+            await Send(dispatcher, invoice, settings: new SettingsEntity())
+        );
 
         Assert.Empty(sender.Calls);
         Assert.Single(invoice.StatusChanges);
@@ -146,9 +165,11 @@ public class InvoiceDispatcherTests
     public async Task A_Recipient_the_channel_cannot_deliver_to_is_refused()
     {
         var (dispatcher, sender, invoice) = await Setup();
-        sender.CanDeliver = false;
 
-        Assert.Equal("Die Person hat keine E-Mail-Adresse.", await Send(dispatcher, invoice));
+        Assert.Equal(
+            "Die Person hat keine E-Mail-Adresse.",
+            await Send(dispatcher, invoice, recipient: Anna(email: null))
+        );
 
         Assert.Empty(sender.Calls);
         Assert.Single(invoice.StatusChanges);
@@ -176,11 +197,15 @@ public class InvoiceDispatcherTests
         Assert.Single(invoice.StatusChanges);
     }
 
-    [Fact]
-    public async Task The_chosen_channel_picks_its_sender_and_a_post_letter_needs_no_subject_or_text()
+    private static async Task<(RecordingSender Smtp, RecordingSender EPostEmail, RecordingSender Letter, string? Error)> SendToAll(
+        SettingsEntity settings,
+        DeliveryChannel channel,
+        InvoiceMessage message
+    )
     {
-        var email = new RecordingSender();
-        var post = new RecordingSender { Channel = DeliveryChannel.Post };
+        var smtp = new RecordingSender(DeliveryBackend.SmtpEmail);
+        var ePostEmail = new RecordingSender(DeliveryBackend.EPostEmail);
+        var letter = new RecordingSender(DeliveryBackend.EPostLetter);
         var storage = new InMemoryInvoiceStorage();
         await storage.PutAsync(42, Pdf);
         var invoice = new Invoice
@@ -188,20 +213,54 @@ public class InvoiceDispatcherTests
             Id = 42,
             StatusChanges = [new InvoiceStatusChange { Status = InvoiceStatus.Created, Timestamp = Now.AddDays(-2) }],
         };
-
-        var error = await new InvoiceDispatcher([email, post], storage).SendAsync(
+        var error = await new InvoiceDispatcher([smtp, ePostEmail, letter], storage).SendAsync(
             invoice,
-            new PersonEntity { FirstName = "Anna", LastName = "Muster" },
-            new SettingsEntity(),
-            DeliveryChannel.Post,
-            new InvoiceMessage(null, null),
+            Anna(),
+            settings,
+            channel,
+            message,
             Now,
             CancellationToken.None
         );
+        return (smtp, ePostEmail, letter, error);
+    }
+
+    [Fact]
+    public async Task A_post_letter_goes_to_the_letter_sender_and_needs_no_subject_or_text()
+    {
+        var (smtp, ePostEmail, letter, error) = await SendToAll(
+            Club(epost: true),
+            DeliveryChannel.Post,
+            new InvoiceMessage(null, null)
+        );
 
         Assert.Null(error);
-        Assert.Empty(email.Calls);
-        Assert.Single(post.Calls);
-        Assert.Equal(InvoiceStatus.Sent, invoice.StatusChanges.Last().Status);
+        Assert.Empty(smtp.Calls);
+        Assert.Empty(ePostEmail.Calls);
+        Assert.Single(letter.Calls);
+    }
+
+    [Fact]
+    public async Task With_SMTP_and_an_ePost_key_email_goes_to_the_SMTP_sender()
+    {
+        var (smtp, ePostEmail, _, error) = await SendToAll(Club(epost: true), DeliveryChannel.Email, Message);
+
+        Assert.Null(error);
+        Assert.Single(smtp.Calls);
+        Assert.Empty(ePostEmail.Calls);
+    }
+
+    [Fact]
+    public async Task Without_SMTP_email_goes_to_the_ePost_email_sender()
+    {
+        var (smtp, ePostEmail, _, error) = await SendToAll(
+            Club(smtp: false, epost: true),
+            DeliveryChannel.Email,
+            Message
+        );
+
+        Assert.Null(error);
+        Assert.Empty(smtp.Calls);
+        Assert.Single(ePostEmail.Calls);
     }
 }

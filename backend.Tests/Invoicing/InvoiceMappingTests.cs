@@ -1,5 +1,6 @@
 using backend.Invoicing;
 using PersonEntity = backend.Person.Person;
+using SettingsEntity = backend.Settings.Settings;
 
 namespace backend.Tests.Invoicing;
 
@@ -23,7 +24,7 @@ public class InvoiceMappingTests
     [Fact]
     public void Detail_shows_the_Gläubigerreferenz()
     {
-        var detail = InvoiceMapping.ToInvoiceDetail(Invoice("RF340042"), Person);
+        var detail = InvoiceMapping.ToInvoiceDetail(Invoice("RF340042"), Person, new SettingsEntity());
 
         Assert.Equal("RF340042", detail.Reference);
     }
@@ -31,7 +32,7 @@ public class InvoiceMappingTests
     [Fact]
     public void Detail_shows_the_empty_backfilled_reference()
     {
-        var detail = InvoiceMapping.ToInvoiceDetail(Invoice(""), Person);
+        var detail = InvoiceMapping.ToInvoiceDetail(Invoice(""), Person, new SettingsEntity());
 
         Assert.Equal("", detail.Reference);
     }
@@ -48,7 +49,7 @@ public class InvoiceMappingTests
         invoice.StatusChanges.Add(new InvoiceStatusChange { Status = InvoiceStatus.Paid, Timestamp = paidAt });
 
         var item = InvoiceMapping.ToInvoiceListItem(invoice, Person);
-        var detail = InvoiceMapping.ToInvoiceDetail(invoice, Person);
+        var detail = InvoiceMapping.ToInvoiceDetail(invoice, Person, new SettingsEntity());
 
         // The current status is the last status change; both views render the same enum name the
         // frontend maps to "Bezahlt". The detail view shows the status history in Europe/Zurich, so the
@@ -66,7 +67,7 @@ public class InvoiceMappingTests
         invoice.StatusChanges.Add(new InvoiceStatusChange { Id = 3, Status = InvoiceStatus.Created, Timestamp = new DateTime(2026, 11, 20, 0, 0, 0, DateTimeKind.Utc) });
 
         Assert.Equal("Paid", InvoiceMapping.ToInvoiceListItem(invoice, Person).Status);
-        Assert.Equal("Paid", InvoiceMapping.ToInvoiceDetail(invoice, Person).Status);
+        Assert.Equal("Paid", InvoiceMapping.ToInvoiceDetail(invoice, Person, new SettingsEntity()).Status);
     }
 
     [Fact]
@@ -75,7 +76,7 @@ public class InvoiceMappingTests
         var invoice = Invoice("RF340042");
         invoice.StatusChanges[0].Remark = "per Email";
 
-        var detail = InvoiceMapping.ToInvoiceDetail(invoice, Person);
+        var detail = InvoiceMapping.ToInvoiceDetail(invoice, Person, new SettingsEntity());
 
         Assert.Equal("per Email", detail.StatusHistory.Single().Remark);
     }
@@ -86,7 +87,7 @@ public class InvoiceMappingTests
         var invoice = Invoice("RF340042");
         invoice.PaidBy = 77;
 
-        var detail = InvoiceMapping.ToInvoiceDetail(invoice, Person);
+        var detail = InvoiceMapping.ToInvoiceDetail(invoice, Person, new SettingsEntity());
 
         Assert.Equal(77, detail.PaidBy);
     }

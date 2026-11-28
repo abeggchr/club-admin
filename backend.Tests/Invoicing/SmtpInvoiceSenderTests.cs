@@ -28,22 +28,6 @@ public class SmtpInvoiceSenderTests
         };
 
     [Fact]
-    public void The_channel_is_configured_once_a_host_is_stored()
-    {
-        var sender = new SmtpInvoiceSender(new InMemoryEmailSender());
-
-        Assert.True(sender.IsConfigured(Configured()));
-        Assert.False(sender.IsConfigured(new SettingsEntity()));
-    }
-
-    [Theory]
-    [InlineData("anna@example.ch", true)]
-    [InlineData(null, false)]
-    [InlineData("  ", false)]
-    public void It_delivers_only_to_a_Recipient_with_an_email_address(string? email, bool expected) =>
-        Assert.Equal(expected, new SmtpInvoiceSender(new InMemoryEmailSender()).CanDeliverTo(Person(email)));
-
-    [Fact]
     public async Task It_emails_the_PDF_as_rechnung_number_from_the_configured_address_and_remarks_per_Email()
     {
         var emails = new InMemoryEmailSender();

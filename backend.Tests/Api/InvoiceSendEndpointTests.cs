@@ -200,7 +200,10 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
         var response = await Send(client, id);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(SmtpInvoiceSender.EmailNotConfiguredError, await Error(response));
+        Assert.Equal(
+            "E-Mail ist nicht eingerichtet: Es braucht eine Absenderadresse und entweder SMTP oder ePost.",
+            await Error(response)
+        );
         Assert.Empty(factory.Emails.Invoices);
     }
 
@@ -255,6 +258,23 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
         var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
 
         Assert.Equal("anna@example.ch", detail.GetProperty("person").GetProperty("email").GetString());
+    }
+
+    [Fact]
+    public async Task The_detail_lists_the_Delivery_Channels_with_the_reason_each_one_is_blocked()
+    {
+        var id = await Seed(epost: false);
+        await using var factory = new AppFactory(_postgres);
+        using var client = SignedIn(factory);
+
+        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
+
+        var options = detail.GetProperty("channelOptions").EnumerateArray().ToList();
+        Assert.Equal(2, options.Count);
+        Assert.Equal("Email", options[0].GetProperty("channel").GetString());
+        Assert.Equal(JsonValueKind.Null, options[0].GetProperty("blockedReason").ValueKind);
+        Assert.Equal("Post", options[1].GetProperty("channel").GetString());
+        Assert.Equal("ePost ist nicht eingerichtet.", options[1].GetProperty("blockedReason").GetString());
     }
 
     [Fact]
