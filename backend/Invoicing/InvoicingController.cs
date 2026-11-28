@@ -168,13 +168,10 @@ public class InvoicingController(AppDbContext db, ILogger<InvoicingController> l
         {
             return NotFound();
         }
-        if (InvoiceRules.ValidateCancel(InvoiceRules.LatestStatus(invoice)) is { } error)
+        if (InvoiceStatusRules.Cancel(invoice, DateTime.UtcNow) is { } error)
         {
             return BadRequest(new { error });
         }
-        invoice.StatusChanges.Add(
-            new InvoiceStatusChange { Status = InvoiceStatus.Cancelled, Timestamp = DateTime.UtcNow }
-        );
         await db.SaveChangesAsync(ct);
         var person = (await PeopleByIdAsync([invoice.PersonId]))[invoice.PersonId];
         return Ok(InvoiceMapping.ToInvoiceDetail(invoice, person));

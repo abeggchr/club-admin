@@ -69,7 +69,7 @@ public static class InvoiceMapping
             InvoiceDate(i),
             new InvoicePersonDto(p.Id, DisplayName(p)),
             i.Lines.Sum(l => l.Amount),
-            InvoiceRules.LatestStatus(i).ToString()
+            InvoiceStatusRules.Current(i).ToString()
         );
 
     public static InvoiceDetailDto ToInvoiceDetail(Invoice i, PersonEntity p) =>
@@ -91,7 +91,7 @@ public static class InvoiceMapping
                 .Select(l => new InvoiceLineDto(l.Text, l.Amount, l.AccountNumber))
                 .ToList(),
             i.Lines.Sum(l => l.Amount),
-            InvoiceRules.LatestStatus(i).ToString(),
+            InvoiceStatusRules.Current(i).ToString(),
             i.Reference,
             i.PaidBy,
             InOrder(i)

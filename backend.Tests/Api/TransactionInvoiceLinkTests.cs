@@ -90,7 +90,7 @@ public class TransactionInvoiceLinkTests : IClassFixture<LocalPostgresFixture>
         await using var db = NewDb();
         var invoice = await db.Invoices.Include(i => i.StatusChanges).SingleAsync(i => i.Id == invoiceId);
         Assert.Equal(transactionId, invoice.PaidBy);
-        Assert.Equal(InvoiceStatus.Paid, InvoiceRules.LatestStatus(invoice));
+        Assert.Equal(InvoiceStatus.Paid, InvoiceStatusRules.Current(invoice));
     }
 
     [Fact]
