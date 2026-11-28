@@ -1,11 +1,11 @@
 import type { InvoiceListItem } from "./api";
+import { isOpen } from "./invoiceStatus";
 
-/** The table views of the Invoices; Offene (the default) is Created plus Sent. */
+/** The table views of the Invoices; Offene (the default) is the open ones, Nicht versendete only Created. */
 export const invoiceFilters = {
 	open: {
 		label: "Offene",
-		filter: (i: InvoiceListItem) =>
-			i.status === "Created" || i.status === "Sent",
+		filter: (i: InvoiceListItem) => isOpen(i.status),
 	},
 	unsent: {
 		label: "Nicht versendete",

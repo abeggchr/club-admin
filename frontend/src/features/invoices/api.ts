@@ -4,6 +4,7 @@ import { ensureOk, getJson, requestJson } from "../accounting/api";
 import type { BulkSendPreview, BulkSendSummary } from "./bulkSend";
 import type { ChannelOption, DeliveryChannel } from "./invoiceDetail";
 import type { InvoiceInput } from "./invoiceDraft";
+import type { InvoiceStatus } from "./invoiceStatus";
 
 export type InvoiceListItem = {
 	id: number;
@@ -12,7 +13,7 @@ export type InvoiceListItem = {
 	date: string;
 	person: { id: number; name: string };
 	total: number;
-	status: string;
+	status: InvoiceStatus;
 };
 
 export const invoicesQueryOptions = queryOptions({
@@ -36,12 +37,16 @@ export type InvoiceDetail = {
 	};
 	lines: { text: string; amount: number; accountNumber: number }[];
 	total: number;
-	status: string;
+	status: InvoiceStatus;
 	/** Swiss QR-bill Creditor Reference (RF8008); "" for Invoices created before it was stored. */
 	reference: string;
 	/** The id of the Transaction that first covered the total, or null. */
 	paidBy: number | null;
-	statusHistory: { status: string; timestamp: string; remark: string | null }[];
+	statusHistory: {
+		status: InvoiceStatus;
+		timestamp: string;
+		remark: string | null;
+	}[];
 	/** Email, then Post, each with the backend's reason it is blocked for this Recipient. */
 	channelOptions: ChannelOption[];
 };
@@ -144,17 +149,6 @@ export function invalidateInvoices(queryClient: QueryClient) {
 	return queryClient.invalidateQueries({
 		queryKey: invoicesQueryOptions.queryKey,
 	});
-}
-
-const statusLabels: Record<string, string> = {
-	Created: "Erstellt",
-	Sent: "Versendet",
-	Paid: "Bezahlt",
-	Cancelled: "Storniert",
-};
-
-export function statusLabel(status: string): string {
-	return statusLabels[status] ?? status;
 }
 
 /** yyyy-mm-dd to dd.MM.yyyy */

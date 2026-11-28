@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { statusLabel } from "./api";
 import {
 	type ChannelOption,
 	channelLabel,
@@ -41,15 +40,5 @@ describe("channelLabel", () => {
 	it("labels Email as E-Mail and Post as Post", () => {
 		expect(channelLabel("Email")).toBe("E-Mail");
 		expect(channelLabel("Post")).toBe("Post");
-	});
-});
-
-describe("statusLabel", () => {
-	it("labels a sent Rechnung as Versendet", () => {
-		expect(statusLabel("Sent")).toBe("Versendet");
-	});
-
-	it("labels a paid Rechnung as Bezahlt", () => {
-		expect(statusLabel("Paid")).toBe("Bezahlt");
 	});
 });

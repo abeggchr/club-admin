@@ -11,9 +11,9 @@ import {
 	invalidateInvoices,
 	invoiceDetailQueryOptions,
 	invoicePdfUrl,
-	statusLabel,
 } from "./api";
 import { formatDateTime, preselectedChannel } from "./invoiceDetail";
+import { isOpen, statusLabel } from "./invoiceStatus";
 import { SendDialog } from "./SendDialog";
 
 /** Detail of an Invoice. Nothing is editable or deletable; an open Invoice can be sent by email or cancelled (storniert). */
@@ -38,7 +38,7 @@ export function DetailPanel({
 
 	const { data: settings } = useQuery(settingsQueryOptions);
 	const sendDialog = useRef<HTMLDialogElement>(null);
-	const isOpen = invoice?.status === "Created" || invoice?.status === "Sent";
+	const invoiceIsOpen = invoice !== undefined && isOpen(invoice.status);
 	const channels = invoice?.channelOptions ?? [];
 	const sendBlocked =
 		channels.length > 0 && preselectedChannel(channels) === null
@@ -150,7 +150,7 @@ export function DetailPanel({
 							Anzeigen
 						</a>
 
-						{isOpen && (
+						{invoiceIsOpen && (
 							<button
 								type="button"
 								disabled={sendBlocked !== null}
@@ -162,7 +162,7 @@ export function DetailPanel({
 							</button>
 						)}
 
-						{isOpen && (
+						{invoiceIsOpen && (
 							<button
 								type="button"
 								disabled={cancel.isPending}

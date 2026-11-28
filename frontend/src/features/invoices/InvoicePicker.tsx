@@ -7,19 +7,20 @@ import {
 	invoiceDetailQueryOptions,
 	invoicesQueryOptions,
 } from "./api";
+import { isOpen } from "./invoiceStatus";
 
 export function invoiceLabel(i: InvoiceListItem): string {
 	return `${i.number} ${i.person.name} ${formatChf(i.total)}`;
 }
 
-/** Open Invoices (status Created) matching the typed number, name or amount, oldest number first. */
+/** Open Invoices (Created or Sent) matching the typed number, name or amount, oldest number first. */
 export function filterOpenInvoices(
 	invoices: InvoiceListItem[],
 	query: string,
 ): InvoiceListItem[] {
 	const q = query.trim().toLowerCase();
 	return invoices
-		.filter((i) => i.status === "Created")
+		.filter((i) => isOpen(i.status))
 		.filter(
 			(i) =>
 				q === "" ||

@@ -5,11 +5,12 @@ import { formatChf } from "../accounting/amount";
 import { settingsQueryOptions } from "../accounting/api";
 import { textTemplatesQueryOptions } from "../settings/textTemplateApi";
 import { AnnualFeesDialog } from "./AnnualFeesDialog";
-import { formatDate, invoicesQueryOptions, statusLabel } from "./api";
+import { formatDate, invoicesQueryOptions } from "./api";
 import { BulkSendDialog } from "./BulkSendDialog";
 import { CreatePanel } from "./CreatePanel";
 import { DetailPanel } from "./DetailPanel";
 import { type InvoiceFilterKey, invoiceFilters } from "./invoiceFilter";
+import { statusLabel } from "./invoiceStatus";
 
 /** The Invoices area: table (newest first) | create panel (only while open). */
 export function InvoicesView() {

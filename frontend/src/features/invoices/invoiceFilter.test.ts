@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { InvoiceListItem } from "./api";
 import { invoiceFilters } from "./invoiceFilter";
+import type { InvoiceStatus } from "./invoiceStatus";
 
-const invoice = (status: string): InvoiceListItem => ({
+const invoice = (status: InvoiceStatus): InvoiceListItem => ({
 	id: 1,
 	number: "0001",
 	date: "2026-01-01",
@@ -11,7 +12,7 @@ const invoice = (status: string): InvoiceListItem => ({
 	status,
 });
 
-const keysMatching = (status: string) =>
+const keysMatching = (status: InvoiceStatus) =>
 	Object.entries(invoiceFilters)
 		.filter(([, f]) => f.filter(invoice(status)))
 		.map(([key]) => key);
