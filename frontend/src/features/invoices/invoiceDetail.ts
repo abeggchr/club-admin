@@ -8,54 +8,20 @@ export function formatDateTime(iso: string): string {
 
 export type DeliveryChannel = "Email" | "Post";
 
+/** A Delivery Channel of the Recipient as the backend resolved it. */
 export type ChannelOption = {
 	channel: DeliveryChannel;
-	label: string;
 	/** Why the channel cannot be chosen, or null when it can. */
 	blockedReason: string | null;
 };
 
-type Recipient = {
-	email: string | null;
-	street: string | null;
-	postalCode: string | null;
-	city: string | null;
-	country: string | null;
+const channelLabels: Record<DeliveryChannel, string> = {
+	Email: "E-Mail",
+	Post: "Post",
 };
 
-const swissCountries = ["", "ch", "schweiz"];
-
-/** Email and Post with the reason each one is unavailable (mirrors the backend senders). */
-export function deliveryChannels(
-	emailConfigured: boolean,
-	ePostConfigured: boolean,
-	recipient: Recipient,
-): ChannelOption[] {
-	const swissAddress =
-		!!recipient.street?.trim() &&
-		!!recipient.postalCode?.trim() &&
-		!!recipient.city?.trim() &&
-		swissCountries.includes((recipient.country ?? "").trim().toLowerCase());
-	return [
-		{
-			channel: "Email",
-			label: "E-Mail",
-			blockedReason: !emailConfigured
-				? "E-Mail ist nicht eingerichtet: Es braucht eine Absenderadresse und entweder SMTP oder ePost."
-				: !recipient.email?.trim()
-					? "Die Person hat keine E-Mail-Adresse."
-					: null,
-		},
-		{
-			channel: "Post",
-			label: "Post",
-			blockedReason: !ePostConfigured
-				? "ePost ist nicht eingerichtet."
-				: !swissAddress
-					? "Die Person hat keine vollständige Schweizer Adresse (Strasse, PLZ und Ort)."
-					: null,
-		},
-	];
+export function channelLabel(channel: DeliveryChannel): string {
+	return channelLabels[channel];
 }
 
 /** Email when usable, else Post, else nothing. */

@@ -15,12 +15,12 @@ public class EPostEmailInvoiceSenderTests
             FromAddress = "kasse@example.ch",
         };
 
-    private static PersonEntity Person(string? email = " anna@example.ch ") =>
+    private static PersonEntity Person() =>
         new()
         {
             FirstName = "Anna",
             LastName = "Muster",
-            Email = email,
+            Email = " anna@example.ch ",
         };
 
     private static (EPostEmailInvoiceSender Sender, InMemoryEPostHandler Handler) Sender(
@@ -92,23 +92,4 @@ public class EPostEmailInvoiceSenderTests
             await Send(sender)
         );
     }
-
-    [Fact]
-    public void It_is_configured_only_when_ePost_is_the_email_backend()
-    {
-        var sender = Sender().Sender;
-
-        Assert.True(sender.IsConfigured(Configured()));
-        Assert.False(sender.IsConfigured(new SettingsEntity { EPostApiKey = "key-123" }));
-        var withSmtp = Configured();
-        withSmtp.SmtpHost = "smtp.example.ch";
-        Assert.False(sender.IsConfigured(withSmtp));
-    }
-
-    [Theory]
-    [InlineData("anna@example.ch", true)]
-    [InlineData(null, false)]
-    [InlineData("  ", false)]
-    public void It_delivers_only_to_a_Recipient_with_an_email_address(string? email, bool expected) =>
-        Assert.Equal(expected, Sender().Sender.CanDeliverTo(Person(email)));
 }

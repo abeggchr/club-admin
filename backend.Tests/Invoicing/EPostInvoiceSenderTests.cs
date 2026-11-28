@@ -50,25 +50,18 @@ public class EPostInvoiceSenderTests
             City = "Wettingen",
         };
 
-    private static PersonEntity Recipient(
-        string? country = null,
-        string? street = "Bahnhofstrasse",
-        string? postalCode = "5400",
-        string? city = "Baden"
-    ) =>
+    private static PersonEntity Recipient() =>
         new()
         {
             FirstName = "Anna",
             LastName = "Muster",
-            Street = street,
+            Street = "Bahnhofstrasse",
             Number = "7a",
-            PostalCode = postalCode,
-            City = city,
-            Country = country,
+            PostalCode = "5400",
+            City = "Baden",
         };
 
-    private static EPostInvoiceSender Sender(FakeEPostHandler? handler = null) =>
-        new(new HttpClient(handler ?? new FakeEPostHandler()));
+    private static EPostInvoiceSender Sender(FakeEPostHandler handler) => new(new HttpClient(handler));
 
     private static Task<InvoiceSendResult> Send(FakeEPostHandler handler) =>
         Sender(handler).SendAsync(
@@ -184,25 +177,6 @@ public class EPostInvoiceSenderTests
         Assert.NotNull(result.Error);
     }
 
-    [Theory]
-    [InlineData(null, true)]
-    [InlineData("", true)]
-    [InlineData("CH", true)]
-    [InlineData("ch", true)]
-    [InlineData("Schweiz", true)]
-    [InlineData("SCHWEIZ", true)]
-    [InlineData("DE", false)]
-    [InlineData("Deutschland", false)]
-    public void It_delivers_only_to_Switzerland(string? country, bool expected) =>
-        Assert.Equal(expected, Sender().CanDeliverTo(Recipient(country)));
-
-    [Theory]
-    [InlineData(null, "5400", "Baden")]
-    [InlineData("Bahnhofstrasse", " ", "Baden")]
-    [InlineData("Bahnhofstrasse", "5400", null)]
-    public void It_needs_Street_PostalCode_and_City(string? street, string? postalCode, string? city) =>
-        Assert.False(Sender().CanDeliverTo(Recipient(street: street, postalCode: postalCode, city: city)));
-
     private sealed class TimeoutHandler : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
@@ -241,12 +215,5 @@ public class EPostInvoiceSenderTests
                 cts.Token
             )
         );
-    }
-
-    [Fact]
-    public void The_channel_is_configured_once_an_API_key_is_stored()
-    {
-        Assert.True(Sender().IsConfigured(Configured()));
-        Assert.False(Sender().IsConfigured(new SettingsEntity()));
     }
 }
