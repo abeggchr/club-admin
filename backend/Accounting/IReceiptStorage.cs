@@ -19,3 +19,22 @@ public static class ReceiptStorageKey
 {
     public static string For(int id) => $"receipts/{id}.pdf";
 }
+
+public static class ReceiptStorageExtensions
+{
+    /// <summary>Deletes the stored PDFs, ignoring failures: an object that stays behind is an unreferenced orphan, which is harmless and accepted.</summary>
+    public static async Task DeleteBestEffortAsync(this IReceiptStorage storage, IEnumerable<int> ids)
+    {
+        foreach (var id in ids)
+        {
+            try
+            {
+                await storage.DeleteAsync(id);
+            }
+            catch
+            {
+                // See above.
+            }
+        }
+    }
+}
