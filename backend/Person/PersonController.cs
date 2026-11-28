@@ -72,7 +72,7 @@ public class PersonController(AppDbContext db) : ControllerBase
         }
 
         var links = await PayerLinksAsync();
-        if (PayerRules.ValidateSet(id, update.PayerId, links) is { } payerError)
+        if (PayerRules.ValidateSet(id, update.PayerId, update.IsMainPayer, links) is { } payerError)
         {
             return BadRequest(new { error = payerError });
         }
@@ -197,5 +197,5 @@ public class PersonController(AppDbContext db) : ControllerBase
     }
 
     private async Task<List<PayerLink>> PayerLinksAsync() =>
-        await db.Persons.AsNoTracking().Select(p => new PayerLink(p.Id, p.PayerId)).ToListAsync();
+        await db.Persons.AsNoTracking().Select(p => new PayerLink(p.Id, p.PayerId, p.IsMainPayer)).ToListAsync();
 }

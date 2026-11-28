@@ -11,13 +11,21 @@ import { PersonPicker } from "./PersonPicker";
 import {
 	canBePayerOf,
 	canHavePayer,
-	personLabel,
+	choosePayer,
+	draftFromPerson,
+	isPayerStale,
+	isRequired,
+	type PayerChoice,
+	type PersonDraft,
+	type PersonTextField,
 	personsPaidBy,
-} from "./personFilter";
+	toPersonPayload,
+} from "./personDraft";
+import { personLabel } from "./personFilter";
 import type { Person } from "./types";
 
 const textFields: {
-	key: keyof Person;
+	key: PersonTextField;
 	label: string;
 	type?: string;
 	multiline?: boolean;
@@ -38,8 +46,8 @@ const textFields: {
 	{ key: "notes", label: "Notizen", multiline: true },
 ];
 
-const REGULAR = "regular";
-const MAIN_PAYER = "main-payer";
+const REGULAR = "regular" satisfies PayerChoice;
+const MAIN_PAYER = "mainPayer" satisfies PayerChoice;
 const payerChoices = [
 	{ key: REGULAR, label: "Regulär" },
 	{
@@ -58,19 +66,15 @@ export function EditPanel({
 	const queryClient = useQueryClient();
 	const { data: persons } = useSuspenseQuery(personsQueryOptions);
 	const paidPersons = personsPaidBy(persons, person);
-	// A Person who is someone's Payer cannot get a Payer (nor be Main Payer): the picker is locked.
 	const payerLocked = !canHavePayer(persons, person);
-	const [draft, setDraft] = useState(person);
-	// A chosen Payer may have gained a Payer of their own since: then they are no longer valid.
-	const chosenPayer = persons.find((p) => p.id === draft.payerId);
-	const payerStale =
-		chosenPayer !== undefined && !canBePayerOf(chosenPayer, person);
+	const [draft, setDraft] = useState(() => draftFromPerson(person));
+	const payerStale = isPayerStale(draft, persons);
 	const [error, setError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
 	const update = useMutation({
 		mutationFn: updatePerson,
 		onSuccess: (updated) => {
-			setDraft(updated);
+			setDraft(draftFromPerson(updated));
 			setSaved(true);
 			return queryClient.invalidateQueries({
 				queryKey: personsQueryOptions.queryKey,
@@ -97,28 +101,27 @@ export function EditPanel({
 		del.mutate();
 	}
 
+	function change(next: PersonDraft) {
+		setDraft(next);
+		setSaved(false);
+	}
+
 	function submit(e: React.FormEvent) {
 		e.preventDefault();
 		setError(null);
 		setSaved(false);
-		// Empty inputs are stored as null, matching the importer.
-		const payload = Object.fromEntries(
-			Object.entries(draft).map(([k, v]) => [k, v === "" ? null : v]),
-		) as Person;
-		if (payerStale) payload.payerId = null;
-		update.mutate(payload);
+		update.mutate(toPersonPayload(draft, persons));
 	}
 
 	function renderField(f: (typeof textFields)[number]) {
 		const common = {
 			id: `person-${f.key}`,
-			value: (draft[f.key] as string | null) ?? "",
-			required: f.key === "firstName" || f.key === "lastName",
+			value: draft[f.key],
+			required: isRequired(f.key),
 			onChange: (
 				e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
 			) => {
-				setDraft({ ...draft, [f.key]: e.target.value });
-				setSaved(false);
+				change({ ...draft, [f.key]: e.target.value });
 			},
 			className:
 				"mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm",
@@ -161,11 +164,10 @@ export function EditPanel({
 							id="person-membership"
 							value={draft.membership}
 							onChange={(e) => {
-								setDraft({
+								change({
 									...draft,
 									membership: e.target.value as Person["membership"],
 								});
-								setSaved(false);
 							}}
 							className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm"
 						>
@@ -195,20 +197,19 @@ export function EditPanel({
 											choices={payerChoices}
 											choice={draft.isMainPayer ? MAIN_PAYER : REGULAR}
 											onChoice={(key) => {
-												setDraft({
-													...draft,
-													payerId: null,
-													isMainPayer: key === MAIN_PAYER,
-												});
-												setSaved(false);
+												change(
+													choosePayer(
+														draft,
+														key === MAIN_PAYER ? MAIN_PAYER : REGULAR,
+													),
+												);
 											}}
 											includeFormer
 											readOnly={payerLocked}
 											selectable={(p) => canBePayerOf(p, person)}
 											onChange={(id) => {
-												// A named Payer replaces Main Payer; clearing the field falls back to Regulär.
-												setDraft({ ...draft, payerId: id, isMainPayer: false });
-												setSaved(false);
+												// Clearing the field falls back to Regulär.
+												change(choosePayer(draft, id ?? "regular"));
 											}}
 											className={`mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm ${payerLocked ? "bg-neutral-100 text-neutral-500" : ""}`}
 										/>
@@ -236,11 +237,10 @@ export function EditPanel({
 												type="checkbox"
 												checked={draft.receivesClubNews}
 												onChange={(e) => {
-													setDraft({
+													change({
 														...draft,
 														receivesClubNews: e.target.checked,
 													});
-													setSaved(false);
 												}}
 											/>
 											Club-News

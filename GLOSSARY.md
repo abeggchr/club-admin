@@ -71,7 +71,7 @@ The list of addresses to send club news (by snail mail) to: every active Person 
 The Person who pays for another Person. Optional, set on the paid-for Person; the Payer needs no active membership. There are no chains and no cycles: a Person cannot be their own Payer, a Payer has no Payer, and a Person who is a Payer cannot get one. A Person who is someone's Payer cannot be deleted.
 
 **Main Payer** (German: _Hauptzahler_; code: _IsMainPayer_ on _Person_):
-A flag on a Person without Payer: they are the Recipient of their address and pay the Family fee in the Annual Fees run, ahead of the longest-standing Family member. In the UI it is one choice of the Payer picker, next to "Regulär" and the Persons. Choosing a named Payer clears the flag. A Person who is someone's Payer cannot get a Payer or the flag: the picker is locked for them.
+A flag on a Person without Payer: they are the Recipient of their address and pay the Family fee in the Annual Fees run, ahead of the longest-standing Family member. In the UI it is one choice of the Payer picker, next to "Regulär" and the Persons. Choosing a named Payer clears the flag. A Person who is someone's Payer cannot get a Payer or the flag: the picker is locked for them. A Main Payer can still be chosen as someone's Payer and keeps the flag; only gaining it while being someone's Payer is refused.
 
 **Membership** (German: _Mitgliedschaft_; code: _MembershipType_):
 The kind of membership of a Person (Family, Single, Junior, Honorary, Free, Patron, or Unknown; German: Familie, Einzel, Junior, Ehren, Frei, Gönner, Unbekannt), which decides the Annual Fee. Unknown is never invoiced.
