@@ -23,6 +23,7 @@ builder.Services.AddEntraLogin(builder.Configuration);
 builder.Services.AddObjectStorage(builder.Configuration);
 builder.Services.AddScoped<InvoiceCreator>();
 builder.Services.AddScoped<BankImporter>();
+builder.Services.AddScoped<TransactionEditor>();
 // Development never sends real mail: emails are only recorded in memory.
 if (builder.Environment.IsDevelopment())
 {

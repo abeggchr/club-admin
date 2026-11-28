@@ -85,6 +85,24 @@ public static class TransactionRules
         return null;
     }
 
+    /// <summary>The Entries of a new Transaction are all new, so none may carry an id.</summary>
+    public static string? ValidateNewEntryIds(IEnumerable<int?> givenIds) =>
+        givenIds.Any(i => i is not null) ? "Neue Buchungen dürfen keine Id haben." : null;
+
+    /// <summary>The ids of an edited Transaction's Entries: each must be one of its stored Entries, at most once. Entries without an id are new.</summary>
+    public static string? ValidateEntryIds(IReadOnlyCollection<int> storedIds, IEnumerable<int?> givenIds)
+    {
+        var given = givenIds.OfType<int>().ToList();
+        if (given.Any(i => !storedIds.Contains(i)))
+        {
+            return "Eine Buchung gehört nicht zu dieser Bewegung.";
+        }
+        return given.Distinct().Count() != given.Count ? "Eine Buchung kommt mehrfach vor." : null;
+    }
+
+    /// <summary>A Transaction's text as stored: trimmed, and null when blank.</summary>
+    public static string? NormalizeText(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+
     /// <summary>
     /// The date, amount, text and person of an imported Transaction (one with a BankReference) are bank facts; a
     /// change of any of them is rejected. Manual Transactions have no BankReference and are unchanged. The new

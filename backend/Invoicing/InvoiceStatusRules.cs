@@ -50,15 +50,18 @@ public static class InvoiceStatusRules
         return null;
     }
 
+    /// <summary>Paying needs an open Invoice; checked before the paying Transaction is saved.</summary>
+    public static string? ValidatePay(Invoice invoice) => IsOpen(invoice) ? null : "Die Rechnung ist nicht offen.";
+
     /// <summary>
     /// Records the Paid status change, timestamped with the Transaction's date, and sets PaidBy to the
     /// Transaction. Paid is terminal, so an Invoice that is no longer open cannot be paid again.
     /// </summary>
     public static string? MarkPaid(Invoice invoice, int transactionId, DateOnly transactionDate)
     {
-        if (!IsOpen(invoice))
+        if (ValidatePay(invoice) is { } error)
         {
-            return "Die Rechnung ist nicht offen.";
+            return error;
         }
         invoice.StatusChanges.Add(
             new InvoiceStatusChange { Status = InvoiceStatus.Paid, Timestamp = InvoiceTime.TimestampFor(transactionDate) }

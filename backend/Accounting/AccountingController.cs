@@ -1,4 +1,3 @@
-using backend.Invoicing;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +9,7 @@ public class AccountingController(
     AppDbContext db,
     ChartOfAccounts chart,
     BankImporter importer,
+    TransactionEditor editor,
     IReceiptStorage receiptStorage
 ) : ControllerBase
 {
@@ -87,172 +87,36 @@ public class AccountingController(
     }
 
     [HttpGet("transactions")]
-    public async Task<IActionResult> GetTransactions()
-    {
-        var opening = await db.Settings.FindAsync(Settings.Settings.SingletonId);
-        return Ok(opening is null ? [] : await LoadTransactionDtosAsync(opening));
-    }
+    public async Task<IActionResult> GetTransactions() => Ok(await editor.ListAsync());
 
     [HttpPost("transactions")]
-    public async Task<IActionResult> CreateTransaction(TransactionInput input)
-    {
-        var lines = input.Entries ?? [];
-        if (lines.Any(l => l.Id is not null))
+    public async Task<IActionResult> CreateTransaction(TransactionInput input) =>
+        await editor.CreateAsync(input) switch
         {
-            return BadRequest(new { error = "Neue Buchungen dürfen keine Id haben." });
-        }
-        var opening = await db.Settings.FindAsync(Settings.Settings.SingletonId);
-        var drafts = lines.Select(l => new EntryDraft(l.Text, l.AccountNumber, l.Amount)).ToList();
-        if (
-            TransactionRules.Validate(opening, chart, input.Date, input.Amount, drafts) is { } error
-        )
-        {
-            return BadRequest(new { error });
-        }
-        if (input.PersonId is { } personId && !await db.Persons.AnyAsync(p => p.Id == personId))
-        {
-            return BadRequest(new { error = "Die Person existiert nicht." });
-        }
-        var (invoice, invoiceError) = await FindInvoiceToLinkAsync(input.InvoiceId, null);
-        if (invoiceError is not null)
-        {
-            return BadRequest(new { error = invoiceError });
-        }
-
-        var transaction = new Transaction
-        {
-            Date = input.Date,
-            Amount = input.Amount,
-            Text = NormalizeText(input.Text),
-            PersonId = input.PersonId,
-            Entries = lines
-                .Select(l => Line(new Entry(), l.Text, l.AccountNumber, l.Amount))
-                .ToList(),
+            TransactionSaveOutcome.Refused refused => BadRequest(new { error = refused.Error }),
+            TransactionSaveOutcome.Saved saved => Created($"/api/transactions/{saved.Transaction.Id}", saved.Transaction),
+            _ => throw new InvalidOperationException(),
         };
-        db.Transactions.Add(transaction);
-        await AccountUsageSync.SaveEntryChangeAsync(
-            db,
-            chart,
-            afterFirstSave: () => LinkInvoice(invoice, transaction)
-        );
-        return Created(
-            $"/api/transactions/{transaction.Id}",
-            await LoadTransactionDtoAsync(opening!, transaction.Id)
-        );
-    }
 
     [HttpPut("transactions/{id:int}")]
-    public async Task<IActionResult> UpdateTransaction(int id, TransactionInput input)
-    {
-        var transaction = await db
-            .Transactions.Include(t => t.Entries)
-            .FirstOrDefaultAsync(t => t.Id == id);
-        if (transaction is null)
+    public async Task<IActionResult> UpdateTransaction(int id, TransactionInput input) =>
+        await editor.UpdateAsync(id, input) switch
         {
-            return NotFound();
-        }
+            TransactionSaveOutcome.NotFound => NotFound(),
+            TransactionSaveOutcome.Refused refused => BadRequest(new { error = refused.Error }),
+            TransactionSaveOutcome.Saved saved => Ok(saved.Transaction),
+            _ => throw new InvalidOperationException(),
+        };
 
-        // The date, amount, text and person of an imported Transaction are bank facts and cannot change.
-        if (
-            TransactionRules.ValidateUnchangedBankFacts(
-                transaction,
-                input.Date,
-                input.Amount,
-                NormalizeText(input.Text),
-                input.PersonId
-            ) is
-            { } bankFactError
-        )
-        {
-            return BadRequest(new { error = bankFactError });
-        }
-
-        var lines = input.Entries ?? [];
-        var stored = transaction.Entries.ToDictionary(e => e.Id);
-        var givenIds = lines.Where(l => l.Id is not null).Select(l => l.Id!.Value).ToList();
-        if (givenIds.Any(i => !stored.ContainsKey(i)))
-        {
-            return BadRequest(new { error = "Eine Buchung gehört nicht zu dieser Bewegung." });
-        }
-        if (givenIds.Distinct().Count() != givenIds.Count)
-        {
-            return BadRequest(new { error = "Eine Buchung kommt mehrfach vor." });
-        }
-
-        var opening = await db.Settings.FindAsync(Settings.Settings.SingletonId);
-        var drafts = lines
-            .Select(l => new EntryDraft(
-                l.Text,
-                l.AccountNumber,
-                l.Amount,
-                l.Id is { } i ? stored[i].AccountNumber : null
-            ))
-            .ToList();
-        if (
-            TransactionRules.Validate(opening, chart, input.Date, input.Amount, drafts) is { } error
-        )
-        {
-            return BadRequest(new { error });
-        }
-        if (input.PersonId is { } personId && !await db.Persons.AnyAsync(p => p.Id == personId))
-        {
-            return BadRequest(new { error = "Die Person existiert nicht." });
-        }
-        var (invoice, invoiceError) = await FindInvoiceToLinkAsync(input.InvoiceId, id);
-        if (invoiceError is not null)
-        {
-            return BadRequest(new { error = invoiceError });
-        }
-
-        transaction.Date = input.Date;
-        transaction.Amount = input.Amount;
-        transaction.Text = NormalizeText(input.Text);
-        transaction.PersonId = input.PersonId;
-        foreach (var line in lines)
-        {
-            if (line.Id is { } entryId)
-            {
-                Line(stored[entryId], line.Text, line.AccountNumber, line.Amount);
-            }
-            else
-            {
-                transaction.Entries.Add(
-                    Line(new Entry(), line.Text, line.AccountNumber, line.Amount)
-                );
-            }
-        }
-        db.JournalEntries.RemoveRange(stored.Values.Where(e => !givenIds.Contains(e.Id)));
-        await AccountUsageSync.SaveEntryChangeAsync(
-            db,
-            chart,
-            afterFirstSave: () => LinkInvoice(invoice, transaction)
-        );
-        return Ok(await LoadTransactionDtoAsync(opening!, id));
-    }
-
-    // Deletes the Transaction together with any Entries and Receipts still stored for it (cascade), syncing AccountUsage.
+    // Deletes the Transaction together with any Entries and Receipts still stored for it.
     [HttpDelete("transactions/{id:int}")]
-    public async Task<IActionResult> DeleteTransaction(int id)
-    {
-        var transaction = await db
-            .Transactions.Include(t => t.Entries)
-            .FirstOrDefaultAsync(t => t.Id == id);
-        if (transaction is null)
+    public async Task<IActionResult> DeleteTransaction(int id) =>
+        await editor.DeleteAsync(id) switch
         {
-            return NotFound();
-        }
-
-        // The Receipt rows cascade with the Transaction; their objects are deleted afterwards, best-effort.
-        var receiptIds = await db
-            .Receipts.Where(r => r.TransactionId == id)
-            .Select(r => r.Id)
-            .ToListAsync();
-        db.JournalEntries.RemoveRange(transaction.Entries);
-        db.Transactions.Remove(transaction);
-        await AccountUsageSync.SaveEntryChangeAsync(db, chart);
-        await DeleteReceiptObjectsAsync(receiptIds);
-        return NoContent();
-    }
+            TransactionDeleteOutcome.NotFound => NotFound(),
+            TransactionDeleteOutcome.Deleted => NoContent(),
+            _ => throw new InvalidOperationException(),
+        };
 
     // Attaches one PDF Receipt to a Transaction (imported or not, booked or not): none of the bank facts change.
     // A row pointing at a missing file must never occur; an orphaned object is harmless. The object key needs the
@@ -318,7 +182,7 @@ public class AccountingController(
         }
         db.Receipts.Remove(receipt);
         await db.SaveChangesAsync(ct);
-        await DeleteReceiptObjectsAsync([id]);
+        await receiptStorage.DeleteBestEffortAsync([id]);
         return NoContent();
     }
 
@@ -358,111 +222,6 @@ public class AccountingController(
             _ => throw new InvalidOperationException(),
         };
     }
-
-    // Sets the fields a client supplies for an Entry (already validated, so the text is not blank).
-    private static Entry Line(Entry entry, string? text, int accountNumber, decimal amount)
-    {
-        entry.Text = text!.Trim();
-        entry.AccountNumber = accountNumber;
-        entry.Amount = amount;
-        return entry;
-    }
-
-    // Best-effort: an object that stays behind is an unreferenced orphan, which is harmless and accepted.
-    private async Task DeleteReceiptObjectsAsync(IEnumerable<int> ids)
-    {
-        foreach (var id in ids)
-        {
-            try
-            {
-                await receiptStorage.DeleteAsync(id);
-            }
-            catch
-            {
-                // See above.
-            }
-        }
-    }
-
-    private static string? NormalizeText(string? text) =>
-        string.IsNullOrWhiteSpace(text) ? null : text.Trim();
-
-    // The Invoice a Transaction is saved as paying: it must exist and be open, or already be paid by this very
-    // Transaction. A link is permanent (the Paid status is terminal), so a null id never removes it.
-    private async Task<(Invoice? Invoice, string? Error)> FindInvoiceToLinkAsync(
-        int? invoiceId,
-        int? transactionId
-    )
-    {
-        if (invoiceId is not { } id)
-        {
-            return (null, null);
-        }
-        var invoice = await db.Invoices.Include(i => i.StatusChanges).FirstOrDefaultAsync(i => i.Id == id);
-        if (invoice is null)
-        {
-            return (null, "Die Rechnung existiert nicht.");
-        }
-        if (transactionId is not null && invoice.PaidBy == transactionId)
-        {
-            return (null, null);
-        }
-        if (!InvoiceStatusRules.IsOpen(invoice))
-        {
-            return (null, "Die Rechnung ist nicht offen.");
-        }
-        var alreadyLinked = transactionId is { } t && await db.Invoices.AnyAsync(i => i.PaidBy == t);
-        return alreadyLinked
-            ? (null, "Die Bewegung bezahlt bereits eine andere Rechnung.")
-            : (invoice, null);
-    }
-
-    // Marks the Invoice Paid by the Transaction, dated with the Transaction's date; FindInvoiceToLinkAsync checked it is open.
-    private static void LinkInvoice(Invoice? invoice, Transaction transaction)
-    {
-        if (invoice is not null && InvoiceStatusRules.MarkPaid(invoice, transaction.Id, transaction.Date) is { } error)
-        {
-            throw new InvalidOperationException(error);
-        }
-    }
-
-    private async Task<TransactionDto> LoadTransactionDtoAsync(Settings.Settings opening, int id) =>
-        (await LoadTransactionDtosAsync(opening)).Single(t => t.Id == id);
-
-    // All Transactions, newest first, each with the running balance after it.
-    private async Task<List<TransactionDto>> LoadTransactionDtosAsync(Settings.Settings opening)
-    {
-        var transactions = await db
-            .Transactions.Include(t => t.Entries)
-            .AsNoTracking()
-            .ToListAsync();
-        var receipts = (await db.Receipts.AsNoTracking().OrderBy(r => r.Id).ToListAsync())
-            .ToLookup(r => r.TransactionId);
-        var invoiceIds = (
-            await db
-                .Invoices.AsNoTracking()
-                .Where(i => i.PaidBy != null)
-                .Select(i => new { i.Id, PaidBy = i.PaidBy!.Value })
-                .ToListAsync()
-        )
-            .GroupBy(i => i.PaidBy)
-            .ToDictionary(g => g.Key, g => g.Min(i => i.Id));
-        return AccountingCalculator
-            .TransactionBalances(opening, transactions)
-            .Select(r => new TransactionDto(
-                r.Transaction.Id,
-                r.Transaction.Date,
-                r.Transaction.Amount,
-                r.Transaction.Text,
-                r.Transaction.PersonId,
-                r.Transaction.BankReference,
-                r.Balance,
-                r.Transaction.Entries.Select(e => e.Id).Order().ToList(),
-                receipts[r.Transaction.Id].Select(x => new ReceiptDto(x.Id, x.UploadedAt)).ToList(),
-                invoiceIds.TryGetValue(r.Transaction.Id, out var invoiceId) ? invoiceId : null
-            ))
-            .ToList();
-    }
 }
 
 public record JournalEntryDto(
@@ -475,28 +234,3 @@ public record JournalEntryDto(
     decimal Balance
 );
 
-public record TransactionEntryInput(int? Id, string? Text, int AccountNumber, decimal Amount);
-
-public record TransactionInput(
-    DateOnly Date,
-    decimal Amount,
-    string? Text,
-    int? PersonId,
-    List<TransactionEntryInput>? Entries,
-    int? InvoiceId = null
-);
-
-public record TransactionDto(
-    int Id,
-    DateOnly Date,
-    decimal Amount,
-    string? Text,
-    int? PersonId,
-    string? BankReference,
-    decimal Balance,
-    List<int> EntryIds,
-    List<ReceiptDto> Receipts,
-    int? InvoiceId
-);
-
-public record ReceiptDto(int Id, DateTime UploadedAt);

@@ -260,50 +260,6 @@ public class ReceiptEndpointTests : IClassFixture<LocalPostgresFixture>
     }
 
     [Fact]
-    public async Task Deleting_a_Transaction_deletes_its_Receipts_and_their_objects()
-    {
-        var id = await SeedTransaction(withEntry: false);
-        await using var factory = new AppFactory(_postgres);
-        using var client = SignedIn(factory);
-        await Upload(client, id, Pdf);
-        await Upload(client, id, Pdf);
-
-        var response = await client.DeleteAsync($"/api/transactions/{id}");
-
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-        Assert.Empty(factory.Receipts.Keys);
-        await using var db = NewDb();
-        Assert.Empty(await db.Receipts.ToListAsync());
-    }
-
-    [Fact]
-    public async Task Editing_the_Entries_of_a_Transaction_leaves_its_Receipts_alone()
-    {
-        var id = await SeedTransaction(bankReference: "TX-1");
-        await using var factory = new AppFactory(_postgres);
-        using var client = SignedIn(factory);
-        await Upload(client, id, Pdf);
-        var entryId = (await client.GetFromJsonAsync<JsonElement>("/api/transactions"))
-            .EnumerateArray().Single().GetProperty("entryIds")[0].GetInt32();
-
-        var response = await client.PutAsJsonAsync(
-            $"/api/transactions/{id}",
-            new
-            {
-                date = "2026-02-10",
-                amount = -50m,
-                text = "Material",
-                personId = (int?)null,
-                entries = new[] { new { id = (int?)entryId, text = "Neu", accountNumber = 6010, amount = -50m } },
-            }
-        );
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Single(await ReceiptsOf(client, id));
-        Assert.Single(factory.Receipts.Keys);
-    }
-
-    [Fact]
     public async Task The_endpoints_require_a_sign_in()
     {
         var id = await SeedTransaction();

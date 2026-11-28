@@ -171,6 +171,21 @@ public class TransactionRulesTests
     }
 
     [Fact]
+    public void A_new_transaction_may_have_entries_without_ids() =>
+        Assert.Null(TransactionRules.ValidateNewEntryIds([null, null]));
+
+    [Fact]
+    public void An_edited_transaction_may_keep_its_stored_entries_and_add_new_ones() =>
+        Assert.Null(TransactionRules.ValidateEntryIds([1, 2], [2, null, 1, null]));
+
+    [Fact]
+    public void An_unknown_entry_id_is_reported_before_a_duplicate_one() =>
+        Assert.Equal(
+            "Eine Buchung gehört nicht zu dieser Bewegung.",
+            TransactionRules.ValidateEntryIds([1], [1, 1, 9])
+        );
+
+    [Fact]
     public void The_opening_date_may_move_up_to_the_earliest_transaction() =>
         Assert.Null(
             TransactionRules.ValidateOpeningStartDate(
