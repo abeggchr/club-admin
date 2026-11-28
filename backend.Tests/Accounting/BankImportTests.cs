@@ -2076,9 +2076,9 @@ public class BankImportTests
     private static BankImportResult Import(
         byte[] zip,
         string[]? existingReferences = null,
-        IReadOnlyCollection<ImportInvoice> invoices = null,
+        IReadOnlyCollection<ImportInvoice>? invoices = null,
         ChartOfAccounts? chart = null,
-        IReadOnlyCollection<Person> persons = null
+        IReadOnlyCollection<Person>? persons = null
     )
     {
         return BankImport.Import(
