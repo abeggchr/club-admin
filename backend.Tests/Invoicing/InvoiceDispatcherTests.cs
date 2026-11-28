@@ -1,4 +1,5 @@
 using backend.Invoicing;
+using backend.Tests.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -22,13 +23,6 @@ public class InvoiceDispatcherTests : IClassFixture<LocalPostgresFixture>
     private readonly TestClock _clock = new(Now);
 
     public InvoiceDispatcherTests(LocalPostgresFixture fixture) => _fixture = fixture;
-
-    private sealed class TestClock(DateTime now) : TimeProvider
-    {
-        public DateTime Now { get; set; } = now;
-
-        public override DateTimeOffset GetUtcNow() => new(Now);
-    }
 
     private sealed class RecordingSender(DeliveryBackend backend = DeliveryBackend.SmtpEmail) : IInvoiceSender
     {

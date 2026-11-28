@@ -11,6 +11,7 @@ public record InvoiceCreationResult(Invoice? Invoice, string? Error);
 public class InvoiceCreator(
     AppDbContext db,
     IInvoiceStorage storage,
+    TimeProvider time,
     ILogger<InvoiceCreator> logger
 )
 {
@@ -26,7 +27,7 @@ public class InvoiceCreator(
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         try
         {
-            var now = DateTime.UtcNow;
+            var now = time.GetUtcNow().UtcDateTime;
             var debtor = QrBillSlip.DebtorFor(
                 person.FirstName,
                 person.LastName,

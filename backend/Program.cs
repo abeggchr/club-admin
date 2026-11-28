@@ -49,7 +49,7 @@ if (builder.Environment.IsDevelopment())
 }
 builder.Services.AddTransient<IInvoiceSender>(sp => sp.GetRequiredService<EPostEmailInvoiceSender>());
 builder.Services.AddScoped<InvoiceDispatcher>();
-// The time each Sent status change is stamped with.
+// The one clock: status changes, Receipt uploads and every "today" in Europe/Zurich read it.
 builder.Services.AddSingleton(TimeProvider.System);
 InvoiceDocument.UseCommunityLicense();
 
@@ -60,13 +60,12 @@ builder.Services.AddSingleton<ChartOfAccounts>(
     )
 );
 
-// The Income Statement layout (ADR 0009) and the calendar date the report covers.
+// The Income Statement layout (ADR 0009).
 builder.Services.AddSingleton<IncomeStatementConfig>(
     IncomeStatementConfig.Load(
         Path.Combine(AppContext.BaseDirectory, "IncomeStatement", "income-statement.yaml")
     )
 );
-builder.Services.AddSingleton<backend.IncomeStatement.ISystemClock, backend.IncomeStatement.SystemClock>();
 
 var app = builder.Build();
 

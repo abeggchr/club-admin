@@ -73,6 +73,7 @@ public class InvoiceCreatorTests : IClassFixture<LocalPostgresFixture>
         var creator = new InvoiceCreator(
             db,
             new InMemoryInvoiceStorage(),
+            TimeProvider.System,
             NullLogger<InvoiceCreator>.Instance
         );
 
