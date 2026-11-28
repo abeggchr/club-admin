@@ -16,9 +16,10 @@ CI (`.github/workflows/ci.yml`) fails on: `dotnet format --verify-no-changes`, B
 
 - **Layout**: one folder per domain area (`Accounting`, `Invoicing`, `Person`, `Settings`). Namespaces follow folders. Do not add a cross-area type to `Shared` unless two areas already need it.
 - **Business rules are pure.** Validation and calculation live in `*Rules`, `*Calculator` or similar static classes with no `DbContext`, clock or I/O. Controllers load data, call the rules, save, and map to DTOs; they hold no rule of their own.
+- **A multi-step flow goes into a module** (`BankImporter`, `InvoiceDispatcher`, `TransactionEditor`) when it has several saves, partial failure or external calls. It takes the `DbContext` and ports (storage, senders, `TimeProvider`), calls the pure rules, saves, and returns sealed outcome records that the controller maps to HTTP in one switch. A simple load-call-save stays in the controller.
 - **Validators return `string?`**: a German error message, or `null` when valid. Do not throw for a user input error.
 - **External systems sit behind an interface** with a real and an in-memory implementation (`IReceiptStorage`: `S3ReceiptStorage`, `InMemoryReceiptStorage`). New I/O follows the same shape.
-- **Time comes from outside** (see `InvoiceTime`). Do not call `DateTime.Now` or `DateOnly.FromDateTime(DateTime.Today)` inside a rule.
+- **Time comes from outside**: the injected `TimeProvider` is the only clock, `InvoiceTime` gives Zurich dates. Do not read `DateTime.Now`, `DateTime.UtcNow` or `DateTime.Today`.
 - **Money is `decimal`**, signed (in positive, out negative), never `double`. Dates without a time of day are `DateOnly`.
 - **Controllers return DTO records**, not EF entities.
 - **Migrations**: generated with `dotnet ef`, never hand-edited after they are merged. A schema change without a migration is a defect.
@@ -29,6 +30,7 @@ CI (`.github/workflows/ci.yml`) fails on: `dotnet format --verify-no-changes`, B
 - Mirror the source folder. Pure rules get plain unit tests; HTTP behaviour goes through `AppFactory` in `Api/`.
 - **Test names are sentences** describing behaviour: `A_file_over_10_MB_is_rejected`. Not `Test1`, not `Validate_ReturnsError`.
 - Test through the public interface: rule classes, endpoints. Do not test private helpers or assert on internals.
+- Modules that take the `DbContext` are tested against a real database via `LocalPostgresFixture`; endpoint tests keep only wiring and JSON.
 - A test needing a database uses `LocalPostgresFixture` and skips with a clear message when none is available. Never mock `DbContext`.
 - Replace Entra with the test auth handler; do not add a production bypass (ADR 0006).
 

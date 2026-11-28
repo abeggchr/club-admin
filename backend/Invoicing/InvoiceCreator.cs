@@ -60,10 +60,6 @@ public class InvoiceCreator(
             db.Invoices.Add(invoice);
             await db.SaveChangesAsync(ct);
 
-            // The Creditor Reference derives from the Invoice Number, so it is known as soon as the ID
-            // is. It is persisted in its own save, before the PDF rendering: a rendering failure (e.g.
-            // missing native graphics in a headless environment) must never leave an Invoice without its
-            // reference.
             var bill = QrBillSlip.Build(
                 creditor,
                 InvoiceRules.FormatNumber(invoice.Id),

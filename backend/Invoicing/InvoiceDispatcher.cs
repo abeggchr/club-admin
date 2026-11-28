@@ -68,11 +68,10 @@ public class InvoiceDispatcher(
         }
         var recipient = await db.Persons.AsNoTracking().SingleAsync(p => p.Id == invoice.PersonId, ct);
         var settings = await LoadSettingsAsync(ct);
-        if (await SendOneAsync(invoice, recipient, settings, channel, message, ct) is { } error)
+        if (await SendAndSaveAsync(invoice, recipient, settings, channel, message, ct) is { } error)
         {
             return new InvoiceSendOutcome.Refused(error);
         }
-        await db.SaveChangesAsync(ct);
         return new InvoiceSendOutcome.Sent(InvoiceMapping.ToInvoiceDetail(invoice, recipient, settings));
     }
 
@@ -108,15 +107,17 @@ public class InvoiceDispatcher(
                 skipped.Add(outcome(item.SkipReason));
                 continue;
             }
-            var error = await SendAndSaveAsync(item, settings, channel, message, ct);
+            // Saves each Invoice on its own so a delivery ePost already billed stays recorded when a later one fails.
+            var error = await SendAndSaveAsync(item.Invoice, item.Recipient, settings, channel, message, ct);
             (error is null ? sent : failed).Add(outcome(error));
         }
         return new BulkSendResult.Done(new BulkSendSummary(sent, failed, skipped));
     }
 
-    // Saves each Invoice on its own so a delivery ePost already billed stays recorded when a later one fails.
+    /// <summary>Sends and saves one Invoice; any exception but a cancellation of the request becomes a German error.</summary>
     private async Task<string?> SendAndSaveAsync(
-        BulkSendItem item,
+        Invoice invoice,
+        PersonEntity recipient,
         SettingsEntity settings,
         DeliveryChannel channel,
         InvoiceMessage message,
@@ -125,7 +126,7 @@ public class InvoiceDispatcher(
     {
         try
         {
-            var error = await SendOneAsync(item.Invoice, item.Recipient, settings, channel, message, ct);
+            var error = await SendOneAsync(invoice, recipient, settings, channel, message, ct);
             if (error is null)
             {
                 await db.SaveChangesAsync(ct);
@@ -138,7 +139,7 @@ public class InvoiceDispatcher(
         }
         catch (Exception e)
         {
-            logger.LogError(e, "Sending Invoice {InvoiceId} failed", item.Invoice.Id);
+            logger.LogError(e, "Sending Invoice {InvoiceId} failed", invoice.Id);
             return "Die Rechnung konnte nicht versendet werden.";
         }
     }

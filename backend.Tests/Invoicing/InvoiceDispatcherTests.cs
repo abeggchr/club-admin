@@ -24,7 +24,8 @@ public class InvoiceDispatcherTests : IClassFixture<LocalPostgresFixture>
 
     public InvoiceDispatcherTests(LocalPostgresFixture fixture) => _fixture = fixture;
 
-    private sealed class RecordingSender(DeliveryBackend backend = DeliveryBackend.SmtpEmail) : IInvoiceSender
+    private sealed class RecordingSender(DeliveryBackend backend = DeliveryBackend.SmtpEmail, string remark = "per Email")
+        : IInvoiceSender
     {
         public record Call(PersonEntity Person, InvoiceMessage Message, int Number, byte[] Pdf);
 
@@ -50,8 +51,16 @@ public class InvoiceDispatcherTests : IClassFixture<LocalPostgresFixture>
                 await During();
             return FailWith is not null
                 ? new InvoiceSendResult(null, FailWith)
-                : new InvoiceSendResult("per Email", null);
+                : new InvoiceSendResult(remark, null);
         }
+    }
+
+    private sealed class ThrowingStorage : IInvoiceStorage
+    {
+        public Task PutAsync(int number, byte[] pdf, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task<byte[]?> GetAsync(int number, CancellationToken ct = default) =>
+            throw new IOException("Storage unreachable");
     }
 
     private AppDbContext Database()
@@ -283,6 +292,66 @@ public class InvoiceDispatcherTests : IClassFixture<LocalPostgresFixture>
         Assert.Single(await SavedStatusChanges(id));
     }
 
+    [Fact]
+    public async Task A_sender_that_throws_refuses_the_single_send_and_records_nothing()
+    {
+        await using var db = Database();
+        await Club(db);
+        var id = await SeedInvoice(db);
+        var sender = new RecordingSender { During = () => throw new InvalidOperationException("boom") };
+
+        var outcome = await Dispatcher(db, sender).SendAsync(id, DeliveryChannel.Email, Message, CancellationToken.None);
+
+        Assert.Equal(new InvoiceSendOutcome.Refused("Die Rechnung konnte nicht versendet werden."), outcome);
+        Assert.Single(await SavedStatusChanges(id));
+        Assert.False(db.ChangeTracker.HasChanges());
+    }
+
+    [Fact]
+    public async Task A_storage_that_throws_refuses_the_single_send_and_records_nothing()
+    {
+        await using var db = Database();
+        await Club(db);
+        var id = await SeedInvoice(db);
+        var sender = new RecordingSender();
+        var dispatcher = new InvoiceDispatcher(
+            db,
+            [sender],
+            new ThrowingStorage(),
+            _clock,
+            NullLogger<InvoiceDispatcher>.Instance
+        );
+
+        var outcome = await dispatcher.SendAsync(id, DeliveryChannel.Email, Message, CancellationToken.None);
+
+        Assert.Equal(new InvoiceSendOutcome.Refused("Die Rechnung konnte nicht versendet werden."), outcome);
+        Assert.Empty(sender.Calls);
+        Assert.Single(await SavedStatusChanges(id));
+    }
+
+    [Fact]
+    public async Task Cancellation_stops_a_single_send()
+    {
+        await using var db = Database();
+        await Club(db);
+        var id = await SeedInvoice(db);
+        using var cancel = new CancellationTokenSource();
+        var sender = new RecordingSender
+        {
+            During = () =>
+            {
+                cancel.Cancel();
+                throw new OperationCanceledException(cancel.Token);
+            },
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Dispatcher(db, sender).SendAsync(id, DeliveryChannel.Email, Message, cancel.Token)
+        );
+
+        Assert.Single(await SavedStatusChanges(id));
+    }
+
     private async Task<(RecordingSender Smtp, RecordingSender EPostEmail, RecordingSender Letter, InvoiceSendOutcome Outcome)> SendToAll(
         bool smtp,
         DeliveryChannel channel,
@@ -377,6 +446,27 @@ public class InvoiceDispatcherTests : IClassFixture<LocalPostgresFixture>
         Assert.Single(done.Summary.Sent);
         Assert.Single(letter.Calls);
         Assert.Equal(InvoiceStatus.Sent, await SavedStatus(id));
+    }
+
+    [Fact]
+    public async Task A_bulk_send_delivers_each_Invoice_through_the_backend_of_its_channel()
+    {
+        await using var db = Database();
+        await Club(db, smtp: false, epost: true);
+        var byEmail = await SeedInvoice(db, "Email", address: false);
+        var byPost = await SeedInvoice(db, "Post", email: null);
+        var ePostEmail = new RecordingSender(DeliveryBackend.EPostEmail, "per Email (ePost, mail-1)");
+        var letter = new RecordingSender(DeliveryBackend.EPostLetter, "per Post (letter-1)");
+
+        var result = await Dispatcher(db, ePostEmail, letter).BulkSendAsync(Message, CancellationToken.None);
+
+        Assert.Equal(2, Assert.IsType<BulkSendResult.Done>(result).Summary.Sent.Count);
+        Assert.Equal(byEmail, Assert.Single(ePostEmail.Calls).Number);
+        Assert.Equal(byPost, Assert.Single(letter.Calls).Number);
+        var emailed = (await SavedStatusChanges(byEmail)).Last();
+        Assert.Equal((InvoiceStatus.Sent, "per Email (ePost, mail-1)"), (emailed.Status, emailed.Remark));
+        var posted = (await SavedStatusChanges(byPost)).Last();
+        Assert.Equal((InvoiceStatus.Sent, "per Post (letter-1)"), (posted.Status, posted.Remark));
     }
 
     [Fact]
