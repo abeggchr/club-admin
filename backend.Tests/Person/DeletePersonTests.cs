@@ -14,7 +14,7 @@ public class DeletePersonTests(LocalPostgresFixture fixture) : PersonControllerT
         var payer = Add(db, "Payer");
         Add(db, "Child", payer.Id);
 
-        var (status, body) = await Run(await new PersonController(db).DeleteAsync(payer.Id));
+        var (status, body) = await Run(await new PersonController(db, TimeProvider.System).DeleteAsync(payer.Id));
 
         Assert.Equal(400, status);
         Assert.Contains("error", body);
@@ -28,7 +28,7 @@ public class DeletePersonTests(LocalPostgresFixture fixture) : PersonControllerT
         var payer = Add(db, "Payer");
         var child = Add(db, "Child", payer.Id);
 
-        var (status, _) = await Run(await new PersonController(db).DeleteAsync(child.Id));
+        var (status, _) = await Run(await new PersonController(db, TimeProvider.System).DeleteAsync(child.Id));
 
         Assert.Equal(204, status);
         Assert.False(Database().Persons.Any(p => p.Id == child.Id));
@@ -39,7 +39,7 @@ public class DeletePersonTests(LocalPostgresFixture fixture) : PersonControllerT
     {
         await using var db = Database();
 
-        var (status, _) = await Run(await new PersonController(db).DeleteAsync(-1));
+        var (status, _) = await Run(await new PersonController(db, TimeProvider.System).DeleteAsync(-1));
 
         Assert.Equal(404, status);
     }

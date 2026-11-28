@@ -2,12 +2,13 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using backend.Tests.Invoicing;
+using backend.Tests.Shared;
 using Microsoft.EntityFrameworkCore;
 using PersonEntity = backend.Person.Person;
 
 namespace backend.Tests.Api;
 
-/// <summary>Changing a Person over HTTP. The Payer and Main Payer rules themselves are tested at PayerRules.</summary>
+/// <summary>Changing a Person and listing Jubiläen over HTTP. The Payer and Main Payer rules themselves are tested at PayerRules.</summary>
 public class PersonEndpointTests : IClassFixture<LocalPostgresFixture>
 {
     private readonly LocalPostgresFixture _postgres;
@@ -56,5 +57,29 @@ public class PersonEndpointTests : IClassFixture<LocalPostgresFixture>
         var stored = await check.Persons.AsNoTracking().SingleAsync(p => p.Id == child.Id);
         Assert.Null(stored.PayerId);
         Assert.False(stored.IsMainPayer);
+    }
+
+    [Fact]
+    public async Task Jubilees_cover_the_club_year_of_todays_Zurich_date_even_when_UTC_is_still_on_the_previous_day()
+    {
+        await using var db = NewDb();
+        await db.Settings.ExecuteDeleteAsync();
+        db.Settings.Add(new backend.Settings.Settings { StartDate = new DateOnly(2003, 4, 1) });
+        var member = new PersonEntity { FirstName = "Jana", LastName = "Jubilar", JoinedOn = new DateOnly(2010, 5, 1) };
+        db.Persons.Add(member);
+        await db.SaveChangesAsync();
+        // 31 March 22:30 UTC is already 1 April 00:30 in Zurich: the club year starting 2020 has begun.
+        var clock = new TestClock(new DateTime(2020, 3, 31, 22, 30, 0, DateTimeKind.Utc));
+        await using var factory = new AppFactory(_postgres, clock);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, "anna@example.ch");
+
+        var body = await client.GetFromJsonAsync<JsonElement>("/api/person/jubilees");
+
+        Assert.Equal(2020, body.GetProperty("clubYearStartYear").GetInt32());
+        var jubilee = body.GetProperty("jubilees")
+            .EnumerateArray()
+            .Single(j => j.GetProperty("personId").GetInt32() == member.Id);
+        Assert.Equal(10, jubilee.GetProperty("years").GetInt32());
     }
 }

@@ -10,7 +10,8 @@ public class AccountingController(
     ChartOfAccounts chart,
     BankImporter importer,
     TransactionEditor editor,
-    IReceiptStorage receiptStorage
+    IReceiptStorage receiptStorage,
+    TimeProvider time
 ) : ControllerBase
 {
     [HttpGet("accounts")]
@@ -145,7 +146,7 @@ public class AccountingController(
             return BadRequest(new { error });
         }
 
-        var receipt = new Receipt { TransactionId = id, UploadedAt = DateTime.UtcNow };
+        var receipt = new Receipt { TransactionId = id, UploadedAt = time.GetUtcNow().UtcDateTime };
         await using var dbTransaction = await db.Database.BeginTransactionAsync(ct);
         db.Receipts.Add(receipt);
         await db.SaveChangesAsync(ct);

@@ -27,7 +27,7 @@ public record PersonUpdate(
 
 [ApiController]
 [Route("api/person")]
-public class PersonController(AppDbContext db) : ControllerBase
+public class PersonController(AppDbContext db, TimeProvider time) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetPersons() =>
@@ -39,7 +39,7 @@ public class PersonController(AppDbContext db) : ControllerBase
         var persons = await db.Persons.AsNoTracking().ToListAsync(ct);
         var summary = PersonSummaryRules.Summarize(
             persons,
-            backend.Invoicing.InvoiceTime.Today(DateTime.UtcNow)
+            backend.Invoicing.InvoiceTime.Today(time.GetUtcNow().UtcDateTime)
         );
         return Ok(
             new
@@ -166,11 +166,10 @@ public class PersonController(AppDbContext db) : ControllerBase
         }
 
         var persons = await db.Persons.ToListAsync();
-        var now = System.DateTime.Now;
         var jubilees = JubileeRules.Compute(
             persons,
             settings.StartDate,
-            new DateOnly(now.Year, now.Month, now.Day)
+            backend.Invoicing.InvoiceTime.Today(time.GetUtcNow().UtcDateTime)
         );
         return Ok(
             new

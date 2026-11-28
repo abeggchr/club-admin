@@ -7,7 +7,7 @@ namespace backend.Invoicing;
 
 [ApiController]
 [Route("api/invoices")]
-public class InvoicingController(AppDbContext db) : ControllerBase
+public class InvoicingController(AppDbContext db, TimeProvider time) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetInvoices()
@@ -81,7 +81,7 @@ public class InvoicingController(AppDbContext db) : ControllerBase
         {
             return NotFound();
         }
-        if (InvoiceStatusRules.Cancel(invoice, DateTime.UtcNow) is { } error)
+        if (InvoiceStatusRules.Cancel(invoice, time.GetUtcNow().UtcDateTime) is { } error)
         {
             return BadRequest(new { error });
         }

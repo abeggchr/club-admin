@@ -16,9 +16,9 @@ namespace backend.Tests.Api;
 /// no running server: the S3 client is only used by invoice endpoints, and the bucket is only
 /// provisioned in Development.
 /// </summary>
-/// <remarks>Not sealed: the Income Statement endpoint tests subclass it to pin the clock (and, for
-/// the "Nicht zugeordnet" cases, the chart and layout) before the app startup runs.</remarks>
-public class AppFactory(LocalPostgresFixture postgres) : WebApplicationFactory<Program>
+/// <remarks>Not sealed: the Income Statement endpoint tests subclass it to replace the chart and layout
+/// before the app startup runs.</remarks>
+public class AppFactory(LocalPostgresFixture postgres, TimeProvider? time = null) : WebApplicationFactory<Program>
 {
     /// <summary>Receipt PDFs of this app instance; the S3 endpoint is unreachable, so tests use memory.</summary>
     public InMemoryReceiptStorage Receipts { get; } = new();
@@ -51,6 +51,10 @@ public class AppFactory(LocalPostgresFixture postgres) : WebApplicationFactory<P
             services.AddSingleton<IReceiptStorage>(Receipts);
             services.AddSingleton<IInvoiceStorage>(InvoicePdfs);
             services.AddSingleton<IEmailSender>(Emails);
+            if (time is not null)
+            {
+                services.AddSingleton<TimeProvider>(time);
+            }
             services.AddHttpClient<EPostInvoiceSender>().ConfigurePrimaryHttpMessageHandler(() => EPost);
             services.AddHttpClient<EPostEmailInvoiceSender>().ConfigurePrimaryHttpMessageHandler(() => EPost);
             services

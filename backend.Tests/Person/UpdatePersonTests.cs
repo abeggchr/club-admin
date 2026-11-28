@@ -42,7 +42,7 @@ public class UpdatePersonTests(LocalPostgresFixture fixture) : PersonControllerT
         var child = Add(db, "Child");
 
         var (status, _) = await Run(
-            await new PersonController(db).UpdateAsync(child.Id, Update(child, payer.Id))
+            await new PersonController(db, TimeProvider.System).UpdateAsync(child.Id, Update(child, payer.Id))
         );
 
         Assert.Equal(200, status);
@@ -57,7 +57,7 @@ public class UpdatePersonTests(LocalPostgresFixture fixture) : PersonControllerT
         var child = Add(db, "Child", payer.Id);
 
         var (status, _) = await Run(
-            await new PersonController(db).UpdateAsync(child.Id, Update(child, null))
+            await new PersonController(db, TimeProvider.System).UpdateAsync(child.Id, Update(child, null))
         );
 
         Assert.Equal(200, status);
@@ -71,7 +71,7 @@ public class UpdatePersonTests(LocalPostgresFixture fixture) : PersonControllerT
         var person = Add(db, "Self");
 
         var (status, body) = await Run(
-            await new PersonController(db).UpdateAsync(person.Id, Update(person, person.Id))
+            await new PersonController(db, TimeProvider.System).UpdateAsync(person.Id, Update(person, person.Id))
         );
 
         Assert.Equal(400, status);
@@ -86,7 +86,7 @@ public class UpdatePersonTests(LocalPostgresFixture fixture) : PersonControllerT
         var person = Add(db, "Name");
 
         var (status, _) = await Run(
-            await new PersonController(db).UpdateAsync(
+            await new PersonController(db, TimeProvider.System).UpdateAsync(
                 person.Id,
                 Update(person, null) with
                 {
@@ -105,7 +105,7 @@ public class UpdatePersonTests(LocalPostgresFixture fixture) : PersonControllerT
         var ghost = new PersonEntity { FirstName = "G", LastName = "H" };
 
         var (status, _) = await Run(
-            await new PersonController(db).UpdateAsync(-1, Update(ghost, null))
+            await new PersonController(db, TimeProvider.System).UpdateAsync(-1, Update(ghost, null))
         );
 
         Assert.Equal(404, status);

@@ -6,7 +6,7 @@ namespace backend.IncomeStatement;
 
 [ApiController]
 [Route("api")]
-public class IncomeStatementController(AppDbContext db, IncomeStatementConfig config, ChartOfAccounts chart, ISystemClock clock)
+public class IncomeStatementController(AppDbContext db, IncomeStatementConfig config, ChartOfAccounts chart, TimeProvider time)
     : ControllerBase
 {
     [HttpGet("income-statement")]
@@ -24,7 +24,7 @@ public class IncomeStatementController(AppDbContext db, IncomeStatementConfig co
             return BadRequest(new { error = "Kein Startdatum gesetzt. Bitte legen Sie das Startdatum in den Einstellungen fest." });
         }
 
-        var today = clock.Today();
+        var today = backend.Invoicing.InvoiceTime.Today(time.GetUtcNow().UtcDateTime);
         // Entries outside the period (before the Start Date or after today) are left out.
         var entries = await db
             .JournalEntries.Include(e => e.Transaction)

@@ -4,25 +4,13 @@ using System.Text.Json;
 using backend.Accounting;
 using backend.IncomeStatement;
 using backend.Tests.Invoicing;
+using backend.Tests.Shared;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace backend.Tests.Api;
-
-/// <summary>
-/// An <see cref="AppFactory"/> with a fixed clock, so the period end of the Income Statement is
-/// deterministic in endpoint tests.
-/// </summary>
-public sealed class IncomeStatementAppFactory(LocalPostgresFixture postgres, DateOnly today) : AppFactory(postgres)
-{
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        base.ConfigureWebHost(builder);
-        builder.ConfigureTestServices(services => services.AddSingleton<backend.IncomeStatement.ISystemClock>(new backend.IncomeStatement.FixedClock(today)));
-    }
-}
 
 /// <summary>
 /// GET /api/income-statement: the paper report as a fixture, the date window (both boundaries
@@ -68,7 +56,7 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
             await db.Transactions.ExecuteDeleteAsync();
             await db.Settings.ExecuteDeleteAsync();
 
-            var factory = new IncomeStatementAppFactory(Postgres, TodayOverride ?? Today);
+            var factory = new AppFactory(Postgres, TestClock.On(TodayOverride ?? Today));
             Factory = factory;
             var client = factory.CreateClient();
             client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, "anna@example.ch");
@@ -295,7 +283,7 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
         await db.Transactions.ExecuteDeleteAsync();
         await db.Settings.ExecuteDeleteAsync();
 
-        var factory = new IncomeStatementAppFactory(_postgres, Today);
+        var factory = new AppFactory(_postgres, TestClock.On(Today));
         await using (factory)
         {
             db.Settings.Add(
@@ -372,14 +360,13 @@ public class IncomeStatementEndpointTests : IClassFixture<LocalPostgresFixture>
         DateOnly today,
         ChartOfAccounts chart,
         IncomeStatementConfig config
-    ) : AppFactory(postgres)
+    ) : AppFactory(postgres, TestClock.On(today))
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             base.ConfigureWebHost(builder);
             builder.ConfigureTestServices(services =>
             {
-                services.AddSingleton<backend.IncomeStatement.ISystemClock>(new backend.IncomeStatement.FixedClock(today));
                 services.Remove(services.First(d => d.ServiceType == typeof(ChartOfAccounts)));
                 services.AddSingleton(chart);
                 services.Remove(services.First(d => d.ServiceType == typeof(IncomeStatementConfig)));
