@@ -1,6 +1,5 @@
 using System.Linq;
 using backend.Accounting;
-using backend.Invoicing;
 
 namespace backend.Tests.Accounting;
 
@@ -1451,7 +1450,7 @@ public class BankImportTests
         Assert.Null(tx.MatchedInvoiceId);
         Assert.Empty(tx.AutoEntries);
         Assert.Null(tx.OverpaymentAmount);
-        Assert.Null(tx.PaidAt);
+        Assert.False(tx.CoversInvoice);
     }
 
     [Fact]
@@ -1490,7 +1489,7 @@ public class BankImportTests
         var tx = Assert.Single(result.Transactions);
         Assert.Equal(42, tx.MatchedInvoiceId);
         Assert.Equal(15m, tx.OverpaymentAmount);
-        Assert.Equal(new DateTime(2026, 2, 9, 23, 0, 0, DateTimeKind.Utc), tx.PaidAt);
+        Assert.True(tx.CoversInvoice);
     }
 
     [Fact]
@@ -1863,7 +1862,7 @@ public class BankImportTests
     }
 
     [Fact]
-    public void A_payment_that_exactly_covers_the_total_sets_Paid_with_the_booking_date()
+    public void A_payment_that_exactly_covers_the_total_sets_Paid()
     {
         var chart = TestChart();
         var invoices = new[]
@@ -1897,11 +1896,7 @@ public class BankImportTests
         Assert.Empty(result.Errors);
         var tx = Assert.Single(result.Transactions);
         Assert.Equal(42, tx.MatchedInvoiceId);
-        Assert.NotNull(tx.PaidAt);
-        // The Paid timestamp is the movement's booking date, not the import time: 2026-02-10 00:00
-        // Zurich (winter time) is 2026-02-09 23:00 UTC.
-        Assert.Equal(new DateTime(2026, 2, 9, 23, 0, 0, DateTimeKind.Utc), tx.PaidAt);
-        Assert.Equal(new DateOnly(2026, 2, 10), InvoiceTime.ZurichDate(tx.PaidAt.Value));
+        Assert.True(tx.CoversInvoice);
     }
 
     [Fact]
@@ -1940,7 +1935,7 @@ public class BankImportTests
         var tx = Assert.Single(result.Transactions);
         Assert.Equal(42, tx.MatchedInvoiceId);
         Assert.Single(tx.AutoEntries);
-        Assert.Null(tx.PaidAt);
+        Assert.False(tx.CoversInvoice);
     }
 
     [Fact]
@@ -1979,7 +1974,7 @@ public class BankImportTests
         var tx = Assert.Single(result.Transactions);
         Assert.Null(tx.MatchedInvoiceId);
         Assert.Empty(tx.AutoEntries);
-        Assert.Null(tx.PaidAt);
+        Assert.False(tx.CoversInvoice);
     }
 
     [Fact]
@@ -2020,7 +2015,7 @@ public class BankImportTests
         var tx = Assert.Single(result.Transactions);
         Assert.Null(tx.MatchedInvoiceId);
         Assert.Empty(tx.AutoEntries);
-        Assert.Null(tx.PaidAt);
+        Assert.False(tx.CoversInvoice);
     }
 
     [Fact]
@@ -2075,7 +2070,7 @@ public class BankImportTests
         Assert.Equal("TX1", tx.BankReference);
         Assert.Null(tx.MatchedInvoiceId);
         Assert.Empty(tx.AutoEntries);
-        Assert.Null(tx.PaidAt);
+        Assert.False(tx.CoversInvoice);
     }
 
     private static BankImportResult Import(
