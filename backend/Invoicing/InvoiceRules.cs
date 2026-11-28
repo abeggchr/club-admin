@@ -8,7 +8,7 @@ public record InvoiceLineDraft(string? Text, decimal Amount, int AccountNumber);
 /// <summary>The dashboard's Invoices: how many are open and what their full totals sum to.</summary>
 public record InvoiceSummary(int OpenCount, decimal OpenAmount);
 
-/// <summary>Pure rules for creating an Invoice. Errors are German messages, or null when valid.</summary>
+/// <summary>Pure rules for creating an Invoice and its email message. Errors are German messages, or null when valid.</summary>
 public static class InvoiceRules
 {
     public static string? Validate(
@@ -46,43 +46,9 @@ public static class InvoiceRules
 
     public static decimal Total(IEnumerable<InvoiceLineDraft> lines) => lines.Sum(l => l.Amount);
 
-    /// <summary>
-    /// The status change that is current: a Paid or Cancelled one wins whatever the timestamps (Paid is
-    /// timestamped with the booking date and can predate a later Sent); otherwise the newest by
-    /// timestamp, then id.
-    /// </summary>
-    public static InvoiceStatusChange? CurrentChange(Invoice invoice)
+    /// <summary>An email needs a subject and a text; a letter needs neither.</summary>
+    public static string? ValidateMessage(string? subject, string? text)
     {
-        var ordered = invoice.StatusChanges.OrderBy(s => s.Timestamp).ThenBy(s => s.Id).ToList();
-        return ordered.LastOrDefault(s => s.Status is InvoiceStatus.Paid or InvoiceStatus.Cancelled)
-            ?? ordered.LastOrDefault();
-    }
-
-    /// <summary>The current Invoice Status, or Created for an Invoice without any status change yet.</summary>
-    public static InvoiceStatus LatestStatus(Invoice invoice) =>
-        CurrentChange(invoice)?.Status ?? InvoiceStatus.Created;
-
-    /// <summary>Open: the latest Invoice Status is neither Paid nor Cancelled.</summary>
-    public static bool IsOpen(Invoice invoice) =>
-        LatestStatus(invoice) is not (InvoiceStatus.Paid or InvoiceStatus.Cancelled);
-
-    /// <summary>Cancelling is allowed while the Invoice is open (Created or Sent).</summary>
-    public static string? ValidateCancel(InvoiceStatus status) =>
-        status is InvoiceStatus.Created or InvoiceStatus.Sent
-            ? null
-            : "Nur offene Rechnungen können storniert werden.";
-
-    /// <summary>Sending needs an open Invoice (Created or Sent); an email also needs a subject and a text, a letter does not.</summary>
-    public static string? ValidateSend(InvoiceStatus status, string? subject, string? text, bool requiresMessage = true)
-    {
-        if (status is not (InvoiceStatus.Created or InvoiceStatus.Sent))
-        {
-            return "Nur offene Rechnungen können versendet werden.";
-        }
-        if (!requiresMessage)
-        {
-            return null;
-        }
         if (string.IsNullOrWhiteSpace(subject))
         {
             return "Der Betreff ist erforderlich.";
@@ -100,7 +66,7 @@ public static class InvoiceRules
     /// </summary>
     public static InvoiceSummary Summarize(IEnumerable<Invoice> invoices) =>
         invoices
-            .Where(IsOpen)
+            .Where(InvoiceStatusRules.IsOpen)
             .Select(i => i.Lines.Sum(l => l.Amount))
             .Aggregate(
                 new InvoiceSummary(0, 0m),

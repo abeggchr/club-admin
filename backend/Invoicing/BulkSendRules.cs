@@ -26,7 +26,7 @@ public static class BulkSendRules
             .OrderBy(s => Array.IndexOf(Preference, s.Channel))
             .ToList();
         return invoices
-            .Where(i => InvoiceRules.LatestStatus(i.Invoice) == InvoiceStatus.Created)
+            .Where(i => InvoiceStatusRules.Current(i.Invoice) == InvoiceStatus.Created)
             .Select(i => Pick(i.Invoice, i.Recipient, settings, ordered))
             .ToList();
     }
@@ -41,7 +41,7 @@ public static class BulkSendRules
     /// <summary>Subject and text are required only when at least one Invoice goes by email; a letter needs neither.</summary>
     public static string? ValidateMessage(IReadOnlyCollection<BulkSendItem> plan, string? subject, string? text) =>
         plan.Any(i => i.Channel == DeliveryChannel.Email)
-            ? InvoiceRules.ValidateSend(InvoiceStatus.Created, subject, text)
+            ? InvoiceRules.ValidateMessage(subject, text)
             : null;
 
     private static BulkSendItem Pick(

@@ -20,14 +20,10 @@ public class InvoiceDispatcher(IEnumerable<IInvoiceSender> senders, IInvoiceStor
         CancellationToken ct
     )
     {
-        if (
-            InvoiceRules.ValidateSend(
-                InvoiceRules.LatestStatus(invoice),
-                message.Subject,
-                message.Text,
-                channel == DeliveryChannel.Email
-            ) is { } invalid
-        )
+        var invalid =
+            InvoiceStatusRules.ValidateSend(invoice)
+            ?? (channel == DeliveryChannel.Email ? InvoiceRules.ValidateMessage(message.Subject, message.Text) : null);
+        if (invalid is not null)
         {
             return invalid;
         }
@@ -53,14 +49,6 @@ public class InvoiceDispatcher(IEnumerable<IInvoiceSender> senders, IInvoiceStor
         {
             return result.Error;
         }
-        invoice.StatusChanges.Add(
-            new InvoiceStatusChange
-            {
-                Status = InvoiceStatus.Sent,
-                Timestamp = now,
-                Remark = result.Remark,
-            }
-        );
-        return null;
+        return InvoiceStatusRules.Send(invoice, result.Remark, now);
     }
 }

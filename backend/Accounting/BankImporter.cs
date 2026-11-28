@@ -55,12 +55,12 @@ public class BankImporter(AppDbContext db, ChartOfAccounts chart)
             .ToListAsync();
         var importInvoices = invoices
             .Where(i => !string.IsNullOrEmpty(i.Reference))
-            .Where(i => InvoiceRules.LatestStatus(i) != InvoiceStatus.Cancelled)
+            .Where(i => InvoiceStatusRules.Current(i) != InvoiceStatus.Cancelled)
             .Select(i => new ImportInvoice(
                 i.Id,
                 i.Reference,
                 i.Lines.Sum(l => l.Amount),
-                i.StatusChanges.Any(s => s.Status == InvoiceStatus.Paid),
+                !InvoiceStatusRules.IsOpen(i),
                 i.Lines.OrderBy(l => l.Position)
                     .Select(l => new ImportInvoiceLine(l.Text, l.AccountNumber, l.Amount))
                     .ToList()
@@ -103,8 +103,8 @@ public class BankImporter(AppDbContext db, ChartOfAccounts chart)
         db.Transactions.AddRange(saved.Select(s => s.Movement));
 
         // The first fully-covering credit Transaction marks the Invoice Paid: once the Transactions are
-        // saved and have their ids, append the Paid status change and record the Transaction's id as
-        // PaidBy. Both saves share one database transaction, so the import is all or nothing.
+        // saved and have their ids, the Paid status change and PaidBy are recorded. Both saves share one
+        // database transaction, so the import is all or nothing.
         await AccountUsageSync.SaveEntryChangeAsync(
             db,
             chart,
@@ -118,14 +118,8 @@ public class BankImporter(AppDbContext db, ChartOfAccounts chart)
                     }
 
                     var invoice = invoices.Single(i => i.Id == imported.MatchedInvoiceId);
-                    invoice.StatusChanges.Add(
-                        new InvoiceStatusChange
-                        {
-                            Status = InvoiceStatus.Paid,
-                            Timestamp = imported.PaidAt.Value,
-                        }
-                    );
-                    invoice.PaidBy ??= movement.Id;
+                    // A later movement of the same file covering an Invoice already Paid by an earlier one changes nothing.
+                    InvoiceStatusRules.MarkPaid(invoice, movement.Id, movement.Date);
                 }
             }
         );

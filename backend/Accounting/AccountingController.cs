@@ -407,7 +407,7 @@ public class AccountingController(
         {
             return (null, null);
         }
-        if (!InvoiceRules.IsOpen(invoice))
+        if (!InvoiceStatusRules.IsOpen(invoice))
         {
             return (null, "Die Rechnung ist nicht offen.");
         }
@@ -417,24 +417,13 @@ public class AccountingController(
             : (invoice, null);
     }
 
-    // Marks the Invoice Paid by the Transaction: a Paid status change plus PaidBy.
+    // Marks the Invoice Paid by the Transaction, dated with the Transaction's date; FindInvoiceToLinkAsync checked it is open.
     private static void LinkInvoice(Invoice? invoice, Transaction transaction)
     {
-        if (invoice is null)
+        if (invoice is not null && InvoiceStatusRules.MarkPaid(invoice, transaction.Id, transaction.Date) is { } error)
         {
-            return;
+            throw new InvalidOperationException(error);
         }
-        // Dated like the import does, but never before an earlier status change (the latest one decides the status).
-        var timestamp = InvoiceTime.TimestampFor(transaction.Date);
-        var latest = invoice.StatusChanges.Max(s => s.Timestamp);
-        invoice.StatusChanges.Add(
-            new InvoiceStatusChange
-            {
-                Status = InvoiceStatus.Paid,
-                Timestamp = timestamp > latest ? timestamp : latest,
-            }
-        );
-        invoice.PaidBy = transaction.Id;
     }
 
     private async Task<TransactionDto> LoadTransactionDtoAsync(Settings.Settings opening, int id) =>
