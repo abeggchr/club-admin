@@ -112,7 +112,7 @@ public class BankImporter(AppDbContext db, ChartOfAccounts chart)
             {
                 foreach (var (imported, movement) in saved)
                 {
-                    if (imported.PaidAt is null || imported.MatchedInvoiceId is null)
+                    if (!imported.CoversInvoice)
                     {
                         continue;
                     }

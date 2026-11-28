@@ -42,7 +42,7 @@ public record ImportSnapshot(
 )
 { }
 
-/// <summary>One imported Transaction to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId. A matched Transaction additionally carries the Invoice it covers, the Entries the import proposes for it, — when this Transaction overpays, the excess booked to Account 3600 (Spenden) — and, when this Transaction is the first to cover the total, the UTC timestamp of the Paid status change (the movement's booking date in Zurich time).</summary>
+/// <summary>One imported Transaction to save: the bank's booking date, the signed amount, the text, the BankReference and, when the counterparty matched, the PersonId. A matched Transaction additionally carries the Invoice it covers, the Entries the import proposes for it, — when this Transaction overpays, the excess booked to Account 3600 (Spenden) — and whether it covers that Invoice's total, so the Invoice is marked Paid.</summary>
 public record ImportedTransaction(
     DateOnly Date,
     decimal Amount,
@@ -52,7 +52,7 @@ public record ImportedTransaction(
     int? MatchedInvoiceId,
     IReadOnlyList<ImportEntry> AutoEntries,
     decimal? OverpaymentAmount,
-    DateTime? PaidAt
+    bool CoversInvoice
 );
 
 /// <summary>One problem found in one file; File is null for a problem of the zip itself.</summary>
@@ -508,7 +508,7 @@ public static class BankImport
         text = text is null ? null : (text.Length > MaxTextLength ? text[..MaxTextLength] : text);
 
         // Try to match the payment to its open Invoice and auto-book it.
-        var match = MatchInvoice(transaction, signedAmount, credit, date, context.Snapshot);
+        var match = MatchInvoice(transaction, signedAmount, credit, context.Snapshot);
         context.Transactions.Add(
             new ImportedTransaction(
                 date,
@@ -519,7 +519,7 @@ public static class BankImport
                 match?.InvoiceId,
                 match?.Entries ?? [],
                 match?.OverpaymentAmount,
-                match?.PaidAt
+                match?.CoversInvoice ?? false
             )
         );
     }
@@ -848,19 +848,17 @@ public static class BankImport
     /// underpayment, the debit's magnitude differs from the total, a line's Account is missing or
     /// inactive, an overpayment Entry is needed but Account 3600 is missing or inactive, or the Entries
     /// do not sum to the movement's amount. An overpaying credit additionally books the excess to Account 3600.
-    /// A credit that covers the total (including an overpayment) returns the PaidAt timestamp
-    /// (the booking date as a UTC instant) for the Paid status change; a debit never does.
+    /// A matched credit covers the Invoice (exactly or with an overpayment), so the Invoice is marked Paid; a debit never does.
     /// </summary>
     private static (
         int InvoiceId,
         IReadOnlyList<ImportEntry> Entries,
         decimal? OverpaymentAmount,
-        DateTime? PaidAt
+        bool CoversInvoice
     )? MatchInvoice(
         Camt.EntryTransaction12? transaction,
         decimal signedAmount,
         bool credit,
-        DateOnly date,
         ImportSnapshot snapshot
     )
     {
@@ -937,12 +935,8 @@ public static class BankImport
             return null;
         }
 
-        // A credit that covers the total (exactly or with an overpayment) records the Paid status change,
-        // timestamped with the movement's booking date (Zurich midnight as a UTC instant).
-        var covered = credit && signedAmount >= invoice.Total;
-        DateTime? paidAt = covered ? InvoiceTime.TimestampFor(date) : null;
-
-        return (invoice.Id, entries.AsReadOnly(), overpaymentAmount, paidAt);
+        // A matched credit has passed the underpayment check, so it covers the total (exactly or with an overpayment).
+        return (invoice.Id, entries.AsReadOnly(), overpaymentAmount, credit);
     }
 
     /// <summary>The Invoice Numbers of the movements that were auto-booked, in import order (spec #44 §7, the response's bookedInvoices).</summary>
