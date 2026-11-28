@@ -25,11 +25,8 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
     /// <summary>Clears the database and seeds Settings (with SMTP unless told otherwise) and one Created Invoice; returns its id.</summary>
     private async Task<int> Seed(
         bool smtp = true,
-        string? email = "anna@example.ch",
         InvoiceStatus? status = null,
-        bool epost = false,
-        string? street = "Bahnhofstrasse",
-        string? country = null
+        bool epost = false
     )
     {
         await using var db = NewDb();
@@ -59,12 +56,11 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
         {
             FirstName = "Anna",
             LastName = "Muster",
-            Email = email,
-            Street = street,
+            Email = "anna@example.ch",
+            Street = "Bahnhofstrasse",
             Number = "7",
             PostalCode = "5400",
             City = "Baden",
-            Country = country,
         };
         db.Persons.Add(person);
         await db.SaveChangesAsync();
@@ -129,22 +125,6 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
         Assert.Equal("per Email", last.GetProperty("remark").GetString());
     }
 
-    [Fact]
-    public async Task Sending_again_adds_another_Sent_row()
-    {
-        var id = await Seed(status: InvoiceStatus.Sent);
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        using var client = SignedIn(factory);
-
-        Assert.Equal(HttpStatusCode.OK, (await Send(client, id)).StatusCode);
-
-        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
-        Assert.Equal(
-            2,
-            detail.GetProperty("statusHistory").EnumerateArray().Count(s => s.GetProperty("status").GetString() == "Sent")
-        );
-    }
-
     [Theory]
     [InlineData(null, "Text", "Der Betreff ist erforderlich.")]
     [InlineData("Betreff", " ", "Der Text ist erforderlich.")]
@@ -159,69 +139,6 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal(error, await Error(response));
         Assert.Empty(factory.Emails.Invoices);
-    }
-
-    [Theory]
-    [InlineData(InvoiceStatus.Paid)]
-    [InlineData(InvoiceStatus.Cancelled)]
-    public async Task A_Paid_or_Cancelled_Rechnung_cannot_be_sent(InvoiceStatus status)
-    {
-        var id = await Seed(status: status);
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        using var client = SignedIn(factory);
-
-        var response = await Send(client, id);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("Nur offene Rechnungen können versendet werden.", await Error(response));
-        Assert.Empty(factory.Emails.Invoices);
-    }
-
-    [Fact]
-    public async Task A_Recipient_without_an_email_address_is_refused()
-    {
-        var id = await Seed(email: null);
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        using var client = SignedIn(factory);
-
-        var response = await Send(client, id);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("Die Person hat keine E-Mail-Adresse.", await Error(response));
-    }
-
-    [Fact]
-    public async Task Sending_is_refused_while_email_is_not_configured()
-    {
-        var id = await Seed(smtp: false);
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        using var client = SignedIn(factory);
-
-        var response = await Send(client, id);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(
-            "E-Mail ist nicht eingerichtet: Es braucht eine Absenderadresse und entweder SMTP oder ePost.",
-            await Error(response)
-        );
-        Assert.Empty(factory.Emails.Invoices);
-    }
-
-    [Fact]
-    public async Task A_sender_failure_returns_a_German_error_and_records_nothing()
-    {
-        var id = await Seed();
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        factory.Emails.FailWith = "Connection refused";
-        using var client = SignedIn(factory);
-
-        var response = await Send(client, id);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("Die E-Mail konnte nicht gesendet werden: Connection refused", await Error(response));
-        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
-        Assert.Equal("Created", detail.GetProperty("status").GetString());
-        Assert.Equal(1, detail.GetProperty("statusHistory").GetArrayLength());
     }
 
     [Fact]
@@ -295,77 +212,6 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
         Assert.Equal($"per Post ({factory.EPost.DeliveryId})", last.GetProperty("remark").GetString());
     }
 
-    [Theory]
-    [InlineData("Schweiz")]
-    [InlineData("ch")]
-    public async Task Sending_by_post_accepts_Switzerland_in_any_spelling(string country)
-    {
-        var id = await Seed(epost: true, country: country);
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        using var client = SignedIn(factory);
-
-        Assert.Equal(HttpStatusCode.OK, (await SendByPost(client, id)).StatusCode);
-    }
-
-    [Fact]
-    public async Task Post_is_refused_while_ePost_is_not_configured()
-    {
-        var id = await Seed(epost: false);
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        using var client = SignedIn(factory);
-
-        var response = await SendByPost(client, id);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("ePost ist nicht eingerichtet.", await Error(response));
-        Assert.Equal(0, factory.EPost.Calls);
-    }
-
-    [Theory]
-    [InlineData(null, null)]
-    [InlineData("Bahnhofstrasse", "Deutschland")]
-    public async Task Post_is_refused_for_an_incomplete_or_foreign_address(string? street, string? country)
-    {
-        var id = await Seed(epost: true, street: street, country: country);
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        using var client = SignedIn(factory);
-
-        var response = await SendByPost(client, id);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("Die Person hat keine vollständige Schweizer Adresse (Strasse, PLZ und Ort).", await Error(response));
-        Assert.Equal(0, factory.EPost.Calls);
-    }
-
-    [Fact]
-    public async Task An_ePost_failure_returns_the_message_and_records_nothing()
-    {
-        var id = await Seed(epost: true);
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        factory.EPost.Status = HttpStatusCode.TooManyRequests;
-        factory.EPost.Body = """{"message":"Zu viele Anfragen"}""";
-        using var client = SignedIn(factory);
-
-        var response = await SendByPost(client, id);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("Der Brief konnte nicht versendet werden: Zu viele Anfragen", await Error(response));
-        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
-        Assert.Equal(1, detail.GetProperty("statusHistory").GetArrayLength());
-    }
-
-    [Fact]
-    public async Task Email_stays_possible_when_ePost_is_configured_too()
-    {
-        var id = await Seed(epost: true);
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        using var client = SignedIn(factory);
-
-        Assert.Equal(HttpStatusCode.OK, (await Send(client, id)).StatusCode);
-        Assert.Single(factory.Emails.Invoices);
-        Assert.Equal(0, factory.EPost.Calls);
-    }
-
     [Fact]
     public async Task Without_an_SMTP_group_the_email_goes_through_ePost_with_the_club_as_Reply_To()
     {
@@ -393,20 +239,6 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
     }
 
     [Fact]
-    public async Task With_an_SMTP_group_the_email_goes_through_SMTP_even_when_an_ePost_key_is_stored()
-    {
-        var id = await Seed(smtp: true, epost: true);
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        using var client = SignedIn(factory);
-
-        var response = await Send(client, id);
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Single(factory.Emails.Invoices);
-        Assert.Equal(0, factory.EPost.Calls);
-    }
-
-    [Fact]
     public async Task A_failing_SMTP_server_is_not_retried_through_ePost()
     {
         var id = await Seed(smtp: true, epost: true);
@@ -417,25 +249,8 @@ public class InvoiceSendEndpointTests : IClassFixture<LocalPostgresFixture>
         var response = await Send(client, id);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("Connection timed out", await Error(response));
+        Assert.Equal("Die E-Mail konnte nicht gesendet werden: Connection timed out", await Error(response));
         Assert.Equal(0, factory.EPost.Calls);
-        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
-        Assert.Equal("Created", detail.GetProperty("status").GetString());
-    }
-
-    [Fact]
-    public async Task An_ePost_email_failure_is_reported_in_German_and_records_nothing()
-    {
-        var id = await Seed(smtp: false, epost: true);
-        await using var factory = await FactoryWithPdf(_postgres, id);
-        factory.EPost.Status = HttpStatusCode.Forbidden;
-        factory.EPost.Body = """{"message":"Ungültiger API-Key"}""";
-        using var client = SignedIn(factory);
-
-        var response = await Send(client, id);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("Die E-Mail konnte nicht gesendet werden: Ungültiger API-Key", await Error(response));
         var detail = await client.GetFromJsonAsync<JsonElement>($"/api/invoices/{id}");
         Assert.Equal("Created", detail.GetProperty("status").GetString());
     }

@@ -48,6 +48,8 @@ if (builder.Environment.IsDevelopment())
 }
 builder.Services.AddTransient<IInvoiceSender>(sp => sp.GetRequiredService<EPostEmailInvoiceSender>());
 builder.Services.AddScoped<InvoiceDispatcher>();
+// The time each Sent status change is stamped with.
+builder.Services.AddSingleton(TimeProvider.System);
 InvoiceDocument.UseCommunityLicense();
 
 // A malformed Chart of Accounts file fails startup (see ADR 0001).
